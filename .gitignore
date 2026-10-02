@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+runs/
+data/incidents.db
+.chroma/
+.tmp/
+
+# Local-only (never published): personal context and orchestration files
+private/
+CLAUDE.md
+docs/CONSTITUTION.md
+.claude/

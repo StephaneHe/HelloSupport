@@ -1,0 +1,10 @@
+{
+  "_comment": "Simulated service states. No real service is ever queried. Select with `--scenario <name>` (env HS_SCENARIO).",
+  "default": "stopped",
+  "scenarios": {
+    "stopped": {"postgres": "stopped", "nginx": "running", "redis": "running"},
+    "running": {"postgres": "running", "nginx": "running", "redis": "running"},
+    "redis_down": {"postgres": "running", "nginx": "running", "redis": "stopped"},
+    "tool_error": {"postgres": "error", "nginx": "error", "redis": "error"}
+  }
+}

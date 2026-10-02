@@ -1,0 +1,52 @@
+[project]
+name = "hello-support"
+dynamic = ["version"]
+description = "Hello-world troubleshooting assistant: agents, RAG, MCP, SQL and a local LLM/SLM."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Stéphane Hercot" }]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "openai>=1.40",
+    "python-dotenv>=1.0",
+    "torch>=2.6",
+    "sentence-transformers>=3.0",
+    "chromadb>=1.0",
+    "mcp>=1.10",
+    "langgraph>=0.6",
+]
+
+[project.scripts]
+hello-support = "hello_support.cli:main"
+hello-support-mcp = "hello_support.mcp_server:main"
+
+[dependency-groups]
+dev = [
+    "markdown>=3.11",
+    "pytest>=8",
+]
+
+# CUDA build of PyTorch (RTX 2070 Super): PyPI only ships the CPU build on Windows.
+[tool.uv.sources]
+torch = { index = "pytorch-cu124" }
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/hello_support/__init__.py"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "live: needs a running LM Studio server",
+    "models: loads the embedding/reranking models (slow, downloads on first run)",
+]
+addopts = "-m 'not live and not models'"
