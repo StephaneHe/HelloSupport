@@ -1,0 +1,2072 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A local-only, multi-agent troubleshooting assistant — LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, measured 4B vs 7B models.">
+      
+      
+        <meta name="author" content="Stéphane Hercot">
+      
+      
+        <link rel="canonical" href="https://stephanehe.github.io/HelloSupport/dev/REVIEW_DOC_CODE/">
+      
+      
+        <link rel="prev" href="../DEMO/">
+      
+      
+        <link rel="next" href="../USER_REQUIREMENTS/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Doc-to-code review - HelloSupport</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#documentation-code-consistency-review" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="HelloSupport" class="md-header__button md-logo" aria-label="HelloSupport" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            HelloSupport
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Doc-to-code review
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/StephaneHe/HelloSupport" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    StephaneHe/HelloSupport
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="HelloSupport" class="md-nav__button md-logo" aria-label="HelloSupport" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    HelloSupport
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/StephaneHe/HelloSupport" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    StephaneHe/HelloSupport
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Documentation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DESIGN_DECISIONS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design decisions (31)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BENCH/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmark reports
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEMO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Annotated demo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc-to-code review
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc-to-code review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#verdict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verdict
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-false" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. False
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-obsolete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Obsolete
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-imprecise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Imprecise
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-undocumented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Undocumented
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-claims-checked-and-confirmed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Claims checked and confirmed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Claims checked and confirmed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#benchmark-figures-against-the-raw-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmark figures against the raw reports
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-suggested-order-of-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Suggested order of work
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-resolution-v1112-2026-10-04" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Resolution (v1.11.2, 2026-10-04)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_REQUIREMENTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../kb/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Knowledge base
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Knowledge base
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kb/postgres_connection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PostgreSQL connection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kb/nginx_unavailable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    nginx unavailable
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kb/redis_unreachable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis unreachable
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../todo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TODO list
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../code-of-conduct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code of conduct
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License (MIT)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../downloads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Downloads (PDF)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#verdict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verdict
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-false" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. False
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-obsolete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Obsolete
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-imprecise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Imprecise
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-undocumented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Undocumented
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-claims-checked-and-confirmed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Claims checked and confirmed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Claims checked and confirmed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#benchmark-figures-against-the-raw-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmark figures against the raw reports
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-suggested-order-of-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Suggested order of work
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-resolution-v1112-2026-10-04" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Resolution (v1.11.2, 2026-10-04)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="documentation-code-consistency-review">Documentation ↔ code consistency review<a class="headerlink" href="#documentation-code-consistency-review" title="Permanent link">&para;</a></h1>
+<ul>
+<li><strong>Date</strong>: 2026-10-04 · <strong>Version reviewed</strong>: 1.11.1 (commit <code>94ae064</code>)</li>
+<li><strong>Reviewer</strong>: independent pass by an AI assistant (Claude), fresh session, nothing reused from the sessions that wrote the code or the docs.</li>
+<li><strong>Scope read in full</strong>: <code>README.md</code>, <code>CHANGELOG.md</code>, <code>TODO_LIST.md</code>, <code>docs/SPEC.md</code>, <code>docs/DESIGN_DECISIONS.md</code>, <code>docs/BENCH.md</code>, <code>docs/DEMO.md</code>, <code>docs/USER_REQUIREMENTS.md</code>, the summary tables of the 15 raw reports in <code>docs/bench/</code>, all of <code>src/hello_support/</code> (Python and <code>static/</code>), <code>tests/</code>, <code>tools/md2pdf.py</code>, <code>pyproject.toml</code>, <code>.env.example</code>, <code>data/</code>.</li>
+<li><strong>Checks actually run</strong>: <code>uv run pytest</code> → 91 passed, 1 deselected, 15.5 s; one in-process MCP call to read two real error messages; <code>uv.lock</code> for the pinned versions; <code>git tag</code>.</li>
+<li><strong>Not done</strong>: no LLM benchmark was re-run (it needs LM Studio and the GPU). Every benchmark figure was compared with the archived raw reports only. The two PDFs were not opened; they were committed together with their Markdown sources.</li>
+<li><strong>Rule of this review</strong>: no code and no existing file was changed. Each row proposes a fix; none is applied.</li>
+<li><strong>Follow-up (v1.11.2, 2026-10-04)</strong>: every row was then handled and is marked <strong>resolved</strong> or <strong>accepted</strong> in section 7, <em>Resolution</em>. The tables below are the review as written.</li>
+<li><strong>Side effect of this file</strong>: the language test is parametrized per published Markdown file, so adding this report raises the suite from 91 to <strong>92</strong> tests (all pass). The README badge and text (<code>README.md:9,289</code>) still say 91.</li>
+</ul>
+<p>There is no <code>webdemo/README</code> in the repository: the web demo is documented in the README section <em>Web demo</em> and in D-31, and its code is <code>src/hello_support/webapp.py</code> and <code>static/</code>. A local, untracked launcher for the demo was also read; it is consistent with the code (port 5179, <code>HS_DOCS_URL</code>).</p>
+<h2 id="verdict">Verdict<a class="headerlink" href="#verdict" title="Permanent link">&para;</a></h2>
+<p>The <strong>core architecture claims are confirmed by the code</strong>: the five triage categories and their paths, the two agents and their loop limits, the three MCP tools, the five SQL guards, models and defaults, commands, scenarios, ports, and all 31 decisions are implemented as described. The headline benchmark tables match the raw reports digit for digit.</p>
+<p>The gaps are concentrated in three places:</p>
+<ol>
+<li><strong><code>docs/SPEC.md</code> §3, §4 (layout) and §8</strong> still describe the plan from before the implementation, although the status line says "implemented".</li>
+<li><strong>Sections written for v1.8.0</strong> (D-27, D-28, the README results table) were not refreshed after v1.10.0, v1.11.0 and v1.11.1.</li>
+<li><strong>A few statements are stronger than what the code or the raw data supports</strong> (incident dates, "required" tool, "every guardrail is tested", the cause of the 7B failures on C6).</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Severity</th>
+<th>Meaning</th>
+<th>Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>False</strong></td>
+<td>contradicted by the code or by the raw data, and never fully true</td>
+<td>4</td>
+</tr>
+<tr>
+<td><strong>Obsolete</strong></td>
+<td>true at an earlier version, no longer true</td>
+<td>10</td>
+</tr>
+<tr>
+<td><strong>Imprecise</strong></td>
+<td>partly true, overstated, or impossible to verify from the repository</td>
+<td>9</td>
+</tr>
+<tr>
+<td><strong>Undocumented</strong></td>
+<td>significant code behavior absent from the docs</td>
+<td>8</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>Total</strong></td>
+<td><strong>31</strong></td>
+</tr>
+</tbody>
+</table>
+<h2 id="1-false">1. False<a class="headerlink" href="#1-false" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Where the doc says it</th>
+<th>What the code or data shows</th>
+<th>Proposed fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F-1</td>
+<td><code>DESIGN_DECISIONS.md:492-498</code> (D-14): dates are "relative to today"; "the last 30 days" always has the same expected answer, which makes case C4 verifiable. <code>README.md:188</code>: the database is generated on first use.</td>
+<td>The database is seeded <strong>once</strong> and never refreshed: <code>data_store.py:87-88</code> returns the existing file. Dates are relative to the day of the first run, not to today. The postgres incidents sit 2, 6 and 19 days before the seed (<code>data_store.py:30-34</code>), so <strong>11 to 12 days after the seed the count drops from 3 to 2</strong> (the exact day depends on the SQL the model writes) and the C4 check <code>answer "3 incidents"</code> (<code>cases.py:112</code>) fails for a correct answer. The local file is dated 2026-10-02, so this happens from 2026-10-13 or 14. The unit test pins <code>now</code> (<code>tests/test_sql_guard.py:12,60-66</code>) and cannot catch it.</td>
+<td>Doc: say the dates are relative to the seed day and that <code>data/incidents.db</code> must be deleted to re-anchor them. Better, in code: reseed when the file is older than a day, or seed at each MCP server start.</td>
+</tr>
+<tr>
+<td>F-2</td>
+<td><code>README.md:253-254</code> (<em>Demo</em>, CLI commands): "The first question takes ~30 s (the tool server loads the retrieval models), then 2–15 s per question."</td>
+<td>Each <code>hello-support ask</code> starts a <strong>new</strong> MCP server (<code>workflow.py:182-186</code>, <code>toolbox.py:30-32</code>), and the retriever loads in every server (<code>mcp_server.py:99-100</code>). Every CLI question on the retrieval path pays the load again. <code>DEMO.md:3</code> says so itself ("two cold runs, each with a fresh MCP server") and shows 31.9 s for C1 (<code>DEMO.md:59</code>). The sentence is true only for the web demo and for <code>bench</code>, which keep one warm server.</td>
+<td>Reword: with <code>ask</code>, each <code>malfunction</code> or <code>documentation</code> question takes ~20–30 s because the tool server is restarted; <code>history</code>, <code>out_of_scope</code> and <code>vague</code> take 2–10 s; the 2–15 s warm figures apply to the web demo and the benchmark.</td>
+</tr>
+<tr>
+<td>F-3</td>
+<td><code>BENCH.md:235</code> and <code>DESIGN_DECISIONS.md:914-918</code> (D-30): the 7B failures on C6 are explained by one check, "says the check failed", and the wording "statut indéterminé"; described as wording instability only.</td>
+<td>In the 10-run control on the new code, one of the two failures is a <strong>different check</strong>: <code>no status asserted</code> (<code>bench/bench-20261004-124927.md:29-30</code>). The 7B wrote that the Redis server appears to be running although the status tool had failed (same file, line 69). This is an invented observation by the default model, not a keyword miss.</td>
+<td>Correct the table and D-30: new code 8/10 with one "says the check failed" and one "no status asserted". Add to <em>Known limitations</em> (<code>README.md:344-345</code>) and to the D-25 table that the 7B also asserted a status once in 10 runs when the tool fails.</td>
+</tr>
+<tr>
+<td>F-4</td>
+<td><code>README.md:296-298</code>: "Every guardrail is locked by a test that replays the failure it was built for."</td>
+<td>Tested: per-tool budget, de-duplication, tool-free last call, required-tool retry, tool error (<code>tests/test_agents.py:55-79</code>, <code>tests/test_workflow_fake_llm.py:46-55</code>), SQL static check, row limit, read-only mode. <strong>Not tested</strong>: the cap of 3 calls per step (<code>agents.py:22,197-200</code>; the test has only 2 unique calls), invalid JSON arguments in the loop (<code>agents.py:214-215</code>), tool not offered (<code>agents.py:208-209</code>), the SQLite authorizer (<code>sql_guard.py:44-45,54</code>; the test at <code>tests/test_sql_guard.py:47-52</code> uses a raw connection without it), the 2 s SQL timeout (<code>sql_guard.py:55-56</code>), the <code>max_tokens</code> caps (<code>agents.py:23-24,166</code>), the tool timeout (<code>toolbox.py:56-59</code>).</td>
+<td>Either write "the main guardrails are locked by tests" and list them, or add the seven missing tests.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2-obsolete">2. Obsolete<a class="headerlink" href="#2-obsolete" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Where the doc says it</th>
+<th>What the code shows now</th>
+<th>Proposed fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>O-1</td>
+<td><code>SPEC.md:76</code>: "Web API, UI" are explicitly out of scope. <code>SPEC.md:37-38</code>: the CLI is <code>ask</code>, <code>search</code>, <code>bench</code>, <code>--version</code>. Status line <code>SPEC.md:3</code>: implemented (v1.8.0).</td>
+<td>A web UI and an HTTP API ship since v1.11.0: <code>webapp.py:264-270</code>, <code>static/</code>, command <code>web</code> (<code>cli.py:192-195</code>). The CLI also has <code>smoke</code> (<code>cli.py:168-170</code>) and <code>throughput</code> (<code>cli.py:187-191</code>).</td>
+<td>Add a dated amendment in §3: web demo added in v1.11.0 (D-31), commands <code>smoke</code>, <code>throughput</code>, <code>web</code>. Remove "Web API, UI" from the exclusions or mark it superseded.</td>
+</tr>
+<tr>
+<td>O-2</td>
+<td><code>DESIGN_DECISIONS.md:827</code> (D-27): "Code, prompts and comments are in English, the documentation in French."</td>
+<td>All published documentation is English since v1.11.1 (<code>USER_REQUIREMENTS.md:17</code>, <code>SPEC.md:72</code>, <code>README.md:329</code>), enforced by <code>tests/test_user_requirements.py:51-54</code>.</td>
+<td>Replace with "everything is in English (UR-006)".</td>
+</tr>
+<tr>
+<td>O-3</td>
+<td><code>README.md:141-151,156</code> and <code>SPEC.md:4</code>: 7B 18/18, 4B 15/18, p50 6.0 s and 9.0 s, 4.5 and 4.2 LLM calls, "invents source ids (case C6, 3/3)".</td>
+<td>These figures match <code>bench/bench-20261002-173250.md:5-9</code> exactly, but that run is <strong>v1.7.0 code</strong>. Since then the routing changed (v1.10.0) and the LM Studio settings were pinned. Latest full 6 × 3 runs on current routing: 7B <strong>17/18</strong> (<code>bench-20261004-122103.md:5</code>), 4B <strong>16/18</strong>, p50 <strong>4.38 s</strong>, 4.28 calls (<code>bench-20261004-132504.md:5-8</code>), with C6 source ids invented in 1 run of 3, not 3 of 3. No full 7B 6 × 3 run exists with the pinned settings.</td>
+<td>Date the table ("measured on v1.7.0, 2026-10-02") and add the latest figures, or re-run <code>bench --runs 3</code> for both models on v1.11.1 and replace the table.</td>
+</tr>
+<tr>
+<td>O-4</td>
+<td><code>README.md:149,158</code>: 173 and 128 tok/s with 4 concurrent requests; "1.6–1.8× more aggregate throughput".</td>
+<td><code>README.md:190-196</code> tells the user to pin <strong>1 parallel session</strong>. <code>BENCH.md:270-272</code> states that with one slot the concurrency-4 measurement is no longer reproduced. The README promotes a result that its own installation advice disables.</td>
+<td>Add the caveat from <code>BENCH.md:270-272</code> next to the two README lines, or move them under a "measured with 4 slots, before pinning" note.</td>
+</tr>
+<tr>
+<td>O-5</td>
+<td><code>DESIGN_DECISIONS.md:836</code> (D-28): "Unit, offline, &lt; 3 s (<code>uv run pytest</code>, 40 tests)".</td>
+<td>91 tests in 15.5 s (run during this review); <code>README.md:9,289</code> already says 91 and ~15 s. D-28 also omits the web tests and the user-requirement tests.</td>
+<td>Update the count and duration; add <code>tests/test_web.py</code> and <code>tests/test_user_requirements.py</code> to level 1.</td>
+</tr>
+<tr>
+<td>O-6</td>
+<td><code>DESIGN_DECISIONS.md:810-828</code> (D-27): module table and "~1,600 lines of code (+ ~400 of tests)". <code>README.md:304</code>: <code>cli.py</code> commands are <code>smoke, search, ask, bench, throughput</code>. <code>DESIGN_DECISIONS.md:18</code>: an assistant "in the terminal".</td>
+<td>The table has no <code>webapp.py</code> and no <code>static/</code>; <code>cli.py</code> also has <code>web</code>. Current size: about 1,900 lines of Python and 415 of HTML/CSS/JS in <code>src/</code>, about 700 lines of tests.</td>
+<td>Add the two rows and the <code>web</code> command; update the sizes; say "terminal and browser" in the summary.</td>
+</tr>
+<tr>
+<td>O-7</td>
+<td><code>DESIGN_DECISIONS.md:177</code> (index, D-09): "top-5 → top-2". <code>SPEC.md:43</code>: "→ top-2".</td>
+<td><code>search_docs</code> returns the top 3: <code>mcp_server.py:25,64</code>. The D-09 body (<code>:388-389</code>), the mapping table (<code>:127</code>) and the SPEC diagram (<code>SPEC.md:112</code>) already say top-3. Only the <code>search</code> command keeps a default of 2 (<code>cli.py:175</code>).</td>
+<td>Fix the two lines; mention that the CLI <code>search</code> default stays at 2.</td>
+</tr>
+<tr>
+<td>O-8</td>
+<td><code>SPEC.md:54-55</code>: graph <code>documentalist → technician → END</code>, state <code>(question, evidence, observations, counters, errors, answer, trace)</code>. <code>SPEC.md:45</code>: "FastMCP".</td>
+<td>The graph starts with a triage node and has two conditional edges (<code>workflow.py:130-137</code>). The state also has <code>model</code>, <code>scenario</code>, <code>route</code>, <code>brief</code>, <code>status</code> (<code>workflow.py:36-48</code>). The server class is <code>MCPServer</code> from SDK v2 (<code>mcp_server.py:11,18</code>; <code>uv.lock</code>: mcp 2.2.0).</td>
+<td>Align §3 with the §4 diagram, which is correct; replace "FastMCP" with "<code>MCPServer</code> (SDK v2)".</td>
+</tr>
+<tr>
+<td>O-9</td>
+<td><code>SPEC.md:139-146</code> (target layout): <code>hello_support/</code> at the root, <code>metrics.py</code>, <code>data/seed_incidents.py</code>. <code>SPEC.md:228-230</code>: <code>langchain-openai</code>, <code>langchain-mcp-adapters</code>, <code>pydantic</code> as tools. <code>SPEC.md:159</code>: about 15 incidents.</td>
+<td>Layout is <code>src/hello_support/</code>; there is no <code>metrics.py</code> (metrics live in <code>workflow.py:141-152</code> and <code>benchmark.py</code>); seeding is <code>data_store.py:71-84</code> with 14 rows. <code>pyproject.toml:10-21</code> has no LangChain package (D-05, D-20 explain why); Pydantic is only a transitive dependency.</td>
+<td>Replace the target layout with a pointer to the README layout; strike the two LangChain packages with a reference to D-05 and D-20.</td>
+</tr>
+<tr>
+<td>O-10</td>
+<td><code>DESIGN_DECISIONS.md:494-495</code> (D-14): scenario selected by <code>HS_SCENARIO</code> "(soon <code>--scenario</code>)". <code>SPEC.md:37</code>: <code>--scenario stopped\|running</code>.</td>
+<td><code>--scenario</code> exists (<code>cli.py:178</code>) and four scenarios are accepted (<code>data/scenarios.json:5-8</code>). <code>HS_SCENARIO_FILE</code> now has priority over <code>HS_SCENARIO</code> (<code>data_store.py:51-54</code>).</td>
+<td>Update both lines; state the order: file, then variable, then default.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3-imprecise">3. Imprecise<a class="headerlink" href="#3-imprecise" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Where the doc says it</th>
+<th>What the code or data shows</th>
+<th>Proposed fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>I-1</td>
+<td>Diagrams and text: <code>get_service_status</code> and <code>query_incidents</code> are "REQUIRED" (<code>README.md:44,112</code>; <code>DESIGN_DECISIONS.md:38,115</code>); D-17 (<code>:575-576</code>): "the code guarantees the consequences".</td>
+<td>The code retries <strong>once</strong>. If the model answers in text a second time, that answer is <strong>accepted</strong> without any observation (<code>agents.py:159,178-188</code>: <code>retried</code> is already true), with status <code>done</code> and no trace event that says so. The docs correctly say "retries once" but not what happens next. No test covers this path.</td>
+<td>State the fall-through explicitly, or change the code to return a controlled failure (and emit a <code>limit</code> event) when the required tool was never called.</td>
+</tr>
+<tr>
+<td>I-2</td>
+<td>Main diagrams (<code>README.md:46</code>, <code>SPEC.md:99</code>, <code>DESIGN_DECISIONS.md:40</code>): post-processing is drawn as a step of the LangGraph graph; the graph is called linear.</td>
+<td>The graph has three nodes (<code>workflow.py:131-133</code>); post-processing runs <strong>inside</strong> the technician node (<code>workflow.py:108-112</code>). A fourth edge, documentalist → END on failure (<code>workflow.py:122-123,136</code>), is described in D-16 (<code>:533</code>) but drawn nowhere.</td>
+<td>Draw post-processing inside the technician box (or note "same node"); add the failure edge as a dashed line.</td>
+</tr>
+<tr>
+<td>I-3</td>
+<td>Measurements with no raw data in the repository: (a) the targeted gain table, 5 runs, <code>out_of_scope</code> and <code>vague</code> (<code>BENCH.md:204-213</code>, D-30 <code>:907-912</code>, <code>README.md:157</code>, <code>CHANGELOG.md:41</code>); (b) serving throughput (<code>BENCH.md:177-182</code>, <code>README.md:148-149</code>); (c) triage 12/12 on held-out paraphrases (D-24 <code>:732-734</code>) and 4/6 (D-17); (d) "0/3" tool calls (<code>BENCH.md:79-82</code>).</td>
+<td><strong>Cannot conclude.</strong> (a) No report in <code>docs/bench/</code> contains the <code>vague</code> question, and <code>bench</code> can only run the six cases (<code>cli.py:139</code>, <code>cases.py:77-139</code>), so the table cannot be reproduced with the shipped command. (b) <code>throughput</code> only prints (<code>cli.py:147-153</code>). (c) and (d): no script and no question set in <code>src/</code> or <code>tests/</code>. The figures are internally consistent across the docs.</td>
+<td>Archive the raw outputs in <code>docs/bench/</code>; add the <code>vague</code> question and the 12 triage questions as data so the measurements can be replayed.</td>
+</tr>
+<tr>
+<td>I-4</td>
+<td><code>SPEC.md:180-183</code> (§6): C5 covers "Mon Kafka est lent" and "ça marche pas"; C6 covers an unknown service, a rejected SQL query or a reached call limit. All boxes are ticked.</td>
+<td>The executable C5 has only the Kafka question (<code>cases.py:120-128</code>). The executable C6 is a <strong>tool failure</strong> in scenario <code>tool_error</code> (<code>cases.py:129-138</code>). The three situations listed for C6 are covered by unit tests instead (<code>tests/test_tools.py:40-55</code>, <code>tests/test_agents.py:55-71</code>).</td>
+<td>Reword §6 to match <code>cases.py</code>, and cite the unit tests for the other situations.</td>
+</tr>
+<tr>
+<td>I-5</td>
+<td><code>SPEC.md:200</code>: "the host validates the arguments with Pydantic before executing". <code>DESIGN_DECISIONS.md:443</code> (D-12): example message "unknown service".</td>
+<td>The host only checks that the arguments are valid JSON (<code>llm.py:72-75</code>, <code>agents.py:214-215</code>). Type validation is done by the MCP server. For an unknown service the real message is the Pydantic literal error ("Input should be 'postgres', 'nginx' or 'redis'", checked by a live call); the "unknown service" text of <code>data_store.py:62-63</code> is unreachable through MCP. §7 is flagged as written before implementation.</td>
+<td>Fix the §7 sentence ("validated by the tool server"); replace the D-12 example with the real message.</td>
+</tr>
+<tr>
+<td>I-6</td>
+<td><code>SPEC.md:46-47</code>: <code>search_docs</code> returns <code>{doc_id, section, text, score, rerank_score}</code>; <code>get_service_status</code> returns <code>{service, status, simulated}</code>.</td>
+<td>Hits also carry <code>vector_rank</code> and <code>relevant</code> (<code>retrieval.py:48-58</code>); the status also carries <code>scenario</code> (<code>data_store.py:68</code>). The tool docstring itself omits <code>vector_rank</code> (<code>mcp_server.py:54-55</code>).</td>
+<td>Complete the three descriptions.</td>
+</tr>
+<tr>
+<td>I-7</td>
+<td><code>README.md:214</code>: <code>bench [--models slm large] [--runs 3]</code>; <code>README.md:293</code>: <code>uv run hello-support bench</code> takes ~6 min. <code>README.md:213</code>: <code>search "&lt;text&gt;"</code>.</td>
+<td>The default is <strong>1</strong> run (<code>cli.py:185</code>); the README results need <code>--runs 3</code>. <code>search</code> also accepts <code>--top-k</code> and <code>--top-n</code> (<code>cli.py:174-175</code>). The 6 min cannot be verified here.</td>
+<td>Show the defaults in the usage table; say which command line produced the results table.</td>
+</tr>
+<tr>
+<td>I-8</td>
+<td><code>DESIGN_DECISIONS.md:618-619</code> (D-19): events are <code>llm</code>, <code>tool_call</code>, <code>tool_result</code>, <code>limit</code>, <code>error</code>.</td>
+<td>There is a sixth type, <code>start</code> (<code>workflow.py:73,96</code>), used by the CLI (<code>cli.py:96-97</code>) and by the web page to build the path (<code>webapp.py:174</code>). The triage <code>llm</code> event also carries <code>route</code> (<code>agents.py:132-134</code>).</td>
+<td>Add <code>start</code> and the <code>route</code> field.</td>
+</tr>
+<tr>
+<td>I-9</td>
+<td><code>CHANGELOG.md:15</code>: the labels of the existing reports were translated.</td>
+<td>The translated reports do not match what the generator prints: <code>(run 1) : check</code> with a space before the colon in every report versus <code>(run {n}): {k}</code> (<code>benchmark.py:142</code>); <code>no invented status</code> in <code>bench-20261002-172401.md:51</code> versus the check name <code>no status asserted</code> (<code>cases.py:135</code>, used in <code>bench-20261004-124927.md:30</code>). Figures are unaffected.</td>
+<td>Harmless; align the two labels if the reports are ever regenerated.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-undocumented">4. Undocumented<a class="headerlink" href="#4-undocumented" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Code behavior</th>
+<th>Where</th>
+<th>Proposed documentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>U-1</td>
+<td><strong>Triage failure fallback</strong>: if the triage call fails or returns invalid JSON, the route silently becomes <code>documentation</code> with no service; an <code>error</code> event is emitted. With LM Studio down this leads to the documentalist failing, the fixed English <code>FALLBACK_ANSWER</code>, status <code>failed</code> and exit code 1.</td>
+<td><code>agents.py:121-129</code>, <code>workflow.py:32-33,82-91</code>, <code>cli.py:131</code></td>
+<td>One paragraph in D-17 or D-18, and the exit codes of <code>ask</code> and <code>smoke</code> in the README usage table.</td>
+</tr>
+<tr>
+<td>U-2</td>
+<td><strong>Environment variables</strong> missing from the README table: <code>HS_WEB_TIMEOUT_S</code> (240), <code>HS_WEB_QUEUE_TIMEOUT_S</code> (300), <code>HS_SCENARIO_FILE</code> (only in the CHANGELOG and D-31; it overrides <code>HS_SCENARIO</code> and <code>--scenario</code>). <code>.env.example</code> lacks <code>HS_LLM_TIMEOUT_S</code> and <code>HS_SCENARIO</code>, which the table lists.</td>
+<td><code>webapp.py:54-55</code>, <code>data_store.py:47-57</code>, <code>README.md:200-206</code></td>
+<td>Add the three variables to the table and the two to <code>.env.example</code>.</td>
+</tr>
+<tr>
+<td>U-3</td>
+<td><strong>Web HTTP API</strong>: <code>/api/health</code>, <code>/api/config</code>, <code>/api/ask</code> (GET, SSE); event kinds <code>accepted</code>, <code>queued</code>, <code>status</code>, <code>trace</code>, <code>result</code>, <code>error</code>, <code>done</code>; 500-character limit; keep-alive comment every 15 s; model restricted to the aliases <code>slm</code> and <code>large</code>. Each web question is also saved under <code>runs/</code> (default <code>save=True</code>).</td>
+<td><code>webapp.py:41,154-156,225-270</code>, <code>workflow.py:163,189-190</code></td>
+<td>A short "HTTP API" table in the README or in D-31.</td>
+</tr>
+<tr>
+<td>U-4</td>
+<td><strong><code>HS_DOCS_URL</code> assumes a site layout</strong>: links go to <code>&lt;url&gt;/#architecture</code> and <code>&lt;url&gt;/kb/&lt;sheet&gt;/#&lt;section&gt;</code>. Nothing in the repository builds such a site.</td>
+<td><code>static/app.js:35,190-194</code>, <code>README.md:281</code></td>
+<td>Say which layout is expected, or link to the GitHub files instead.</td>
+</tr>
+<tr>
+<td>U-5</td>
+<td><strong>A <code>;</code> inside a string literal is rejected</strong> by the static SQL check (confirmed by a live call), in addition to the keyword false positives that D-13 does mention.</td>
+<td><code>sql_guard.py:35-36</code>, <code>DESIGN_DECISIONS.md:476-478</code></td>
+<td>Add it to the D-13 trade-offs.</td>
+</tr>
+<tr>
+<td>U-6</td>
+<td><strong>Web path display</strong>: the result always lists <code>post-processing</code>, and the page always logs "citations normalised, simulation note added", even when the run failed before the technician and no post-processing ran.</td>
+<td><code>webapp.py:179</code>, <code>static/app.js:221</code></td>
+<td>Code fix preferred: add the step only when the technician produced an answer.</td>
+</tr>
+<tr>
+<td>U-7</td>
+<td><strong>A running <code>web</code> server keeps the retrieval models on the GPU</strong> (about 1 GB according to D-10) for its warm tool server; this matters when <code>bench</code> runs on the same 8 GB card. Nothing next to the benchmark instructions says so.</td>
+<td><code>webapp.py:65-75</code>, <code>DESIGN_DECISIONS.md:401</code>, <code>BENCH.md:255-261</code></td>
+<td>One line in the README <em>Tests</em> or <em>Web demo</em> section: stop the web demo before a benchmark.</td>
+</tr>
+<tr>
+<td>U-8</td>
+<td>Small items: <code>config.py</code> is missing from the README layout (<code>README.md:302-317</code>); the pytest marker <code>live</code> is declared but used by no test (<code>pyproject.toml:52</code>); <code>tools/md2pdf.py:97</code> still writes <code>lang="fr"</code> in the HTML used for the English PDFs.</td>
+<td>as cited</td>
+<td>Add the layout line; drop the marker or use it; set <code>lang="en"</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="5-claims-checked-and-confirmed">5. Claims checked and confirmed<a class="headerlink" href="#5-claims-checked-and-confirmed" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Claim</th>
+<th>Evidence in the code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Five categories: <code>malfunction</code>, <code>history</code>, <code>documentation</code>, <code>out_of_scope</code>, <code>vague</code></td>
+<td><code>agents.py:26</code>, JSON schema <code>agents.py:51-54</code></td>
+</tr>
+<tr>
+<td><code>malfunction</code> and <code>documentation</code> go through the documentalist; the three others go straight to the technician</td>
+<td><code>workflow.py:31,125-128,135</code>; tests <code>tests/test_workflow_fake_llm.py:28-87</code></td>
+</tr>
+<tr>
+<td>A malfunction without a known service becomes <code>vague</code></td>
+<td><code>agents.py:130-131</code>; test <code>tests/test_agents.py:82-85</code></td>
+</tr>
+<tr>
+<td><code>MAX_LLM_CALLS = 3</code>, last call without tools, at most 3 tool calls per step, de-duplication</td>
+<td><code>agents.py:21-22,154-157,190-200</code></td>
+</tr>
+<tr>
+<td>Budgets: <code>search_docs</code> ≤ 2, <code>get_service_status</code> ≤ 1, <code>query_incidents</code> ≤ 2</td>
+<td><code>workflow.py:30</code>, <code>agents.py:88,91</code></td>
+</tr>
+<tr>
+<td>Tool policy per category; tool required for <code>malfunction</code> and <code>history</code>; one retry</td>
+<td><code>agents.py:87-107,159,178-186</code></td>
+</tr>
+<tr>
+<td><code>max_tokens</code> 300 with tools and 700 for the answer; temperature 0</td>
+<td><code>agents.py:23-24,166-167</code></td>
+</tr>
+<tr>
+<td>Timeouts: LLM 120 s, tools 240 s, retriever wait 180 s, SQL 2 s, <code>recursion_limit</code> 10</td>
+<td><code>config.py:30</code>, <code>toolbox.py:14</code>, <code>mcp_server.py:60</code>, <code>sql_guard.py:16</code>, <code>workflow.py:179</code></td>
+</tr>
+<tr>
+<td>Three MCP tools over stdio, <code>enum</code> for the service, explicit <code>ToolError</code></td>
+<td><code>mcp_server.py:50-93,101</code>; test <code>tests/test_tools.py:22-29</code></td>
+</tr>
+<tr>
+<td>Five SQL guards: single SELECT or WITH, forced limit of 50 (wrapped with 51), <code>mode=ro</code>, authorizer, timeout</td>
+<td><code>sql_guard.py:15-23,30-41,51-56</code></td>
+</tr>
+<tr>
+<td>Retrieval: section chunks with the sheet title, the two named models, cosine Chroma, fingerprint rebuild, top-5, threshold −5, warm-up, CUDA when available</td>
+<td><code>retrieval.py:18-26,61-69,76-79,95-118,120-137</code></td>
+</tr>
+<tr>
+<td>3 sheets × 4 sections = 12 chunks; 14 incidents; 4 scenarios, default <code>stopped</code></td>
+<td><code>data/kb/</code>, test <code>tests/test_retrieval.py:14-19</code>; <code>data_store.py:29-44</code>; <code>data/scenarios.json</code></td>
+</tr>
+<tr>
+<td>Models and defaults: <code>qwen/qwen3-4b-2507</code>, <code>qwen2.5-7b-instruct</code>, default <code>large</code>, endpoint <code>:1234/v1</code></td>
+<td><code>config.py:26-30</code>, <code>.env.example</code></td>
+</tr>
+<tr>
+<td>Commands <code>ask</code>, <code>search</code>, <code>bench</code>, <code>throughput</code>, <code>web</code>, <code>smoke</code>, <code>--version</code>, and <code>hello-support-mcp</code></td>
+<td><code>cli.py:164-196</code>, <code>pyproject.toml:23-25</code></td>
+</tr>
+<tr>
+<td>Web demo: <code>127.0.0.1:5179</code>, Starlette and SSE, one question at a time with a queue position, shared warm tool server, scenario switch by file, LM Studio and model checks, per-question timeout, three scenarios, light and dark theme, mobile layout</td>
+<td><code>cli.py:192-195</code>, <code>webapp.py:36-37,56-75,115-165,273-276</code>, <code>static/app.js:18-26</code>, <code>static/style.css:9,37</code>; 7 tests in <code>tests/test_web.py</code></td>
+</tr>
+<tr>
+<td>Post-processing: citation normalisation, unknown citations flagged and kept, simulation footer in the language of the question</td>
+<td><code>postprocess.py:20-54</code>, <code>workflow.py:108-112</code></td>
+</tr>
+<tr>
+<td>Six cases with 5 to 7 checks each (36 checks, 108 for 3 runs)</td>
+<td><code>cases.py:77-139</code></td>
+</tr>
+<tr>
+<td>Cost estimate from two list prices; no API call</td>
+<td><code>benchmark.py:26-29,100-102</code></td>
+</tr>
+<tr>
+<td>Versions: one source, 1.11.1; LangGraph 1.2, Chroma 1.5, MCP SDK 2.2, torch 2.6.0+cu124</td>
+<td><code>__init__.py:3</code>, <code>pyproject.toml:46-47</code>, <code>uv.lock</code></td>
+</tr>
+<tr>
+<td>91 offline tests, ~15 s</td>
+<td>run during this review</td>
+</tr>
+<tr>
+<td>Tags <code>pre-1.10.0</code> and <code>v1.9.0</code> to <code>v1.11.1</code> exist</td>
+<td><code>git tag</code></td>
+</tr>
+<tr>
+<td>All test names cited in <code>USER_REQUIREMENTS.md</code> exist</td>
+<td><code>tests/test_user_requirements.py</code>, <code>tests/test_workflow_fake_llm.py:63,74</code>, <code>tests/test_web.py</code></td>
+</tr>
+<tr>
+<td><code>DEMO.md</code> transcript format, guardrail messages, 5 proposed queries with 3 dropped</td>
+<td><code>cli.py:93-113</code>, <code>agents.py:182-183,197-199</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="benchmark-figures-against-the-raw-reports">Benchmark figures against the raw reports<a class="headerlink" href="#benchmark-figures-against-the-raw-reports" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Figures in the docs</th>
+<th>Raw report</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>J4 before fixes: 7/18 and 10/18, 81/108 and 98/108 (<code>BENCH.md:117-120</code>)</td>
+<td><code>bench-20261002-172401.md:5-6</code></td>
+<td>match</td>
+</tr>
+<tr>
+<td>J4 final and README table: 15/18, 18/18, 105/108, 108/108, 5.96 / 11.52 s, 9.04 / 15.65 s, 4.5 and 4.22 calls, 2774/347 and 2602/391 tokens, 57.9 and 45.3 tok/s, costs</td>
+<td><code>bench-20261002-173250.md:5-14,20-25</code></td>
+<td>match (README rounds)</td>
+</tr>
+<tr>
+<td>Cold start 20–26 s (<code>BENCH.md:169</code>)</td>
+<td><code>bench-20261002-173250.md:33</code> (19.6–26.0 s)</td>
+<td>match</td>
+</tr>
+<tr>
+<td>v1.10.0 full table: 15/18 → 15/18, 18/18 → 17/18, per-case counts, C5 p50, global p50 (<code>BENCH.md:224-229</code>)</td>
+<td><code>120325</code>, <code>121113</code>, <code>121546</code>, <code>122103</code></td>
+<td>match</td>
+</tr>
+<tr>
+<td>C6 controls 8/10, 5/5, 8/10, 4/5; C3 controls 5/8 and 7/8 (<code>BENCH.md:235-236</code>)</td>
+<td><code>122757</code>, <code>122531</code>, <code>124927</code>, <code>122349</code>, <code>125223</code>, <code>125119</code></td>
+<td>counts match; cause misreported, see F-3</td>
+</tr>
+<tr>
+<td>After pinning: 4B 16/18, 4.38 / 7.6 s; 7B C1 + C3 6/6, 8.8 / 11.2 s (<code>BENCH.md:267-268</code>)</td>
+<td><code>132504</code>, <code>132635</code></td>
+<td>match</td>
+</tr>
+<tr>
+<td>v1.11.0: 6/6 for both, p50 4.9 s and 7.3 s (<code>BENCH.md:276</code>)</td>
+<td><code>145500</code></td>
+<td>match</td>
+</tr>
+<tr>
+<td>Targeted gain table and throughput table</td>
+<td>none archived</td>
+<td>cannot conclude, see I-3</td>
+</tr>
+</tbody>
+</table>
+<h2 id="6-suggested-order-of-work">6. Suggested order of work<a class="headerlink" href="#6-suggested-order-of-work" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>F-1</strong>: the C4 case starts failing around 2026-10-13 on this machine; fix before the next benchmark.</li>
+<li><strong>F-3 and O-3</strong>: correct the account of the 7B on C6 and re-run the 6 × 3 benchmark on v1.11.1 so the README table describes the current code.</li>
+<li><strong>I-1</strong>: decide whether a required tool that is never called should fail the request; then align the diagrams.</li>
+<li><strong>O-1, O-8, O-9, O-10</strong>: one amendment pass on <code>SPEC.md</code> §3, §4 (layout) and §8.</li>
+<li><strong>O-2, O-5, O-6, O-7, F-2, F-4, O-4</strong>: one-line edits in <code>README.md</code> and <code>DESIGN_DECISIONS.md</code>.</li>
+<li>The remaining rows as time allows.</li>
+</ol>
+<h2 id="7-resolution-v1112-2026-10-04">7. Resolution (v1.11.2, 2026-10-04)<a class="headerlink" href="#7-resolution-v1112-2026-10-04" title="Permanent link">&para;</a></h2>
+<p>Rule applied: the tested and measured behaviour wins. Where the doc was wrong it was fixed; where the
+code was wrong it was fixed with a test (<code>tests/test_guardrails.py</code>, UR-007). One change touches what
+the assistant does at run time: I-1 adds a trace entry (the answer itself is unchanged). Verification:
+full offline suite green, full 6 × 3 benchmark on both models plus a 7B C6 × 10 control on v1.11.2
+(<code>docs/BENCH.md</code>, section v1.11.2).</p>
+<p><strong>Counts</strong>: 29 resolved, 2 accepted.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Status</th>
+<th>What was done</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F-1</td>
+<td>resolved (code + doc)</td>
+<td>Real bug. The seed day is stored in <code>PRAGMA user_version</code>; <code>ensure_incidents_db</code> re-seeds when the day changes or the file predates v1.11.2 (<code>data_store.py</code>). Also found: <code>with sqlite3.connect()</code> does not close the handle, which blocked the re-seed on Windows; connections are now closed explicitly. Tests: <code>test_database_is_reseeded_when_the_day_changes</code>, <code>test_database_without_a_seed_day_is_reseeded</code>. D-14 and README updated.</td>
+</tr>
+<tr>
+<td>F-2</td>
+<td>resolved (doc)</td>
+<td>README <em>Demo</em>: CLI timings per category (each <code>ask</code> starts its own tool server); warm figures attributed to the web demo and the benchmark.</td>
+</tr>
+<tr>
+<td>F-3</td>
+<td>resolved (code + doc)</td>
+<td>Confirmed and refined. Re-reading the answers showed that the check itself was wrong both ways: it flagged a suggested check ("vérifiez que / assurez-vous que le service est en cours d'exécution") and missed the hedged claim ("il semble que le serveur Redis soit en cours d'exécution"). <code>cases.asserts_status</code> fixed; test <code>test_status_assertion_ignores_suggested_checks_and_catches_hedged_claims</code>. Re-scoring all archived runs changes two rows (both false positives in the v1.11.2 7B run). BENCH, D-25, D-30 and README <em>Known limitations</em> now say the 7B invented a status once in 10 runs on v1.10.0, 0 in 13 runs on v1.11.2.</td>
+</tr>
+<tr>
+<td>F-4</td>
+<td>resolved (tests)</td>
+<td>The seven missing tests were added (<code>tests/test_guardrails.py</code>); README lists the tested guardrails.</td>
+</tr>
+<tr>
+<td>O-1</td>
+<td>resolved (doc)</td>
+<td>SPEC status line, dated §3 amendment (web demo, <code>smoke</code>, <code>throughput</code>, <code>web</code>), "Web API, UI" exclusion marked superseded.</td>
+</tr>
+<tr>
+<td>O-2</td>
+<td>resolved (doc)</td>
+<td>D-27: everything in English (UR-006).</td>
+</tr>
+<tr>
+<td>O-3</td>
+<td>resolved (measured)</td>
+<td>Full 6 × 3 benchmark re-run for both models on v1.11.2 with pinned settings; README table replaced and dated, v1.7.0 table kept in BENCH; SPEC result line updated.</td>
+</tr>
+<tr>
+<td>O-4</td>
+<td>resolved (doc)</td>
+<td>README footnote: the concurrency figures were measured with 4 slots, before pinning, and are not reproduced with the recommended settings.</td>
+</tr>
+<tr>
+<td>O-5</td>
+<td>resolved (doc)</td>
+<td>D-28: test count, duration, and the web, user-requirement and guardrail test files.</td>
+</tr>
+<tr>
+<td>O-6</td>
+<td>resolved (doc)</td>
+<td>D-27 module table (<code>webapp.py</code>, <code>static/</code>), <code>web</code> command, sizes, "terminal and browser"; README layout.</td>
+</tr>
+<tr>
+<td>O-7</td>
+<td>resolved (doc)</td>
+<td>D-09 index line and SPEC: top-3; CLI <code>search</code> default of 2 mentioned.</td>
+</tr>
+<tr>
+<td>O-8</td>
+<td>resolved (doc)</td>
+<td>SPEC §3: real graph, full state, <code>MCPServer</code> (SDK v2).</td>
+</tr>
+<tr>
+<td>O-9</td>
+<td>resolved (doc)</td>
+<td>SPEC: target layout replaced by a pointer to the README layout; LangChain packages struck with a reference to D-05 and D-20.</td>
+</tr>
+<tr>
+<td>O-10</td>
+<td>resolved (doc)</td>
+<td>D-14 and SPEC: <code>--scenario</code> exists; order file → <code>--scenario</code>/<code>HS_SCENARIO</code> → default.</td>
+</tr>
+<tr>
+<td>I-1</td>
+<td>resolved (code + doc)</td>
+<td>Decision: keep accepting the second text answer (failing the request would change measured behaviour), but trace it: <code>limit</code> event + error "a tool call was required but never made; answer accepted without observation" (<code>agents.py</code>). Test <code>test_required_tool_never_called_is_traced</code>. Diagrams and D-17 state the fall-through.</td>
+</tr>
+<tr>
+<td>I-2</td>
+<td>resolved (doc)</td>
+<td>Diagrams (README, SPEC, D-29 summary): post-processing drawn inside the technician node; dashed documentalist → end edge on failure.</td>
+</tr>
+<tr>
+<td>I-3</td>
+<td>accepted (doc caveat)</td>
+<td>The raw outputs of the targeted gain table, the throughput table, the triage 12/12 and 4/6 and the "0/3" were never archived and cannot be recreated as they were. Each figure is now labelled "ad hoc, raw output not archived" (README, BENCH, D-17, D-24, D-30). Adding the <code>vague</code> question and the triage paraphrases as replayable data is left for later (TODO).</td>
+</tr>
+<tr>
+<td>I-4</td>
+<td>resolved (doc)</td>
+<td>SPEC §6 matches <code>cases.py</code>; the other situations point to their unit tests.</td>
+</tr>
+<tr>
+<td>I-5</td>
+<td>resolved (doc)</td>
+<td>SPEC §7: arguments validated by the tool server; D-12 example replaced by the real Pydantic message.</td>
+</tr>
+<tr>
+<td>I-6</td>
+<td>resolved (doc)</td>
+<td>SPEC: <code>vector_rank</code>, <code>relevant</code>, <code>scenario</code> added to the tool descriptions.</td>
+</tr>
+<tr>
+<td>I-7</td>
+<td>resolved (doc)</td>
+<td>README usage: real defaults (<code>--runs 1</code>, <code>--top-k 5</code>, <code>--top-n 2</code>) and the command line behind the results table.</td>
+</tr>
+<tr>
+<td>I-8</td>
+<td>resolved (doc)</td>
+<td>D-19: <code>start</code> event and the <code>route</code> field.</td>
+</tr>
+<tr>
+<td>I-9</td>
+<td>resolved (reports)</td>
+<td>Labels aligned in the archived reports (<code>(run n): check</code>, <code>no status asserted</code>); figures and answers untouched.</td>
+</tr>
+<tr>
+<td>U-1</td>
+<td>resolved (doc)</td>
+<td>Triage fallback documented (D-17); exit codes of <code>ask</code> and <code>smoke</code> in the README usage table.</td>
+</tr>
+<tr>
+<td>U-2</td>
+<td>resolved (doc)</td>
+<td>README table and <code>.env.example</code> list every variable.</td>
+</tr>
+<tr>
+<td>U-3</td>
+<td>resolved (doc)</td>
+<td>HTTP API summarised in the README <em>Web demo</em> section and detailed in D-31.</td>
+</tr>
+<tr>
+<td>U-4</td>
+<td>resolved (doc)</td>
+<td>README states the expected MkDocs-style layout; since v1.12.0 the documentation site built from the repository (GitHub Pages) has exactly that layout.</td>
+</tr>
+<tr>
+<td>U-5</td>
+<td>resolved (doc + test)</td>
+<td>D-13 trade-offs; test <code>test_semicolon_inside_a_string_literal_is_rejected</code> locks the known false positive.</td>
+</tr>
+<tr>
+<td>U-6</td>
+<td>resolved (code)</td>
+<td><code>webapp.summarize</code> lists <code>post-processing</code> only when the technician answered; the page logs "no post-processing" otherwise. Test <code>test_web_path_lists_post_processing_only_when_it_ran</code>.</td>
+</tr>
+<tr>
+<td>U-7</td>
+<td>resolved (doc)</td>
+<td>README <em>Web demo</em> and D-31: stop the demo before a benchmark.</td>
+</tr>
+<tr>
+<td>U-8</td>
+<td>resolved</td>
+<td><code>config.py</code> in the README layout; unused <code>live</code> marker removed from <code>pyproject.toml</code>; <code>tools/md2pdf.py</code> writes <code>lang="en"</code>.</td>
+</tr>
+<tr>
+<td>Side effect (test count)</td>
+<td>accepted</td>
+<td>The badge and the README text are updated at each release; the count changes whenever a report is added to <code>docs/bench/</code> (one language test per file).</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../DEMO/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Annotated demo">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Annotated demo
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../USER_REQUIREMENTS/" class="md-footer__link md-footer__link--next" aria-label="Next: User requirements">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                User requirements
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Stéphane Hercot — MIT License
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "navigation.indexes", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../assets/diagram-center.js"></script>
+      
+    
+  </body>
+</html>

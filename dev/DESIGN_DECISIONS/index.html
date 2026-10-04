@@ -1,0 +1,3531 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A local-only, multi-agent troubleshooting assistant — LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, measured 4B vs 7B models.">
+      
+      
+        <meta name="author" content="Stéphane Hercot">
+      
+      
+        <link rel="canonical" href="https://stephanehe.github.io/HelloSupport/dev/DESIGN_DECISIONS/">
+      
+      
+        <link rel="prev" href="../SPEC/">
+      
+      
+        <link rel="next" href="../BENCH/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Design decisions (31) - HelloSupport</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#hellosupport-design-and-development-decisions" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="HelloSupport" class="md-header__button md-logo" aria-label="HelloSupport" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            HelloSupport
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Design decisions (31)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/StephaneHe/HelloSupport" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    StephaneHe/HelloSupport
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="HelloSupport" class="md-nav__button md-logo" aria-label="HelloSupport" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    HelloSupport
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/StephaneHe/HelloSupport" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    StephaneHe/HelloSupport
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Documentation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design decisions (31)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design decisions (31)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary-consolidated-on-2026-10-02-for-v180-last-updated-on-2026-10-04-for-v1112" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary (consolidated on 2026-10-02 for v1.8.0, last updated on 2026-10-04 for v1.11.2)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Index
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-01-100-local-no-paid-cloud-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-01 — 100% local, no paid cloud API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-02-python-312-uv-installable-package-with-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-02 — Python 3.12 + uv + installable package with CLI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-03-lm-studio-as-the-local-serving-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-03 — LM Studio as the local serving platform
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-04-model-choice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-04 — Model choice
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-05-llm-client-openai-sdk-minimal-in-house-wrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-05 — LLM client: openai SDK + minimal in-house wrapper
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-06-chunking-knowledge-base-sheets-by-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-06 — Chunking knowledge-base sheets by section
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-07-embedding-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-07 — Embedding model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-08-vector-store-embedded-chroma" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-08 — Vector store: embedded Chroma
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-09-cross-encoder-reranking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-09 — Cross-encoder reranking
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-10-gpu-inference-and-warm-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-10 — GPU inference and warm-up
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-11-mcp-separate-tool-server-stdio-transport-python-sdk-v2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-11 — MCP: separate tool server, stdio transport, Python SDK v2
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-12-tool-contracts-strict-types-explicit-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-12 — Tool contracts: strict types, explicit errors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-13-read-only-sql-tool-defense-in-depth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-13 — Read-only SQL tool: defense in depth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-14-data-generated-sqlite-incident-database-simulated-json-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-14 — Data: generated SQLite incident database, simulated JSON scenarios
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-15-loading-the-rag-in-the-background-in-the-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-15 — Loading the RAG in the background in the MCP server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-16-orchestration-langgraph-stategraph-nodes-python-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-16 — Orchestration: LangGraph StateGraph, nodes = Python functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-17-triage-via-structured-output-tool-policy-enforced-by-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-17 — Triage via structured output + tool policy enforced by code
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-18-bounded-agent-loop-and-measured-guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-18 — Bounded agent loop and measured guardrails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-19-explicit-shared-state-and-json-trace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-19 — Explicit shared state and JSON trace
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-20-host-side-mcp-client-the-mcp-sdk-directly-rather-than-langchain-mcp-adapters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-20 — Host-side MCP client: the mcp SDK directly rather than langchain-mcp-adapters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-21-validation-6-executable-cases-with-automatic-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-21 — Validation: 6 executable cases with automatic checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-22-deterministic-post-processing-normalized-citations-simulation-notice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-22 — Deterministic post-processing: normalized citations + simulation notice
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-23-data-questions-all-queries-in-the-same-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-23 — Data questions: all queries in the same step
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-24-triage-explicit-rules-examples-measured-on-held-out-paraphrases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-24 — Triage: explicit rules + examples, measured on held-out paraphrases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-25-adr-default-model-qwen25-7b-instruct-the-slm-remains-a-measured-option" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-25 — ADR: default model = Qwen2.5-7B-Instruct; the SLM remains a measured option
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-26-measurement-method-latency-throughput-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-26 — Measurement method: latency, throughput, cost
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-27-code-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-27 — Code structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-28-testing-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-28 — Testing strategy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-29-agents-router-and-code-who-decides-what-and-why-there-is-no-loop-between-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-29 — Agents, router and code: who decides what, and why there is no loop between agents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-30-out_of_scope-and-vague-skip-the-documentalist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-30 — out_of_scope and vague skip the documentalist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-31-web-demo-the-real-pipeline-a-live-trace-one-question-at-a-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-31 — Web demo: the real pipeline, a live trace, one question at a time
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BENCH/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmark reports
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEMO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Annotated demo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../REVIEW_DOC_CODE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc-to-code review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_REQUIREMENTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../kb/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Knowledge base
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Knowledge base
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kb/postgres_connection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PostgreSQL connection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kb/nginx_unavailable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    nginx unavailable
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kb/redis_unreachable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis unreachable
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../todo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TODO list
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../code-of-conduct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code of conduct
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License (MIT)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../downloads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Downloads (PDF)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary-consolidated-on-2026-10-02-for-v180-last-updated-on-2026-10-04-for-v1112" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary (consolidated on 2026-10-02 for v1.8.0, last updated on 2026-10-04 for v1.11.2)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Index
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-01-100-local-no-paid-cloud-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-01 — 100% local, no paid cloud API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-02-python-312-uv-installable-package-with-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-02 — Python 3.12 + uv + installable package with CLI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-03-lm-studio-as-the-local-serving-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-03 — LM Studio as the local serving platform
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-04-model-choice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-04 — Model choice
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-05-llm-client-openai-sdk-minimal-in-house-wrapper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-05 — LLM client: openai SDK + minimal in-house wrapper
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-06-chunking-knowledge-base-sheets-by-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-06 — Chunking knowledge-base sheets by section
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-07-embedding-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-07 — Embedding model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-08-vector-store-embedded-chroma" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-08 — Vector store: embedded Chroma
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-09-cross-encoder-reranking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-09 — Cross-encoder reranking
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-10-gpu-inference-and-warm-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-10 — GPU inference and warm-up
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-11-mcp-separate-tool-server-stdio-transport-python-sdk-v2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-11 — MCP: separate tool server, stdio transport, Python SDK v2
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-12-tool-contracts-strict-types-explicit-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-12 — Tool contracts: strict types, explicit errors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-13-read-only-sql-tool-defense-in-depth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-13 — Read-only SQL tool: defense in depth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-14-data-generated-sqlite-incident-database-simulated-json-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-14 — Data: generated SQLite incident database, simulated JSON scenarios
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-15-loading-the-rag-in-the-background-in-the-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-15 — Loading the RAG in the background in the MCP server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-16-orchestration-langgraph-stategraph-nodes-python-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-16 — Orchestration: LangGraph StateGraph, nodes = Python functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-17-triage-via-structured-output-tool-policy-enforced-by-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-17 — Triage via structured output + tool policy enforced by code
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-18-bounded-agent-loop-and-measured-guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-18 — Bounded agent loop and measured guardrails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-19-explicit-shared-state-and-json-trace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-19 — Explicit shared state and JSON trace
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-20-host-side-mcp-client-the-mcp-sdk-directly-rather-than-langchain-mcp-adapters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-20 — Host-side MCP client: the mcp SDK directly rather than langchain-mcp-adapters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-21-validation-6-executable-cases-with-automatic-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-21 — Validation: 6 executable cases with automatic checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-22-deterministic-post-processing-normalized-citations-simulation-notice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-22 — Deterministic post-processing: normalized citations + simulation notice
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-23-data-questions-all-queries-in-the-same-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-23 — Data questions: all queries in the same step
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-24-triage-explicit-rules-examples-measured-on-held-out-paraphrases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-24 — Triage: explicit rules + examples, measured on held-out paraphrases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-25-adr-default-model-qwen25-7b-instruct-the-slm-remains-a-measured-option" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-25 — ADR: default model = Qwen2.5-7B-Instruct; the SLM remains a measured option
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-26-measurement-method-latency-throughput-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-26 — Measurement method: latency, throughput, cost
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-27-code-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-27 — Code structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-28-testing-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-28 — Testing strategy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-29-agents-router-and-code-who-decides-what-and-why-there-is-no-loop-between-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-29 — Agents, router and code: who decides what, and why there is no loop between agents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-30-out_of_scope-and-vague-skip-the-documentalist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-30 — out_of_scope and vague skip the documentalist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-31-web-demo-the-real-pipeline-a-live-trace-one-question-at-a-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D-31 — Web demo: the real pipeline, a live trace, one question at a time
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="hellosupport-design-and-development-decisions">HelloSupport — Design and development decisions<a class="headerlink" href="#hellosupport-design-and-development-decisions" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Final deliverable</strong> required by the spec (<a href="../SPEC/"><code>SPEC.md</code></a> §3). This document explains
+<strong>every</strong> design and development choice in the project.</p>
+<ul>
+<li><strong>During the project</strong>: ADR-style log. Each milestone adds its dated <code>D-xx</code> entries
+  when the decision is made (with what was known at the time).</li>
+<li><strong>At the end (J5)</strong>: consolidation. Summary at the top, entries reviewed in light of the
+  measurements (<a href="../BENCH/"><code>BENCH.md</code></a>), PDF export (<a href="../DESIGN_DECISIONS.pdf"><code>DESIGN_DECISIONS.pdf</code></a>).
+  <strong>Status: consolidated on 2026-10-02 (v1.8.0), 28 decisions; D-29 to D-31 added on 2026-10-04;
+  aligned with the code of v1.11.2 on 2026-10-04 after the documentation-to-code review
+  (<a href="../REVIEW_DOC_CODE/"><code>REVIEW_DOC_CODE.md</code></a>).</strong></li>
+</ul>
+<p>Entry format: <strong>Need → Options → Choice → Why → Trade-offs /
+limits → Skill demonstrated</strong>. A revised decision is not deleted: it is marked
+<code>Superseded by D-yy</code>.</p>
+</blockquote>
+<h2 id="summary-consolidated-on-2026-10-02-for-v180-last-updated-on-2026-10-04-for-v1112">Summary (consolidated on 2026-10-02 for v1.8.0, last updated on 2026-10-04 for v1.11.2)<a class="headerlink" href="#summary-consolidated-on-2026-10-02-for-v180-last-updated-on-2026-10-04-for-v1112" title="Permanent link">&para;</a></h2>
+<p><strong>What was built.</strong> A troubleshooting assistant in the terminal and in the browser, 100% local. A question in
+French or English goes through <strong>triage</strong> (LLM, constrained JSON output), a <strong>documentalist</strong>
+(semantic search: embeddings → Chroma → reranking) and a <strong>technician</strong>. Depending on the
+intent, the technician observes a <strong>simulated</strong> service status, queries a read-only <strong>SQL
+incident database</strong> (text-to-SQL), or answers from the documentation. It cites its
+sources and separates what was observed from what is hypothetical. Tools go through an <strong>MCP server</strong>,
+orchestration through <strong>LangGraph</strong>, and the models (4B / 7B SLMs) are served by <strong>LM Studio</strong>
+on GPU.</p>
+<div class="diagram-scroll">
+<pre class="mermaid"><code>flowchart TB
+    Q(["Question"]) --&gt; T
+
+    subgraph G["LangGraph graph — 3 nodes (triage, documentalist, technician), each runs at most once, no loop between agents"]
+        T{{"&lt;b&gt;ROUTER · Triage&lt;/b&gt;&lt;br/&gt;1 LLM call, constrained JSON output&lt;br/&gt;no tool · no loop"}}
+        T --&gt;|"malfunction = failure on postgres/nginx/redis&lt;br/&gt;documentation = 'what should I check?'"| D
+        T --&gt;|"history = incident history → SQL&lt;br/&gt;out_of_scope = other product&lt;br/&gt;vague = undetermined service&lt;br/&gt;(skip the search)"| TE
+        D["&lt;b&gt;AGENT · Documentalist&lt;/b&gt;&lt;br/&gt;tool: search_docs (≤ 2 calls)"]
+        D --&gt;|"↻ LLM ↔ tools loop&lt;br/&gt;≤ 3 LLM calls"| D
+        D --&gt; TE
+        subgraph TN["technician node (agent + post-processing, same node)"]
+            TE["&lt;b&gt;AGENT · Technician&lt;/b&gt;&lt;br/&gt;tools depending on the category:&lt;br/&gt;malfunction → get_service_status REQUIRED&lt;br/&gt;history → query_incidents (SQL) REQUIRED&lt;br/&gt;(1 retry, then the answer is accepted and flagged)&lt;br/&gt;documentation · out_of_scope · vague → none"]
+            TE --&gt;|"↻ LLM ↔ tools loop&lt;br/&gt;≤ 3 LLM calls"| TE
+            TE --&gt; P["&lt;b&gt;CODE · Post-processing&lt;/b&gt; (no LLM)&lt;br/&gt;exact citations, simulation notice"]
+        end
+    end
+    P --&gt; A(["Answer + JSON trace"])
+    D -.-&gt;|"documentalist failed&lt;br/&gt;(no LLM answer)"| F(["Fixed fallback answer&lt;br/&gt;status failed → END"])
+
+    subgraph MCP["MCP tool server (stdio)"]
+        S1[/"search_docs&lt;br/&gt;embeddings → Chroma → reranking"/]
+        S2[/"get_service_status&lt;br/&gt;simulated statuses"/]
+        S3[/"query_incidents&lt;br/&gt;read-only SQLite"/]
+    end
+    D -. "MCP" .-&gt; S1
+    TE -. "MCP" .-&gt; S2
+    TE -. "MCP" .-&gt; S3
+
+    LLM[("&lt;b&gt;MODEL · LM Studio&lt;/b&gt; :1234&lt;br/&gt;Qwen3-4B / Qwen2.5-7B, GPU")]
+    G -. "all LLM calls&lt;br/&gt;(triage + 2 agents)" .-&gt; LLM
+
+    classDef agent fill:#dbeafe,stroke:#1d4ed8,stroke-width:3px,color:#0b2a6b
+    classDef router fill:#ffedd5,stroke:#c2410c,stroke-width:2px,color:#5a1d03
+    classDef code fill:#f3f4f6,stroke:#6b7280,stroke-width:1px,stroke-dasharray:5 3,color:#111827
+    classDef tool fill:#dcfce7,stroke:#15803d,color:#0f3d1f
+    classDef model fill:#ede9fe,stroke:#6d28d9,color:#2e1065
+    class D,TE agent
+    class T router
+    class P,F code
+    class S1,S2,S3 tool
+    class LLM model</code></pre>
+</div>
+<p><strong>Legend</strong></p>
+<table>
+<thead>
+<tr>
+<th>Style in the diagram</th>
+<th>Kind</th>
+<th>What it is</th>
+<th>Loop?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🟦 blue, thick border</td>
+<td><strong>AGENT</strong></td>
+<td>An LLM that chooses which tools to call and with which arguments, reads the results, then answers (<code>run_agent</code>)</td>
+<td><strong>yes</strong>: LLM ↔ tools, ≤ 3 LLM calls</td>
+</tr>
+<tr>
+<td>🟧 orange hexagon</td>
+<td><strong>ROUTER</strong></td>
+<td>A single LLM call constrained by a JSON schema, which picks 1 of the 5 fixed categories. No tool, so not an agent</td>
+<td>no</td>
+</tr>
+<tr>
+<td>⬜ gray, dashed border</td>
+<td><strong>CODE</strong></td>
+<td>Deterministic Python, no LLM</td>
+<td>no</td>
+</tr>
+<tr>
+<td>🟩 green parallelogram</td>
+<td><strong>MCP TOOL</strong></td>
+<td>Exposed by the separate MCP server, called by the agents</td>
+<td>—</td>
+</tr>
+<tr>
+<td>🟪 purple cylinder</td>
+<td><strong>MODEL</strong></td>
+<td>LLM served locally by LM Studio (OpenAI-compatible API)</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Agent, router or code?</strong> We call an <em>agent</em> an LLM that <strong>decides its own</strong> actions
+(which tools, which arguments) and <strong>loops</strong> on their results until it can answer:
+this is the case for the Documentalist and the Technician. <em>Triage</em> is not an agent but a
+<strong>router</strong>. It makes a single LLM call, with no tool, whose output is constrained to
+<code>{intent, service}</code>; it is the <strong>code</strong> that derives the path and the allowed tools from it (D-17).
+<em>Post-processing</em> and the loop controls are deterministic <strong>code</strong> (D-18, D-22).</p>
+<p><strong>Why no loop between agents?</strong> The LangGraph graph is <strong>linear</strong>: triage →
+documentalist → technician for <code>malfunction</code> and <code>documentation</code>, triage → technician directly for
+<code>history</code>, <code>out_of_scope</code> and <code>vague</code> (D-30), and each node runs
+once per question. The only loops are <strong>inside</strong> each agent, and they are
+bounded (D-18, D-29):</p>
+<div class="diagram-scroll">
+<pre class="mermaid"><code>flowchart TB
+    S(["Start of an agent's step&lt;br/&gt;(Documentalist or Technician)"]) --&gt; L
+    L["&lt;b&gt;AGENT · LLM call i&lt;/b&gt;  (i ≤ 3 = MAX_LLM_CALLS)&lt;br/&gt;tools offered within their budget&lt;br/&gt;3rd call: NO tool offered → must answer"]
+    L --&gt; Q1{"Does the model request&lt;br/&gt;tools?"}
+    Q1 --&gt;|"yes"| F["&lt;b&gt;CODE · controls&lt;/b&gt;&lt;br/&gt;deduplication · ≤ 3 calls per step&lt;br/&gt;per-tool budget · valid JSON arguments"]
+    F --&gt; X[/"MCP · tool execution"/]
+    X --&gt; R["&lt;b&gt;CODE&lt;/b&gt; · results (or errors)&lt;br/&gt;added to the conversation"]
+    R --&gt;|"↻ next LLM call"| L
+    Q1 --&gt;|"no: text answer"| Q2{"REQUIRED tool&lt;br/&gt;not yet called?"}
+    Q2 --&gt;|"yes, 1st time"| REJ["&lt;b&gt;CODE&lt;/b&gt; · rejected answer → retry&lt;br/&gt;'call the tool now'"]
+    REJ --&gt;|"↻"| L
+    Q2 --&gt;|"yes, 2nd time"| ACC["&lt;b&gt;CODE&lt;/b&gt; · answer accepted without observation&lt;br/&gt;error + limit event in the trace"]
+    ACC --&gt; OUT
+    Q2 --&gt;|"no"| OUT(["Exit: final answer"])
+
+    classDef agent fill:#dbeafe,stroke:#1d4ed8,stroke-width:3px,color:#0b2a6b
+    classDef code fill:#f3f4f6,stroke:#6b7280,stroke-width:1px,stroke-dasharray:5 3,color:#111827
+    classDef tool fill:#dcfce7,stroke:#15803d,color:#0f3d1f
+    class L agent
+    class F,R,REJ,ACC,Q1,Q2 code
+    class X tool</code></pre>
+</div>
+<ul>
+<li><strong>At most 3 LLM calls</strong> (<code>MAX_LLM_CALLS</code>). The last one is made without tools: the agent always ends up answering in text.</li>
+<li><strong>At most 3 tool calls per step</strong>, after deduplication. Each tool also has its own budget (<code>search_docs</code> ≤ 2, <code>get_service_status</code> ≤ 1, <code>query_incidents</code> ≤ 2).</li>
+<li><strong>Required tool</strong>: for <code>malfunction</code> and <code>history</code>, a tool call is required. If the model answers without making one, the code rejects that answer and retries once. If it answers in text a second time, that answer is <strong>accepted</strong> (status stays <code>done</code>), but the code records the error "a tool call was required but never made; answer accepted without observation" and emits a <code>limit</code> event with the same text (D-17).</li>
+<li><strong>Exit</strong>: the loop stops as soon as the model answers in text without requesting a tool.</li>
+</ul>
+<p><strong>Mapping table component → decision → skill demonstrated</strong></p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Decision taken</th>
+<th>Entries</th>
+<th>Skill demonstrated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model serving</td>
+<td>LM Studio, OpenAI-compatible API, GPU, Q4_K_M</td>
+<td>D-03, D-04</td>
+<td>Model-serving platforms ; GPU</td>
+</tr>
+<tr>
+<td>Model choice</td>
+<td>7B by default, 4B SLM as a measured option</td>
+<td>D-04, D-25</td>
+<td>LLMs and SLMs</td>
+</tr>
+<tr>
+<td>LLM integration</td>
+<td><code>openai</code> SDK, wrapper that measures latency and tokens</td>
+<td>D-05</td>
+<td>Model integration</td>
+</tr>
+<tr>
+<td>Chunking + embeddings</td>
+<td><code>##</code> sections, multilingual MiniLM (Sentence Transformers)</td>
+<td>D-06, D-07</td>
+<td>RAG, embeddings, Hugging Face, PyTorch</td>
+</tr>
+<tr>
+<td>Vector database</td>
+<td>Persistent embedded Chroma, fingerprint-based index</td>
+<td>D-08</td>
+<td>Vector search, vector databases</td>
+</tr>
+<tr>
+<td>Reranking</td>
+<td>Cross-encoder top-5 → top-3, off-topic threshold</td>
+<td>D-09</td>
+<td>Reranking</td>
+</tr>
+<tr>
+<td>GPU</td>
+<td>torch CUDA, warm-up</td>
+<td>D-10</td>
+<td>GPU, latency</td>
+</tr>
+<tr>
+<td>Tools</td>
+<td>stdio MCP server, 3 typed tools, <code>ToolError</code></td>
+<td>D-11, D-12, D-15, D-20</td>
+<td>MCP, tool integration, tool calling</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>SQLite incident database, simulated scenarios</td>
+<td>D-14</td>
+<td>Database systems, SQL engines</td>
+</tr>
+<tr>
+<td>SQL tool</td>
+<td>Read-only text-to-SQL, 5 layers of protection</td>
+<td>D-13, D-23</td>
+<td>Enterprise data agents</td>
+</tr>
+<tr>
+<td>Orchestration</td>
+<td>LangGraph: triage → documentalist → technician, <code>history</code> branch</td>
+<td>D-16</td>
+<td>Orchestration, LangGraph</td>
+</tr>
+<tr>
+<td>Tool decision</td>
+<td>Router with structured output + policy enforced by the code</td>
+<td>D-17, D-24</td>
+<td>AI agents, intelligent workflows</td>
+</tr>
+<tr>
+<td>Reliability</td>
+<td>Bounded loop, dedup, <code>required</code> checked, post-processing</td>
+<td>D-18, D-22</td>
+<td>Reliability, production-grade</td>
+</tr>
+<tr>
+<td>State and traces</td>
+<td><code>TypedDict</code> + reducers, timestamped JSON trace</td>
+<td>D-19</td>
+<td>State management</td>
+</tr>
+<tr>
+<td>Validation</td>
+<td>6 executable cases, benchmark, deterministic checks</td>
+<td>D-21, D-28</td>
+<td>Prototype → production</td>
+</tr>
+<tr>
+<td>Measurements</td>
+<td>Warm/cold latency, throughput at concurrency 1/4, estimated cost</td>
+<td>D-26</td>
+<td>Latency, throughput, cost</td>
+</tr>
+<tr>
+<td>Code</td>
+<td>Single-responsibility modules, MCP boundary</td>
+<td>D-02, D-27</td>
+<td>Software architecture, Python</td>
+</tr>
+<tr>
+<td>Framework</td>
+<td>100% local, €0</td>
+<td>D-01</td>
+<td>Cost</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What the measurements taught us</strong> (the resulting decisions are marked "Decision driven by a
+measured failure"):
+1. <strong>Small models do not decide on their own to observe</strong>: left free to choose, 0/3 for the 4B
+   as for the 7B. A narrow router with constrained output, followed by a policy enforced by the
+   code, gives 18/18 with the 7B (D-17).
+2. <strong>An API constraint is not a guarantee</strong>: <code>tool_choice="required"</code> is not enforced by
+   LM Studio, and the model invented a status. The code checks and retries (D-18). The final demo
+   shows this guardrail in action.
+3. <strong>The model hallucinates when it "narrates" the next step</strong> instead of doing it (C4). Having it
+   emit all queries at once removes the problem (D-23).
+4. <strong>What the code knows, the code says</strong>: simulated status, absence of action, list of valid
+   sources (D-22).
+5. <strong>A prompt tweak must be measured on held-out data</strong>: adding examples
+   improved the SLM and degraded the 7B (D-24).
+6. <strong>Cost is driven by context, not by model size</strong>: ~2,700 input tokens
+   for ~370 output tokens (D-26).
+7. <strong>Automatic checks have bugs too</strong>: two of them were wrong
+   (D-21). Hence the archiving of full answers for review.</p>
+<p><strong>Accepted limits</strong>: 3 knowledge-base sheets, 14 incidents, 6 cases, one machine, temperature 0. No
+measurement is statistically sound. SQLite is not an enterprise engine. LM Studio is not
+a production server. When a tool fails, the SLM can still invent sources, and the 7B asserted an
+unobserved status once in a 10-run control (D-25, D-30). Out of
+scope: distributed systems, real scale, leadership (see <a href="../SPEC/"><code>SPEC.md</code></a> §7 and §10).</p>
+<h2 id="index">Index<a class="headerlink" href="#index" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Decision</th>
+<th>Milestone</th>
+<th>Status</th>
+<th>Skill demonstrated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>D-01</td>
+<td>100% local, no paid cloud API</td>
+<td>scoping</td>
+<td>Accepted</td>
+<td>Cost, model serving</td>
+</tr>
+<tr>
+<td>D-02</td>
+<td>Python 3.12 + <code>uv</code> + installable package with CLI</td>
+<td>J0</td>
+<td>Accepted</td>
+<td>Python, software architecture</td>
+</tr>
+<tr>
+<td>D-03</td>
+<td>LM Studio as the local serving platform</td>
+<td>J0</td>
+<td>Accepted</td>
+<td>Model-serving platforms</td>
+</tr>
+<tr>
+<td>D-04</td>
+<td>Model choice: Qwen3-4B-Instruct-2507 (SLM) and Qwen2.5-7B-Instruct, Q4_K_M</td>
+<td>J0</td>
+<td>Accepted, confirmed by D-25</td>
+<td>LLMs &amp; SLMs, GPU</td>
+</tr>
+<tr>
+<td>D-05</td>
+<td>LLM client: <code>openai</code> SDK via the OpenAI-compatible endpoint, thin in-house wrapper</td>
+<td>J0</td>
+<td>Accepted</td>
+<td>Model integration, latency/cost</td>
+</tr>
+<tr>
+<td>D-06</td>
+<td>Chunking knowledge-base sheets by <code>##</code> section, <code>doc_id#section</code> citation</td>
+<td>J1</td>
+<td>Accepted</td>
+<td>RAG, semantic retrieval</td>
+</tr>
+<tr>
+<td>D-07</td>
+<td>Embeddings: <code>paraphrase-multilingual-MiniLM-L12-v2</code> (Sentence Transformers)</td>
+<td>J1</td>
+<td>Accepted</td>
+<td>Embeddings, Hugging Face</td>
+</tr>
+<tr>
+<td>D-08</td>
+<td>Vector store: persistent embedded Chroma, index rebuilt on fingerprint change</td>
+<td>J1</td>
+<td>Accepted</td>
+<td>Vector search, vector databases</td>
+</tr>
+<tr>
+<td>D-09</td>
+<td>Reranking: cross-encoder <code>mmarco-mMiniLMv2-L12-H384-v1</code>, top-5 → top-3, off-topic threshold</td>
+<td>J1</td>
+<td>Accepted</td>
+<td>Reranking</td>
+</tr>
+<tr>
+<td>D-10</td>
+<td>Embedding/reranker inference on GPU (torch CUDA), warm-up at load time</td>
+<td>J1</td>
+<td>Accepted</td>
+<td>GPU, PyTorch, latency</td>
+</tr>
+<tr>
+<td>D-11</td>
+<td>MCP: separate tool server, stdio, <code>mcp</code> SDK v2, verified with MCP Inspector</td>
+<td>J2</td>
+<td>Accepted</td>
+<td>MCP, tool integration</td>
+</tr>
+<tr>
+<td>D-12</td>
+<td>Typed tool contracts (<code>Literal</code> → <code>enum</code>), explicit <code>ToolError</code></td>
+<td>J2</td>
+<td>Accepted</td>
+<td>Tool calling, reliability</td>
+</tr>
+<tr>
+<td>D-13</td>
+<td>Read-only SQL tool: 5 layers (regex, LIMIT, <code>mode=ro</code>, authorizer, timeout)</td>
+<td>J2</td>
+<td>Accepted</td>
+<td>Enterprise data agents, SQL engines</td>
+</tr>
+<tr>
+<td>D-14</td>
+<td>Generated SQLite incident database (relative dates), simulated JSON status scenarios</td>
+<td>J2</td>
+<td>Accepted</td>
+<td>Database integration, data analysis</td>
+</tr>
+<tr>
+<td>D-15</td>
+<td>Loading the RAG in a thread when the MCP server starts</td>
+<td>J2</td>
+<td>Accepted</td>
+<td>Latency</td>
+</tr>
+<tr>
+<td>D-16</td>
+<td>LangGraph orchestration: triage → documentalist → technician, <code>history</code> branch</td>
+<td>J3</td>
+<td>Accepted</td>
+<td>Orchestration, LangGraph</td>
+</tr>
+<tr>
+<td>D-17</td>
+<td>Triage via structured output + tool policy enforced by the code</td>
+<td>J3</td>
+<td>Accepted (Decision driven by a measured failure)</td>
+<td>AI agents, intelligent workflows</td>
+</tr>
+<tr>
+<td>D-18</td>
+<td>Bounded agent loop: budgets, last call without tools, dedup, <code>required</code> checked</td>
+<td>J3</td>
+<td>Accepted</td>
+<td>Reliability, workflow execution</td>
+</tr>
+<tr>
+<td>D-19</td>
+<td><code>TypedDict</code> shared state (reducers) + timestamped JSON trace with metrics</td>
+<td>J3</td>
+<td>Accepted</td>
+<td>State management, latency/cost</td>
+</tr>
+<tr>
+<td>D-20</td>
+<td>Host MCP client with the <code>mcp</code> SDK directly (<code>ToolBox</code>), no LangChain adapter</td>
+<td>J3</td>
+<td>Accepted</td>
+<td>MCP, tool integration</td>
+</tr>
+<tr>
+<td>D-21</td>
+<td>Validation: 6 executable cases, deterministic checks, <code>bench</code> with full answers</td>
+<td>J4</td>
+<td>Accepted</td>
+<td>Prototype → production, evaluation</td>
+</tr>
+<tr>
+<td>D-22</td>
+<td>Deterministic post-processing: normalized citations, simulation notice</td>
+<td>J4</td>
+<td>Accepted (Decision driven by a measured failure)</td>
+<td>Reliability</td>
+</tr>
+<tr>
+<td>D-23</td>
+<td>Data questions: all SQL queries in the same step</td>
+<td>J4</td>
+<td>Accepted (Decision driven by a measured failure)</td>
+<td>Enterprise data agents</td>
+</tr>
+<tr>
+<td>D-24</td>
+<td>Triage: rules + examples, validated on held-out paraphrases (12/12)</td>
+<td>J4</td>
+<td>Accepted (Decision driven by a measured failure)</td>
+<td>Evaluate AI tech, SLMs</td>
+</tr>
+<tr>
+<td>D-25</td>
+<td><strong>ADR</strong>: default model = 7B (18/18); SLM faster but invents sources</td>
+<td>J5</td>
+<td>Accepted</td>
+<td>LLMs &amp; SLMs, latency/cost, evaluate → plan</td>
+</tr>
+<tr>
+<td>D-26</td>
+<td>Measurement method: warm/cold latency, throughput at concurrency 1/4, estimated cost</td>
+<td>J5</td>
+<td>Accepted</td>
+<td>Latency, throughput, cost</td>
+</tr>
+<tr>
+<td>D-27</td>
+<td>Code structure: single-responsibility modules, MCP boundary</td>
+<td>J5</td>
+<td>Accepted</td>
+<td>Software architecture, Python</td>
+</tr>
+<tr>
+<td>D-28</td>
+<td>Testing strategy: offline unit tests, model integration tests, system benchmark</td>
+<td>J5</td>
+<td>Accepted</td>
+<td>Production-grade, reliability</td>
+</tr>
+<tr>
+<td>D-29</td>
+<td>Agents (LLM ↔ tools loop) vs router (triage) vs code; linear graph, no loop between agents</td>
+<td>doc</td>
+<td>Accepted</td>
+<td>AI agents, orchestration</td>
+</tr>
+<tr>
+<td>D-30</td>
+<td><code>out_of_scope</code> and <code>vague</code> skip the documentalist (conditional edge), measured before/after</td>
+<td>v1.10.0</td>
+<td>Accepted</td>
+<td>Orchestration, latency/cost</td>
+</tr>
+<tr>
+<td>D-31</td>
+<td>Web demo: Starlette + SSE on the real pipeline, one question at a time, warm MCP server</td>
+<td>v1.11.0</td>
+<td>Accepted</td>
+<td>Production-grade, observability</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="d-01-100-local-no-paid-cloud-api">D-01 — 100% local, no paid cloud API<a class="headerlink" href="#d-01-100-local-no-paid-cloud-api" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: scoping (user decision)</li>
+<li><strong>Need</strong>: practice LLMs, agents and RAG at no cost, without an account, and without any data
+  leaving the machine.</li>
+<li><strong>Options</strong>: (a) cloud API (OpenAI, Anthropic…), (b) local models, (c) mixed: local by
+  default, cloud for comparison.</li>
+<li><strong>Choice</strong>: (b) 100% local. Cloud cost is <strong>estimated</strong> in the benchmark (measured tokens ×
+  public prices), without an account.</li>
+<li><strong>Why</strong>: zero cost, no secrets to manage, reproducible offline. Above all, it forces us to
+  deal with <strong>serving</strong> and <strong>SLMs</strong>, two targeted skills that a cloud API would have hidden.</li>
+<li><strong>Trade-offs</strong>: local models (4–7B) are clearly weaker than state-of-the-art cloud models
+  at tool calling and text-to-SQL. The qualitative results are therefore not
+  representative of a deployment with a large model. This must be stated clearly.</li>
+<li><strong>Skill demonstrated</strong>: Cost, model serving.</li>
+</ul>
+<h2 id="d-02-python-312-uv-installable-package-with-cli">D-02 — Python 3.12 + <code>uv</code> + installable package with CLI<a class="headerlink" href="#d-02-python-312-uv-installable-package-with-cli" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J0</li>
+<li><strong>Need</strong>: a project that installs and runs with one command, with a visible version
+  (project convention).</li>
+<li><strong>Options</strong>: standalone scripts + <code>requirements.txt</code>; Poetry; <code>uv</code> + <code>pyproject.toml</code>.</li>
+<li><strong>Choice</strong>: <code>uv</code> + <code>pyproject.toml</code> (<code>src/</code> layout), CLI entry point <code>hello-support</code>, single version
+  in <code>hello_support/__init__.py</code> (<code>__version__</code>), read dynamically by the build.</li>
+<li><strong>Why</strong>: <code>uv</code> is already installed, very fast, and manages the lockfile and the venv. The
+  <code>src/</code> layout prevents importing the code without installing it. A single source of truth for the version.</li>
+<li><strong>Trade-offs</strong>: torch with CUDA must come from the PyTorch index (<code>cu124</code>), not from PyPI, hence
+  an index configuration in <code>pyproject.toml</code>. Added at J1, when torch became necessary.</li>
+<li><strong>Skill demonstrated</strong>: Python, software architecture.</li>
+</ul>
+<h2 id="d-03-lm-studio-as-the-local-serving-platform">D-03 — LM Studio as the local serving platform<a class="headerlink" href="#d-03-lm-studio-as-the-local-serving-platform" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J0</li>
+<li><strong>Need</strong>: serve a local LLM behind a standard API, using the GPU, and be able to switch
+  models without touching the code.</li>
+<li><strong>Options</strong>: (a) LM Studio (already installed, <code>lms</code> CLI, OpenAI-compatible server), (b) Ollama
+  (not installed), (c) vLLM (high throughput, but Linux/WSL only and heavy on 8 GB),
+  (d) <code>transformers</code> directly in-process.</li>
+<li><strong>Choice</strong>: (a) LM Studio, server at <code>http://localhost:1234/v1</code>.</li>
+<li><strong>Why</strong>: already in place, it handles downloading (<code>lms get</code>), GPU offload and
+  GGUF quantization. It exposes the <strong>OpenAI-compatible</strong> API with <em>tool calling</em>. The application
+  code therefore depends only on an <strong>API contract</strong>, not on a vendor. This is
+  exactly the targeted "application / serving platform" separation.</li>
+<li><strong>Trade-offs</strong>: a desktop tool, not a production server. No continuous batching and no serious
+  throughput measurement: vLLM is noted under "going further". The server must be running
+  (<code>lms server start</code>) before launching the program.</li>
+<li><strong>Skill demonstrated</strong>: Model-serving platforms.</li>
+</ul>
+<h2 id="d-04-model-choice">D-04 — Model choice<a class="headerlink" href="#d-04-model-choice" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J0 · <strong>Revisable at J5</strong> (measurements)</li>
+<li><strong>Need</strong>: an <strong>SLM</strong> (3–4B) able to call tools, and a larger reference model (7B),
+  both fitting in <strong>8 GB of VRAM</strong> (RTX 2070 Super).</li>
+<li><strong>SLM options</strong>: Qwen2.5-3B-Instruct; <strong>Qwen3-4B-Instruct-2507</strong>; Llama-3.2-3B-Instruct;
+  Phi-4-mini (3.8B); Gemma-3-4B (already present as <code>translategemma</code>, specialized in
+  translation and without reliable native tool calling).</li>
+<li><strong>7B options</strong>: <code>qwen2.5-coder-7b-instruct</code> (already present); <strong>Qwen2.5-7B-Instruct</strong>;
+  Llama-3.1-8B-Instruct.</li>
+<li><strong>Choice</strong>:</li>
+<li>SLM = <strong><code>qwen/qwen3-4b-2507</code> in Q4_K_M</strong> (~2.5 GB);</li>
+<li>7B = <strong><code>qwen2.5-7b-instruct</code> in Q4_K_M</strong> (~4.7 GB).</li>
+<li><strong>Why</strong>:</li>
+<li>Qwen3-4B-Instruct-2507 is trained for tool calling. It is the "non-thinking" variant,
+    so there is no reasoning block to filter out, answers are shorter and latency is
+    lower. It is multilingual (questions in French) and was among the best public
+    4B models at function calling when released.</li>
+<li>For the 7B, picking the <strong>same family</strong> (Qwen) isolates the effect of <strong>size</strong> in the
+    comparison. The <em>Instruct</em> version is preferred over <em>Coder</em> for dialogue and
+    diagnosis. It is the model named in the user's request.</li>
+<li><strong>Q4_K_M</strong> is the standard quality/size trade-off. The 7B fits entirely in VRAM
+    (~4.7 GB + KV cache), with headroom for the embedding and reranking models
+    (~0.5 GB). Q8 (~8 GB) would not fit.</li>
+<li><strong>Trade-offs</strong>: 4-bit quantization slightly degrades quality, especially on SQL. Two
+  different families would have allowed a broader but less readable comparison. The
+  two models are not loaded at the same time: LM Studio loads them on demand
+  (JIT), so the first call includes a loading time. It is excluded from the measurements
+  (warm-up).</li>
+<li><strong>Implementation (J0)</strong>: <code>lms get "qwen/qwen3-4b-2507@q4_k_m" -y</code> (LM Studio staff pick).
+  Qwen2.5-7B-Instruct is not a staff pick: downloaded from Hugging Face with
+  <code>lms get "https://huggingface.co/lmstudio-community/Qwen2.5-7B-Instruct-GGUF@Q4_K_M" -y</code>.</li>
+<li><strong>Finding J0</strong> (<code>hello-support smoke</code>, temperature 0, after warm-up): both models
+  emit a valid <code>get_time({"timezone": "Europe/Brussels"})</code> call. SLM: hello 0.10 s,
+  tool call 0.37 s (177 → 23 tokens). 7B: 0.10 s and 0.55 s (193 → 23 tokens). One-off
+  measurements, not yet a benchmark (J5).</li>
+<li><strong>Skill demonstrated</strong>: LLMs &amp; SLMs, GPU.</li>
+</ul>
+<h2 id="d-05-llm-client-openai-sdk-minimal-in-house-wrapper">D-05 — LLM client: <code>openai</code> SDK + minimal in-house wrapper<a class="headerlink" href="#d-05-llm-client-openai-sdk-minimal-in-house-wrapper" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J0</li>
+<li><strong>Need</strong>: call the model with or without tools, and retrieve content, tool calls,
+  tokens and latency.</li>
+<li><strong>Options</strong>: (a) <code>openai</code> SDK pointed at <code>localhost:1234</code>, (b) <code>langchain-openai</code>
+  (<code>ChatOpenAI</code>), (c) raw <code>httpx</code>.</li>
+<li><strong>Choice</strong>: (a). An <code>llm.py</code> module of a few dozen lines returns a normalized
+  result (<code>content</code>, <code>tool_calls</code>, <code>prompt_tokens</code>, <code>completion_tokens</code>, <code>latency_s</code>, <code>model</code>).</li>
+<li><strong>Why</strong>: we see exactly what goes over the wire and comes back, which is educational and
+  useful for measuring. The SDK is stable and typed. LangGraph does not require LangChain for the
+  nodes: a node is a Python function. This limits the layers of abstraction.</li>
+<li><strong>Trade-offs</strong>: we reimplement a bit of plumbing that <code>ChatOpenAI</code> + <code>bind_tools</code> provide.
+  If J3 shows this is too costly, we will switch to <code>langchain-openai</code>, adding an
+  entry that supersedes this one.</li>
+<li><strong>Skill demonstrated</strong>: Model integration, latency/cost.</li>
+</ul>
+<h2 id="d-06-chunking-knowledge-base-sheets-by-section">D-06 — Chunking knowledge-base sheets by section<a class="headerlink" href="#d-06-chunking-knowledge-base-sheets-by-section" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J1</li>
+<li><strong>Need</strong>: retrieve a precise passage and <strong>cite</strong> it ("postgres_connection.md, section
+  Service status"), as the expected answer requires.</li>
+<li><strong>Options</strong>: (a) one whole document per vector, (b) fixed-size chunking (N tokens with
+  overlap), (c) structure-based chunking (<code>##</code> headings).</li>
+<li><strong>Choice</strong>: (c). One section = one chunk, identified as <code>doc_id#section</code>. The embedded text is
+  prefixed with the sheet's title ("PostgreSQL: application cannot connect - Checks") so that
+  the section keeps its context.</li>
+<li><strong>Why</strong>: the sheets are short and already structured (Symptoms / Checks / Service status
+  / Limits). Structural chunking gives stable, readable citations. Fixed-size chunking
+  would cut in the middle of a checklist.</li>
+<li><strong>Trade-offs</strong>: this assumes well-structured documents. On a real enterprise corpus
+  (PDFs, wikis), hybrid chunking would be needed (structure + maximum size + overlap).</li>
+<li><strong>Skill demonstrated</strong>: RAG, semantic retrieval.</li>
+</ul>
+<h2 id="d-07-embedding-model">D-07 — Embedding model<a class="headerlink" href="#d-07-embedding-model" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J1</li>
+<li><strong>Need</strong>: encode questions <strong>in French or English</strong> and English knowledge-base sheets
+  into the same vector space, locally, on 8 GB of VRAM shared with the LLM.</li>
+<li><strong>Options</strong>: <code>all-MiniLM-L6-v2</code> (English only);
+  <strong><code>paraphrase-multilingual-MiniLM-L12-v2</code></strong> (50+ languages, 118M parameters, dim 384);
+  <code>multilingual-e5-base</code> / <code>bge-m3</code> (better, but 2 to 5 times larger);
+  <code>nomic-embed-text</code> served by LM Studio (already present).</li>
+<li><strong>Choice</strong>: <code>paraphrase-multilingual-MiniLM-L12-v2</code> via Sentence Transformers (Hugging Face Hub,
+  no account). Normalized vectors, cosine similarity.</li>
+<li><strong>Why</strong>: it is the candidate proposed by the initial document. It is multilingual (the
+  French query "connexion refusée" (connection refused) does retrieve the English sheet), lightweight (~0.5 GB of VRAM) and
+  fast. Running it through Sentence Transformers rather than LM Studio means practicing
+  <strong>PyTorch / Hugging Face</strong> directly.</li>
+<li><strong>Trade-offs</strong>: quality is modest. Raw cosine separates poorly (0.46 to 0.52 for useful
+  sections as well as off-topic nginx sections, see BENCH J1). This is precisely what
+  justifies the reranker (D-09). An e5/bge model would be the natural improvement.</li>
+<li><strong>Skill demonstrated</strong>: Embeddings, Hugging Face.</li>
+</ul>
+<h2 id="d-08-vector-store-embedded-chroma">D-08 — Vector store: embedded Chroma<a class="headerlink" href="#d-08-vector-store-embedded-chroma" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J1</li>
+<li><strong>Need</strong>: store and query vectors (top-k by similarity) without a server to
+  administer.</li>
+<li><strong>Options</strong>: (a) in-memory NumPy (initial proposal: brute-force cosine),
+  (b) embedded <strong>Chroma</strong> (<code>PersistentClient</code>, HNSW index), (c) <code>sqlite-vec</code> (SQLite extension),
+  (d) PostgreSQL + pgvector (WSL/Docker), (e) FAISS.</li>
+<li><strong>Choice</strong>: (b) Chroma 1.5, <code>kb_sections</code> collection in <strong>cosine</strong> space, persisted in
+  <code>.chroma/</code> (gitignored). Embeddings are computed by our code and passed to Chroma, which
+  does not choose the model. The index is rebuilt only if the <strong>fingerprint</strong>
+  (hash of the model + section contents) changes.</li>
+<li><strong>Why</strong>: it is a real vector database (ANN index, metadata, persistence), installed
+  with <code>pip</code>, without Docker. It covers the "vector database" skill at low cost. Supplying
+  our own vectors keeps control of the model (D-07) and allows changing it without depending on
+  Chroma's built-in embedding functions. With the fingerprint, we avoid recomputing at every
+  startup while guaranteeing the index is never stale.</li>
+<li><strong>Trade-offs</strong>: with 12 vectors, an ANN index brings <strong>no</strong> gain: NumPy brute force
+  would be just as fast. The choice is educational, and this must be said. Chroma adds many
+  dependencies. pgvector would be closer to an "AI + database" context: it is placed under
+  "going further". Planned fallback: NumPy cosine if Chroma caused problems (it did not).</li>
+<li><strong>Skill demonstrated</strong>: Vector search, vector databases.</li>
+</ul>
+<h2 id="d-09-cross-encoder-reranking">D-09 — Cross-encoder reranking<a class="headerlink" href="#d-09-cross-encoder-reranking" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J1</li>
+<li><strong>Need</strong>: improve the order of the passages returned to the agent (only 2, so the
+  ranking matters), and detect that <strong>no</strong> passage matches.</li>
+<li><strong>Options</strong>: (a) no reranking, (b) Sentence Transformers <strong>cross-encoder</strong>,
+  (c) LLM reranker (ask the model to rank), (d) <code>bge-reranker-v2-m3</code> (more accurate, ~570M
+  parameters).</li>
+<li><strong>Choice</strong>: (b) <code>cross-encoder/mmarco-mMiniLMv2-L12-H384-v1</code> (multilingual, lightweight). Vector
+  search top-5, rerank of the 5 (question, passage) pairs, top-2 kept. Each hit keeps its
+  original vector rank to show the effect of reranking. Threshold <code>RELEVANCE_THRESHOLD = -5</code>
+  on the cross-encoder score: below it, the passage is marked "off-topic".</li>
+<li><strong>Why</strong>: this is the classic <em>retrieve &amp; rerank</em> pattern. The bi-encoder is fast but
+  coarse; the cross-encoder reads the question and the passage together and ranks better. Measured
+  (BENCH J1): on "connexion refusée postgres", the <em>Symptoms</em> section moves from 5th to
+  2nd place, ahead of two nginx sections. On a question outside the knowledge base (Kafka), all scores
+  drop to ≤ -9.2 while useful passages are ≥ -4.3. This signal is far more
+  discriminating than cosine (0.12–0.21). An LLM reranker would have cost one model call
+  per query.</li>
+<li><strong>Trade-offs</strong>: about 0.1–0.3 s more per query. The threshold is <strong>empirical</strong> and calibrated
+  on 4 queries: it is a coarse filter, not a guarantee of precision. It should be
+  calibrated on a question set (see "going further": RAG evaluation).</li>
+<li><strong>Revision (J3)</strong>: <code>search_docs</code> returns the <strong>top-3</strong> (instead of top-2). With 2 passages,
+  the reranker put "Limits" first and the "Service status" section disappeared from the context.
+  Only the diagnostic command <code>hello-support search</code> keeps a default of <code>--top-n 2</code>.</li>
+<li><strong>Skill demonstrated</strong>: Reranking.</li>
+</ul>
+<h2 id="d-10-gpu-inference-and-warm-up">D-10 — GPU inference and warm-up<a class="headerlink" href="#d-10-gpu-inference-and-warm-up" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J1</li>
+<li><strong>Need</strong>: use the available GPU and measure a representative query latency.</li>
+<li><strong>Options</strong>: CPU only; GPU via torch CUDA; embeddings served by LM Studio.</li>
+<li><strong>Choice</strong>: torch <strong>2.6.0+cu124</strong> pulled from the PyTorch index (configured in
+  <code>pyproject.toml</code>, since PyPI only provides the CPU build on Windows). Device chosen
+  automatically (<code>cuda</code>, otherwise <code>cpu</code>) and displayed. A <strong>warm-up</strong> query is run when
+  the <code>Retriever</code> loads.</li>
+<li><strong>Why</strong>: the GPU is there (RTX 2070 Super). Both small models fit on it (~1 GB) alongside
+  the LLM served by LM Studio. Measured: the first query costs ~2.9 s (CUDA kernel
+  initialization) versus ~0.5 s afterwards. Warm-up removes this one-time cost from the per-question
+  latency.</li>
+<li><strong>Trade-offs</strong>: heavy torch CUDA download (~2.5 GB), slow <code>sentence_transformers</code> import
+  (~15 s cold on Windows), total load ~27 s. Acceptable because it is paid once
+  per tool-server session (J2). On CPU, the project works too, just more
+  slowly.</li>
+<li><strong>Skill demonstrated</strong>: GPU, PyTorch, latency.</li>
+</ul>
+<h2 id="d-11-mcp-separate-tool-server-stdio-transport-python-sdk-v2">D-11 — MCP: separate tool server, stdio transport, Python SDK v2<a class="headerlink" href="#d-11-mcp-separate-tool-server-stdio-transport-python-sdk-v2" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J2</li>
+<li><strong>Need</strong>: expose the tools to the agents through a <strong>standard protocol</strong>, so they can be
+  tested on their own, reused by another client (Inspector, IDE, another agent), and
+  moved without touching the agents' code.</li>
+<li><strong>Options</strong>: (a) Python functions called directly by the agents, (b) in-house REST API,
+  (c) <strong>MCP</strong> over stdio (local subprocess), (d) MCP over <em>streamable HTTP</em> (network server).</li>
+<li><strong>Choice</strong>: (c) with the official <code>mcp</code> SDK <strong>2.2</strong> (<code>MCPServer</code>, the new name of FastMCP in
+  v2). Entry point <code>hello-support-mcp</code>. The host will launch the server as a subprocess
+  (J3). Tests use the same server <strong>in memory</strong> via <code>mcp.Client(server)</code>.</li>
+<li><strong>Why</strong>: MCP is one of the targeted skills (integrating enterprise tools
+  for agents). stdio needs no port and no auth and is sufficient locally. The
+  input JSON schema is generated from Python annotations. Verified with <strong>MCP
+  Inspector</strong> (<code>npx @modelcontextprotocol/inspector --cli hello-support-mcp --method tools/list</code>
+  then <code>tools/call</code> for each of the 3 tools).</li>
+<li><strong>Trade-offs</strong>: one subprocess per session and one more protocol to debug. SDK v2
+  is recent: online examples (FastMCP, camelCase <code>inputSchema</code>) no longer apply
+  as is. The Inspector in CLI mode handles <code>-m module</code> arguments poorly, hence the dedicated entry
+  point. The HTTP transport (a first "distributed" step) is left to "going further".</li>
+<li><strong>Skill demonstrated</strong>: MCP, tool integration.</li>
+</ul>
+<h2 id="d-12-tool-contracts-strict-types-explicit-errors">D-12 — Tool contracts: strict types, explicit errors<a class="headerlink" href="#d-12-tool-contracts-strict-types-explicit-errors" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J2</li>
+<li><strong>Need</strong>: the model <strong>proposes</strong> calls that can be wrong (unknown service, invalid
+  SQL, empty query). These errors must be rejected cleanly and remain usable
+  by the model.</li>
+<li><strong>Options</strong>: validation in each agent; validation on the tool-server side; both.</li>
+<li><strong>Choice</strong>: <strong>server-side</strong> validation, through types: <code>service_name: Literal["postgres",
+  "nginx", "redis"]</code> produces an <code>enum</code> in the MCP schema, which the model sees and Pydantic
+  checks. Business errors raise <code>ToolError</code>, returned to the client as <code>is_error=true</code> with a
+  clear message (e.g. "SQL rejected: only SELECT queries are allowed"). The host only checks that
+  the arguments are valid JSON; types and enums are validated by the MCP server. For an unknown
+  service, the model therefore receives the Pydantic literal error ("Input should be 'postgres',
+  'nginx' or 'redis'"): the "unknown service" message of <code>data_store.service_status</code> is a
+  safety net for direct Python callers and is not reachable through MCP.
+  Tool descriptions (docstrings) explain the output format and usage, for example
+  <code>relevant=false</code>.</li>
+<li><strong>Why</strong>: a single place is authoritative, whatever the client. The error returned to the
+  model lets it <strong>correct itself once</strong> (J3) instead of crashing. The <code>enum</code> schema
+  reduces errors at the source, which matters for an SLM.</li>
+<li><strong>Trade-offs</strong>: Pydantic validation messages are verbose for a small model. The
+  server does not know about <strong>call limits</strong>: that is the orchestrator's job (J3).</li>
+<li><strong>Skill demonstrated</strong>: Tool calling, reliability.</li>
+</ul>
+<h2 id="d-13-read-only-sql-tool-defense-in-depth">D-13 — Read-only SQL tool: defense in depth<a class="headerlink" href="#d-13-read-only-sql-tool-defense-in-depth" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J2</li>
+<li><strong>Need</strong>: let the agent <strong>write SQL</strong> (text-to-SQL, like an "enterprise data
+  agent") without it being able to modify or exfiltrate anything, or lock the database.</li>
+<li><strong>Options</strong>: (a) parameterized tool (<code>get_incidents(service, days)</code>), no free-form SQL;
+  (b) free-form SQL with a regex filter; (c) free-form SQL with <strong>several independent layers</strong>.</li>
+<li><strong>Choice</strong>: (c), in <code>sql_guard.py</code>:</li>
+<li>static check: a single statement, starting with <code>SELECT</code>/<code>WITH</code>, with no write
+     or admin keyword (<code>DELETE</code>, <code>PRAGMA</code>, <code>ATTACH</code>, <code>load_extension</code>…);</li>
+<li>wrapped query: <code>SELECT * FROM (&lt;sql&gt;) LIMIT 51</code>, then truncated to 50 rows with a
+     <code>truncated</code> flag;</li>
+<li>SQLite connection in <strong><code>mode=ro</code></strong>: the engine refuses any write;</li>
+<li>SQLite <strong>authorizer</strong>: only <code>SELECT</code>/<code>READ</code>/<code>FUNCTION</code>/<code>RECURSIVE</code> actions are allowed;</li>
+<li><strong>progress handler</strong>: the query is aborted after 2 s.</li>
+</ul>
+<p>The table schema and a date-filter example are in the tool description.
+- <strong>Why</strong>: (a) would be safer, but does not practice text-to-SQL, which is the core of a
+  data agent. A regex alone can be bypassed: each layer covers the blind spots of the others,
+  and layers 3–4 are guaranteed by the engine, not by our code. SQL errors
+  (unknown column…) are returned as is so the model can fix its query.
+  Tested: <code>DELETE</code>, <code>SELECT 1; DROP…</code>, <code>PRAGMA</code>, <code>ATTACH</code>, <code>load_extension</code> are rejected; the
+  row limit is enforced (<code>tests/test_sql_guard.py</code>).
+- <strong>Trade-offs</strong>: the regex can reject a legitimate query containing one of these words in a
+  string (e.g. <code>summary LIKE '%update%'</code>). For the same reason, a <code>;</code> inside a string literal
+  (e.g. <code>summary LIKE '%a;b%'</code>) is rejected as a second statement
+  (<code>tests/test_guardrails.py::test_semicolon_inside_a_string_literal_is_rejected</code>). Acceptable
+  here, to be fixed with a real SQL parser (<code>sqlglot</code>) if needed. Nothing prevents a <strong>wrong but valid</strong> query: its
+  correctness is evaluated at J4 (case C4). On a real enterprise database, a dedicated read-only
+  SQL role and restricted views would also be needed.
+- <strong>Skill demonstrated</strong>: Enterprise data agents, SQL engines.</p>
+<h2 id="d-14-data-generated-sqlite-incident-database-simulated-json-scenarios">D-14 — Data: generated SQLite incident database, simulated JSON scenarios<a class="headerlink" href="#d-14-data-generated-sqlite-incident-database-simulated-json-scenarios" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J2</li>
+<li><strong>Need</strong>: realistic structured data for analysis questions ("combien
+  d'incidents postgres ces 30 derniers jours ?" (how many postgres incidents in the last 30 days?)) and <strong>simulated</strong>,
+  controllable service states for cases C1/C2/C6.</li>
+<li><strong>Data options</strong>: real PostgreSQL (WSL/Docker), DuckDB, <strong>SQLite</strong> (stdlib).
+  <strong>Status options</strong>: query real services; a JSON scenarios file.</li>
+<li><strong>Choice</strong>: <code>incidents</code> table (14 rows: service, date, severity, summary, resolved) generated by
+  <code>seed_incidents()</code> with dates <strong>relative to the seed day</strong>. The <code>data/incidents.db</code> file
+  is gitignored. Statuses come from <code>scenarios.json</code>
+  (<code>stopped</code>, <code>running</code>, <code>redis_down</code>, <code>tool_error</code>). The scenario is chosen in this order:
+  the content of the file named by <code>HS_SCENARIO_FILE</code> (used by the web demo, D-31), then
+  <code>--scenario</code> / <code>HS_SCENARIO</code>, then the default <code>stopped</code>. Each response carries
+  <code>simulated: true</code> and the scenario name.</li>
+<li><strong>Revision (v1.11.2)</strong>: the database was first seeded <strong>once</strong>, so its dates stayed relative
+  to the day of the first run. About 12 days later, "the last 30 days" would have dropped from 3
+  to 2 postgres incidents and the C4 check would have failed for a correct answer (review F-1).
+  The seed day is now stored in <code>PRAGMA user_version</code> (<code>YYYYMMDD</code>, invisible to the model's
+  queries), and <code>ensure_incidents_db</code> re-seeds the database when that day differs from today or
+  is missing (file created before v1.11.2). If another process holds the file open, the
+  existing data is kept for that query. Tests:
+  <code>tests/test_guardrails.py::test_database_is_reseeded_when_the_day_changes</code> and
+  <code>::test_database_without_a_seed_day_is_reseeded</code>.</li>
+<li><strong>Why</strong>: SQLite is in the stdlib, serverless, and a real SQL engine (dates,
+  aggregates, recursive CTEs, authorizer). With dates relative to a seed day that is refreshed
+  daily, "the last 30 days" always has the same expected answer (3 postgres incidents), which
+  makes case C4 verifiable. Scenarios make
+  behavior <strong>deterministic</strong> and allow simulating a tool failure (C6). Since nothing
+  real is touched, no dangerous action is possible.</li>
+<li><strong>Trade-offs</strong>: SQLite is not an enterprise engine: no roles, no write
+  concurrency, no distributed plan. 14 rows do not test performance. PostgreSQL +
+  pgvector is under "going further".</li>
+<li><strong>Skill demonstrated</strong>: Database integration, data analysis.</li>
+</ul>
+<h2 id="d-15-loading-the-rag-in-the-background-in-the-mcp-server">D-15 — Loading the RAG in the background in the MCP server<a class="headerlink" href="#d-15-loading-the-rag-in-the-background-in-the-mcp-server" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J2</li>
+<li><strong>Need</strong>: the <code>Retriever</code> takes ~30 s to load. If it is loaded before starting the server,
+  the MCP handshake exceeds the client timeout (15 s by default for the Inspector).</li>
+<li><strong>Options</strong>: load at startup (blocking); lazy load on first call;
+  <strong>load in a thread at startup</strong>, with the first <code>search_docs</code> waiting for it to finish.</li>
+<li><strong>Choice</strong>: the thread. The handshake is immediate, the <code>get_service_status</code> and
+  <code>query_incidents</code> tools are available right away, and <code>search_docs</code> waits at most 180 s.
+  Loading errors are returned as <code>ToolError</code>.</li>
+<li><strong>Why</strong>: in general the documentalist calls <code>search_docs</code> first, after one LLM
+  call: loading happens during that time instead of adding to latency.</li>
+<li><strong>Trade-offs</strong>: a bit of concurrency to manage (an <code>Event</code>). Measured via the Inspector: a cold
+  <code>search_docs</code> call takes ~54 s end to end (<code>npx</code> startup + process + loading).
+  This is still paid once per session.</li>
+<li><strong>Skill demonstrated</strong>: Latency.</li>
+</ul>
+<h2 id="d-16-orchestration-langgraph-stategraph-nodes-python-functions">D-16 — Orchestration: LangGraph <code>StateGraph</code>, nodes = Python functions<a class="headerlink" href="#d-16-orchestration-langgraph-stategraph-nodes-python-functions" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J3</li>
+<li><strong>Need</strong>: chain steps (triage → search → diagnosis), with conditional branches, shared state
+  and guaranteed termination.</li>
+<li><strong>Options</strong>: (a) a hand-written Python loop, (b) <strong>LangGraph</strong> (state graph),
+  (c) a single ReAct agent (<code>create_react_agent</code>) that decides everything, (d) CrewAI / AutoGen
+  (conversational multi-agent).</li>
+<li><strong>Choice</strong>: (b) LangGraph 1.2, graph <code>START → triage → documentalist → technician → END</code>, with
+  a <strong>conditional edge</strong>: history questions (<code>history</code>) go straight to the technician, with no
+  document search. Another one exits to <code>END</code> if the documentalist fails. Nodes are plain
+  <code>async</code> functions: LangChain is not needed (D-05). <code>recursion_limit=10</code> serves as a safety net.</li>
+<li><strong>Why</strong>: it is the target agent framework. It clearly separates the <strong>code-defined workflow</strong>
+  (structure, branches, tool policy) from the <strong>model's decisions</strong> (tool arguments, SQL,
+  writing), which the initial document already recommended. A single ReAct agent leaves
+  everything to the model, which proved unreliable with 4–7B models (D-17).</li>
+<li><strong>Trade-offs</strong>: for 3 linear nodes, LangGraph is almost oversized. Its value shows up with
+  branches, checkpoints and human-in-the-loop ("going further"). Loading LangGraph adds
+  dependencies.</li>
+<li>
+<p><strong>Skill demonstrated</strong>: Orchestration, LangGraph.</p>
+</li>
+<li>
+<p><strong>Revision (v1.10.0, D-30)</strong>: the conditional edge also sends <code>out_of_scope</code> and <code>vague</code>
+  straight to the technician; only <code>malfunction</code> and <code>documentation</code> go through the documentalist.</p>
+</li>
+</ul>
+<h2 id="d-17-triage-via-structured-output-tool-policy-enforced-by-code">D-17 — Triage via structured output + tool policy enforced by code<a class="headerlink" href="#d-17-triage-via-structured-output-tool-policy-enforced-by-code" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J3 · <strong>Decision driven by a measured failure</strong></li>
+<li><strong>Need</strong>: the technician must <strong>observe</strong> (call <code>get_service_status</code>) when an outage is
+  reported, and must not do so for a documentation question.</li>
+<li><strong>Finding</strong>: the first version left this choice to the model (<code>tool_choice="auto"</code>, rules in
+  the prompt). Measured on the technician's actual input: <strong>0/3</strong> calls for Qwen2.5-7B <strong>and</strong>
+  for Qwen3-4B, whatever the layout (reminder at the end of the message, no brief, question
+  last). Both models answered conditionally ("si le service est arrêté…" — "if the service is
+  stopped…") since the sheet describes both cases. The 7B went as far as telling the user to call
+  <code>get_service_status</code> themselves.</li>
+<li><strong>Options</strong>: (a) more prompt engineering; (b) systematic tool call;
+  (c) <strong>router</strong>: a short LLM call that classifies the intent into constrained JSON, followed by
+  a tool policy decided by the code; (d) a bigger model.</li>
+<li><strong>Choice</strong>: (c). <code>triage</code> node: strict JSON Schema <code>response_format</code> →
+  <code>{intent: malfunction|history|documentation|out_of_scope|vague, service}</code>. The code applies
+  <code>TECHNICIAN_POLICY</code>:</li>
+<li><code>malfunction</code> → only <code>get_service_status</code> is offered, and one call is <strong>required</strong>;</li>
+<li><code>history</code> → <code>query_incidents</code> is <strong>required</strong>, the model writes the SQL;</li>
+<li><code>documentation</code> → no tool;</li>
+<li><code>out_of_scope</code> / <code>vague</code> → no tool and an explicit instruction (state the limit / ask
+    a question).</li>
+</ul>
+<p>An outage with no known service is reclassified as <code>vague</code>.</p>
+<p><strong>What "required" means exactly</strong>: the call with tools is forced (<code>tool_choice="required"</code>)
+  and, if the model still answers in text, that answer is discarded and the model is retried
+  once (D-18). If it answers in text a second time, the answer is <strong>accepted</strong> and the status
+  stays <code>done</code>; since v1.11.2 the code appends the error "technician: a tool call was required
+  but never made; answer accepted without observation" and emits a <code>limit</code> event with the same
+  text, so the missing observation is visible in the trace and in the answer's errors
+  (<code>tests/test_guardrails.py::test_required_tool_never_called_is_traced</code>). The code therefore
+  guarantees the attempt and its traceability, not the observation itself.</p>
+<p><strong>Triage failure</strong>: if the triage call fails or returns invalid JSON, the route falls back to
+  <code>documentation</code> with no service, and an <code>error</code> event is emitted. When LM Studio is down,
+  the documentalist then fails too: the answer is the fixed <code>FALLBACK_ANSWER</code>, the status is
+  <code>failed</code>, and <code>hello-support ask</code> exits with code 1 (0 when the status is <code>done</code>).
+- <strong>Why</strong>: measured on 6 typical questions, triage costs ~0.3 s (after loading) and correctly
+  classifies the key cases. Qwen2.5-7B: 4/6, with both "errors" (Kafka → <code>vague</code>,
+  "ça marche pas" ("it doesn't work") → outage with no service) still leading to the right behavior.
+  Qwen3-4B: 4/6, but it confused "outage + what should I check?" with <code>documentation</code>, fixed
+  by a clarification in the prompt. These 4/6 figures (and the 0/3 of the finding above) were
+  measured ad hoc during development; the raw output is not archived in the repository. The
+  model still decides, but <strong>on a narrow, constrained task</strong>, and the code enforces the tool
+  policy that follows from it (with the fall-through above). This is a common <em>router + policy</em>
+  pattern in production.
+- <strong>Trade-offs</strong>: one more LLM call per request. The classification can be wrong, and the error
+  propagates (no going back). The 5 intents are hard-coded.
+- <strong>Skill demonstrated</strong>: AI agents, intelligent workflows.</p>
+<h2 id="d-18-bounded-agent-loop-and-measured-guardrails">D-18 — Bounded agent loop and measured guardrails<a class="headerlink" href="#d-18-bounded-agent-loop-and-measured-guardrails" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J3</li>
+<li><strong>Need</strong>: no infinite loop, a bounded cost, tool errors that do not crash the program, and no
+  invented observation.</li>
+<li><strong>Choice</strong> (<code>agents.run_agent</code>, shared by both agents):</li>
+<li>at most 3 LLM calls per agent. The <strong>last call is made without tools</strong>, which forces
+    a text answer;</li>
+<li>per-tool budgets: <code>search_docs</code> ≤ 2, <code>get_service_status</code> ≤ 1, <code>query_incidents</code> ≤ 2.
+    Exceeding one returns an error message to the model, not an exception;</li>
+<li><strong>deduplication</strong> of identical calls and <strong>at most 3 calls per step</strong>. Measured reason:
+    the 7B, forced to call a failing tool (<code>tool_error</code> scenario), emitted
+    <strong>46 identical calls</strong> in 1,024 tokens (18 s);</li>
+<li><code>max_tokens</code> = 300 for a step with tools, 700 for a final answer;</li>
+<li><strong><code>tool_choice="required"</code> checked by the code</strong>: LM Studio does not strictly enforce it.
+    Once, the 7B answered in text and <strong>invented</strong> a "en cours d'exécution" ("running") status
+    without calling the tool. An answer without the required observation is therefore rejected
+    and the model retried once. A second text answer is accepted but flagged as unobserved
+    (error and <code>limit</code> event, D-17);</li>
+<li>invalid JSON arguments and unauthorized tools: refused with a message;</li>
+<li>HTTP timeout for LLM calls (120 s) and tool calls (240 s).</li>
+<li><strong>Why</strong>: the model is not trusted to stop or to respect an API constraint. Each guardrail
+  above comes from a behavior <strong>observed</strong> during J3.</li>
+<li><strong>Trade-offs</strong>: the limits are scope choices, not optima. A rejected answer costs one LLM
+  call. Reasoning quality is not guaranteed: in case C4, the 7B computed <code>MAX(resolved)</code> and
+  still concluded "le dernier n'est pas résolu" ("the last one is not resolved"). This is correct
+  by chance, but not deduced from the result (J4 evaluation).</li>
+<li><strong>Skill demonstrated</strong>: Reliability, workflow execution.</li>
+</ul>
+<h2 id="d-19-explicit-shared-state-and-json-trace">D-19 — Explicit shared state and JSON trace<a class="headerlink" href="#d-19-explicit-shared-state-and-json-trace" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J3</li>
+<li><strong>Need</strong>: know at any time what each step saw and decided, replay and measure a
+  run.</li>
+<li><strong>Choice</strong>: <code>State</code> (<code>TypedDict</code>): <code>question</code> (never modified), <code>model</code>, <code>scenario</code>, <code>route</code>,
+  <code>evidence</code> (relevant passages only, deduplicated), <code>brief</code>, <code>observations</code>,
+  <code>counters</code>, <code>status</code>, <code>errors</code> and <code>trace</code> (the last two with an <code>operator.add</code> reducer: nodes
+  <strong>append</strong>, they do not overwrite), <code>answer</code>. Each event (<code>start</code> when an agent's step
+  begins, <code>llm</code>, <code>tool_call</code>, <code>tool_result</code>, <code>limit</code>, <code>error</code>; the triage <code>llm</code> event also
+  carries the <code>route</code>) is timestamped, displayed live and written to
+  <code>runs/&lt;timestamp&gt;.json</code> with the metrics (total duration, LLM calls and time, tokens
+  in/out, tool time). The <code>runs/</code> folder is gitignored.</li>
+<li><strong>Why</strong>: updates go explicitly through node return values, which is LangGraph's model.
+  Displaying the <strong>observable decisions</strong> (tool, arguments, result) rather than an internal
+  "reasoning" follows the initial document's recommendation. The trace was used to diagnose
+  each of the problems in D-17/D-18.</li>
+<li><strong>Trade-offs</strong>: the state lives in memory for the duration of a request. There is no recovery
+  after a crash (LangGraph checkpointer = "going further"). The trace contains the full texts,
+  which could be a problem with sensitive data in a real-world context.</li>
+<li><strong>Skill demonstrated</strong>: State management, latency/cost.</li>
+</ul>
+<h2 id="d-20-host-side-mcp-client-the-mcp-sdk-directly-rather-than-langchain-mcp-adapters">D-20 — Host-side MCP client: the <code>mcp</code> SDK directly rather than <code>langchain-mcp-adapters</code><a class="headerlink" href="#d-20-host-side-mcp-client-the-mcp-sdk-directly-rather-than-langchain-mcp-adapters" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J3</li>
+<li><strong>Need</strong>: start the tool server, list its tools in the format the LLM expects, and call
+  them.</li>
+<li><strong>Options</strong>: <code>langchain-mcp-adapters</code> (converts to LangChain tools); the SDK's <strong><code>mcp.Client</code></strong>.</li>
+<li><strong>Choice</strong>: <code>ToolBox</code> (≈ 80 lines): <code>mcp.Client(StdioServerParameters(...))</code> starts
+  <code>python -m hello_support.mcp_server</code> with <code>HS_SCENARIO</code>, converts <code>list_tools()</code> to the OpenAI
+  <code>tools</code> format (the MCP JSON schema is reused as is) and decodes the results. A list is
+  returned as <code>structured_content = {"result": [...]}</code> or as one text block per item.
+  The same <code>ToolBox</code> accepts an <strong>in-memory</strong> server for tests.</li>
+<li><strong>Why</strong>: without LangChain in the loop (D-05), the adapter adds nothing. The direct SDK
+  shows what an MCP host actually does: <em>spawn</em>, <em>handshake</em>, <em>list</em>, <em>call</em>.</li>
+<li><strong>Trade-offs</strong>: result decoding has to be handled by hand. A first bug (list returned in
+  several blocks) was found on the first real run.</li>
+<li><strong>Skill demonstrated</strong>: MCP, tool integration.</li>
+</ul>
+<h2 id="d-21-validation-6-executable-cases-with-automatic-checks">D-21 — Validation: 6 executable cases with automatic checks<a class="headerlink" href="#d-21-validation-6-executable-cases-with-automatic-checks" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J4</li>
+<li><strong>Need</strong>: know whether the system "works" on the spec's cases, re-check it after every
+  prompt or model change, and compare two models on the same basis.</li>
+<li><strong>Options</strong>: (a) read the answers by hand; (b) <strong>LLM-as-a-judge</strong> (a model grades the
+  answers); (c) <strong>deterministic checks</strong> on the final state (route, tools called, results,
+  keywords and citations in the answer); (d) an evaluation framework (Ragas,
+  DeepEval…).</li>
+<li><strong>Choice</strong>: (c), in <code>cases.py</code>: 6 cases, each with 5 to 7 named checks (e.g. "observed
+  status = stopped", "no status call", "last incident read (ORDER BY…)",
+  "exact citations", "in French"). The <code>hello-support bench</code> command: N runs × models,
+  a Markdown report (<code>docs/bench/</code>) with <strong>all the answers</strong>, and raw JSON (<code>runs/</code>).
+  Unit tests (<code>pytest</code>) check the code with a <strong>scripted</strong> LLM; the benchmark checks the
+  system with the <strong>real</strong> models.</li>
+<li><strong>Why</strong>: it is reproducible, free and explainable. A failing check points to a specific
+  defect. The benchmark immediately revealed two defects that were invisible in demos (D-22,
+  D-23). A local LLM judge (4–7B) would be less reliable than the answers it grades, and a
+  framework would add dependencies for 6 cases.</li>
+<li><strong>Trade-offs</strong>: keyword checks are <strong>coarse</strong>. A good answer can fail (unexpected wording),
+  a bad one can pass. They do not measure the quality of the advice. Hence full answers are
+  kept for human review. 6 cases do not make a statistical evaluation.</li>
+<li><strong>Skill demonstrated</strong>: Prototype → production, evaluation.</li>
+</ul>
+<h2 id="d-22-deterministic-post-processing-normalized-citations-simulation-notice">D-22 — Deterministic post-processing: normalized citations + simulation notice<a class="headerlink" href="#d-22-deterministic-post-processing-normalized-citations-simulation-notice" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J4 · <strong>Decision driven by a measured failure</strong></li>
+<li><strong>Finding</strong> (J4 benchmark, 7B): despite the "copy the labels exactly" instruction, the model
+  writes <code>postgres_connection.md#Service_status</code> (underscore). It also omits the "simulated"
+  notice required by C1.</li>
+<li><strong>Options</strong>: strengthen the prompt even more; change the identifier format;
+  <strong>post-process the answer in code</strong>.</li>
+<li><strong>Choice</strong>: <code>postprocess.py</code>:</li>
+<li><code>normalize_citations</code> maps each <code>doc.md#Section</code> citation back to the knowledge base's
+    canonical identifier (case- and <code>_</code>-insensitive) and flags unknown citations in the trace,
+    without removing them;</li>
+<li><code>simulation_footer</code> appends at the end of the answer a line built <strong>from the tool
+    results</strong>: "Statut observé en simulation (scénario « stopped ») : postgres = stopped.
+    Aucune action corrective n'a été exécutée." ("Status observed in simulation ("stopped"
+    scenario): postgres = stopped. No corrective action was executed.") The sentence is in French
+    if the question is.</li>
+<li><strong>Why</strong>: it is the same principle as D-17. What the code <strong>knows</strong> (the status comes from a
+  simulation, nothing was executed, the list of existing sections), the code says, instead of
+  hoping the model will say it. This makes the answer verifiable and consistent with the
+  expected answer in the initial document.</li>
+<li><strong>Trade-offs</strong>: C1's "says simulated" check is now satisfied <strong>by construction</strong>. It tests the
+  system, not the model, and that must be stated. Language detection is a heuristic (French
+  function words).</li>
+<li><strong>Skill demonstrated</strong>: Reliability.</li>
+</ul>
+<h2 id="d-23-data-questions-all-queries-in-the-same-step">D-23 — Data questions: all queries in the same step<a class="headerlink" href="#d-23-data-questions-all-queries-in-the-same-step" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J4 · <strong>Decision driven by a measured failure</strong></li>
+<li><strong>Finding</strong>: in case C4 ("combien… et le dernier est-il résolu ?" — "how many… and is the
+  last one resolved?"), the 7B ran a <code>COUNT(*)</code>, then <strong>wrote</strong> "Now let's check the status of
+  the last incident" and <strong>invented</strong> the answer instead of calling the tool a 2nd time. An
+  earlier version drew its conclusion from a <code>MAX(resolved)</code> that cannot answer the question.</li>
+<li><strong>Choice</strong>: the <code>history</code> instruction asks for <strong>all queries in the same step</strong> (parallel tool
+  calls), one query per part of the question, with the example
+  <code>ORDER BY started_at DESC LIMIT 1</code>. It also forbids describing a query that was not run. The
+  C4 check verifies that a query reading the last incident was actually <strong>executed</strong>.</li>
+<li><strong>Why</strong>: the model hallucinates when it "narrates" the next step instead of doing it.
+  Having it plan the queries all at once removes that intermediate step. Measured result:
+  2 queries issued in parallel, conclusion "3 incidents, the last one unresolved" <strong>deduced from
+  the returned rows</strong>.</li>
+<li><strong>Trade-offs</strong>: this relies on the model's ability to make parallel calls. A question
+  requiring a query that depends on the result of another (true multi-step analysis)
+  would not be covered: it would then need an explicit plan or a larger step budget.</li>
+<li><strong>Skill demonstrated</strong>: Enterprise data agents.</li>
+</ul>
+<h2 id="d-24-triage-explicit-rules-examples-measured-on-held-out-paraphrases">D-24 — Triage: explicit rules + examples, measured on held-out paraphrases<a class="headerlink" href="#d-24-triage-explicit-rules-examples-measured-on-held-out-paraphrases" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J4 · <strong>Decision driven by a measured failure</strong></li>
+<li><strong>Finding</strong> (J4 benchmark #1): the SLM classified "Mon application ne parvient plus à se
+  connecter à PostgreSQL. Que dois-je vérifier ?" ("My application can no longer connect to
+  PostgreSQL. What should I check?") as <code>documentation</code> <strong>3 times out of 3</strong>. It therefore never
+  observed the status, hence C1/C2 = 0/3. Adding examples alone (<em>few-shot</em>) fixed the
+  SLM on the paraphrases, but <strong>degraded the 7B</strong>: "Mon Kafka est lent" ("My Kafka is slow") →
+  <code>malfunction/nginx</code>, "My MongoDB replica set is down" → <code>malfunction/redis</code>. This is dangerous,
+  since it would observe a service unrelated to the question.</li>
+<li><strong>Choice</strong>: triage prompt = definitions + <strong>2 explicit rules</strong> (another product mentioned →
+  <code>out_of_scope</code>, never mapped to a known service; an outage happening now → <code>malfunction</code>,
+  even if the sentence ends with "what should I check?") + <strong>6 examples</strong> worded differently
+  from the benchmark questions.</li>
+<li><strong>Measurements</strong>: 12 questions = the 6 benchmark ones + <strong>6 held-out paraphrases</strong> (never seen
+  during tuning): <strong>12/12 for both models</strong>, versus 11/12 (SLM) and 10/12 (7B) with
+  examples alone. These figures were measured ad hoc; the question set and the raw output are
+  not archived in the repository, so they cannot be replayed with a shipped command.</li>
+<li><strong>Why</strong>: an example without a rule can be over-generalized (the 7B learned "unknown
+  product ⇒ pick a known service"). The rule sets the boundary, the examples show the
+  format. Testing on unseen paraphrases avoids tuning the prompt for the benchmark questions
+  only (overfitting).</li>
+<li><strong>Trade-offs</strong>: 12 questions is still a small sample. Every prompt change must be
+  re-measured, since a gain on one model can be a loss on the other (as observed here).</li>
+<li><strong>Skill demonstrated</strong>: Evaluate AI tech, SLMs.</li>
+</ul>
+<h2 id="d-25-adr-default-model-qwen25-7b-instruct-the-slm-remains-a-measured-option">D-25 — ADR: default model = Qwen2.5-7B-Instruct; the SLM remains a measured option<a class="headerlink" href="#d-25-adr-default-model-qwen25-7b-instruct-the-slm-remains-a-measured-option" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J5 · <strong>Status</strong>: Accepted. It confirms D-04 with measurements.</li>
+<li><strong>Context</strong>: two models served locally by LM Studio, same prompts, same code, 6 cases ×
+  3 runs (BENCH J4), plus a serving throughput measurement (BENCH J5).</li>
+<li><strong>Options</strong>: (a) SLM Qwen3-4B-Instruct-2507 by default; (b) <strong>7B by default</strong>;
+  (c) hybrid: SLM for triage (narrow task, constrained output), 7B for the answer.</li>
+<li><strong>Data</strong>:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Criterion</th>
+<th>SLM 4B</th>
+<th>7B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cases passed (6 × 3)</td>
+<td>15/18</td>
+<td><strong>18/18</strong></td>
+</tr>
+<tr>
+<td>Serious defect observed</td>
+<td>invents source identifiers when a tool fails (C6, 3/3)</td>
+<td>sometimes presents the sheet's symptoms as "observed logs" (not detected by the checks); asserted an unobserved Redis status once when the status tool failed (C6, 1 of 10 runs in the v1.10.0 control, see D-30)</td>
+</tr>
+<tr>
+<td>Triage (12 questions incl. 6 held out)</td>
+<td>12/12</td>
+<td>12/12</td>
+</tr>
+<tr>
+<td>p50 latency per request (warm)</td>
+<td><strong>6.0 s</strong></td>
+<td>9.0 s</td>
+</tr>
+<tr>
+<td>Generation throughput, 1 request at a time</td>
+<td><strong>107 tokens/s</strong></td>
+<td>71 tokens/s</td>
+</tr>
+<tr>
+<td>Aggregate throughput, 4 concurrent requests</td>
+<td><strong>173 tokens/s</strong></td>
+<td>128 tokens/s</td>
+</tr>
+<tr>
+<td>VRAM (Q4_K_M)</td>
+<td>~2.5 GB</td>
+<td>~4.7 GB</td>
+</tr>
+<tr>
+<td>Estimated cost if API (gpt-4o-mini / Haiku 4.5), /1000 req.</td>
+<td>~$0.62 / ~$4.5</td>
+<td>~$0.62 / ~$4.6</td>
+</tr>
+</tbody>
+</table>
+<p>The table above is the J4/J5 measurement (v1.7.0 code). <strong>Update (v1.11.2, 2026-10-04)</strong>: full
+  benchmark 6 cases × 3 with the pinned LM Studio settings:</p>
+<table>
+<thead>
+<tr>
+<th>Criterion</th>
+<th>SLM 4B</th>
+<th>7B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cases passed (6 × 3)</td>
+<td>16/18</td>
+<td>16/18 raw, <strong>18/18</strong> re-scored with the fixed status check (D-30)</td>
+</tr>
+<tr>
+<td>Checks passed</td>
+<td>105/108</td>
+<td>106/108 raw, 108/108 re-scored</td>
+</tr>
+<tr>
+<td>C6 (tool failure)</td>
+<td>1/3 (2× "says the check failed", 1× "exact citations")</td>
+<td>3/3 re-scored; control 10/10</td>
+</tr>
+<tr>
+<td>p50 / max latency per request (warm)</td>
+<td><strong>4.4 s</strong> / 7.23 s</td>
+<td>8.47 s / 15.8 s</td>
+</tr>
+<tr>
+<td>LLM calls per request</td>
+<td>4.28</td>
+<td>4.0</td>
+</tr>
+<tr>
+<td>Tokens in / out per request</td>
+<td>2,658 / 351</td>
+<td>2,462 / 460</td>
+</tr>
+</tbody>
+</table>
+<p>Raw reports: <code>docs/bench/bench-20261004-185627.md</code> (4B), <code>bench-20261004-190049.md</code> (7B) and
+  <code>bench-20261004-190503.md</code> (7B C6 control, 10 runs).
+- <strong>Decision</strong>: (b) 7B by default (<code>HS_MODEL_DEFAULT=large</code>). The SLM remains selectable
+  (<code>--model slm</code>) and is the best candidate for triage if latency becomes the priority.
+- <strong>Why</strong>: for a support assistant, an <strong>invented source</strong> is more serious than an answer that
+  is 3 s slower. The SLM is faster on every metric (~1.5×) and just as good at triage. It only
+  loses on robustness when a tool fails, but that is the case that matters in production. The
+  <strong>local</strong> cost is zero in both cases, and the estimated cloud cost is identical, because tokens
+  are mostly input (RAG context) and the volumes are similar. Model size therefore does not
+  change the bill: context length is what matters.
+- <strong>Consequences / next steps</strong>: (c) is the next logical experiment: triage by the SLM, answer
+  by the 7B. It would need to be measured with the same benchmark before adoption. With a larger
+  (cloud) model, most guardrails would remain useful: they protect against classes of errors,
+  not against a specific model.
+- <strong>Skill demonstrated</strong>: LLMs &amp; SLMs, latency/cost, evaluate → plan.</p>
+<h2 id="d-26-measurement-method-latency-throughput-cost">D-26 — Measurement method: latency, throughput, cost<a class="headerlink" href="#d-26-measurement-method-latency-throughput-cost" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J5</li>
+<li><strong>Need</strong>: discuss latency, throughput and cost with <strong>measured figures</strong> and a method that
+  can be explained.</li>
+<li><strong>Choice</strong>:</li>
+<li><strong>latency</strong>: per request and warm (MCP session and model already loaded), p50/max over
+    18 requests per model. <strong>Cold start</strong> (20–26 s: torch, embedding models, Chroma, LM Studio
+    loading) is measured separately, because it is paid once per session;</li>
+<li><strong>breakdown</strong> via the trace: LLM time, tool time, number of calls;</li>
+<li><strong>throughput</strong>: (1) generation throughput in the benchmark (tokens produced / LLM time,
+    prompt included); (2) <code>hello-support throughput</code>: the same request repeated 8 times at
+    concurrency 1 then 4, to measure aggregate throughput (tokens/s, requests/min) and individual
+    latency;</li>
+<li><strong>cost</strong>: local = €0 (electricity not counted). Cloud = <strong>estimate</strong>: measured average
+    tokens in/out × indicative public prices, with no account and no call, and prices to be
+    re-checked before quoting them.</li>
+<li><strong>Key results</strong>:</li>
+<li>~2,600–2,800 input tokens for ~350–390 output tokens per request: the <strong>context</strong> (prompts,
+    RAG passages, tool results) dominates the cost, so that is where to optimize;</li>
+<li>concurrency 4 multiplies aggregate throughput by 1.6–1.8, but doubles individual latency:
+    this is the classic throughput / latency trade-off of serving;</li>
+<li>loading the RAG (~14–27 s) is the largest item in cold latency.</li>
+<li><strong>Trade-offs</strong>: a single machine, few runs, temperature 0: no real statistical
+  distribution. Throughput is measured on LM Studio, not on a production server
+  (vLLM, continuous batching: "going further"). Prices change.</li>
+<li><strong>Skill demonstrated</strong>: Latency, throughput, cost.</li>
+</ul>
+<h2 id="d-27-code-structure">D-27 — Code structure<a class="headerlink" href="#d-27-code-structure" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J5 (review)</li>
+<li><strong>Choice</strong>: a <code>src/hello_support/</code> package of single-responsibility modules:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Role</th>
+<th>Depends on</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cli.py</code></td>
+<td><code>smoke</code>, <code>search</code>, <code>ask</code>, <code>bench</code>, <code>throughput</code>, <code>web</code> commands, display</td>
+<td>everything else (lazy imports)</td>
+</tr>
+<tr>
+<td><code>webapp.py</code></td>
+<td>web demo: Starlette app, Server-Sent Events, single-question queue (D-31)</td>
+<td><code>workflow</code>, <code>toolbox</code>, <code>starlette</code></td>
+</tr>
+<tr>
+<td><code>static/</code></td>
+<td>the demo page (HTML, CSS, JS, no framework)</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>workflow.py</code></td>
+<td>LangGraph graph, state, trace export</td>
+<td><code>agents</code>, <code>toolbox</code>, <code>postprocess</code></td>
+</tr>
+<tr>
+<td><code>agents.py</code></td>
+<td>triage, prompts, tool policy, bounded loop</td>
+<td><code>llm</code>, <code>toolbox</code></td>
+</tr>
+<tr>
+<td><code>llm.py</code></td>
+<td>OpenAI-compatible client, measurements</td>
+<td><code>openai</code></td>
+</tr>
+<tr>
+<td><code>toolbox.py</code></td>
+<td>MCP host (spawn, list, call)</td>
+<td><code>mcp</code></td>
+</tr>
+<tr>
+<td><code>mcp_server.py</code></td>
+<td>MCP server, 3 tools</td>
+<td><code>retrieval</code>, <code>data_store</code>, <code>sql_guard</code></td>
+</tr>
+<tr>
+<td><code>retrieval.py</code></td>
+<td>chunking, embeddings, Chroma, reranking</td>
+<td>torch, sentence-transformers, chromadb</td>
+</tr>
+<tr>
+<td><code>sql_guard.py</code> / <code>data_store.py</code></td>
+<td>read-only SQL; simulated data and SQLite</td>
+<td>stdlib</td>
+</tr>
+<tr>
+<td><code>postprocess.py</code></td>
+<td>citations, simulation notice</td>
+<td><code>retrieval</code> (list of sections)</td>
+</tr>
+<tr>
+<td><code>cases.py</code> / <code>benchmark.py</code></td>
+<td>validation cases, measurements, reports</td>
+<td><code>workflow</code></td>
+</tr>
+<tr>
+<td><code>config.py</code></td>
+<td>environment variables</td>
+<td><code>python-dotenv</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Why</strong>: the <strong>MCP</strong> boundary physically separates the agents (host process) from the tools
+  and data (subprocess): the agents do not know how a tool is built. Heavy dependencies
+  (torch, Chroma) are loaded only by the tool server and the <code>search</code> command. Tests and the
+  CLI stay fast. Everything (code, prompts, comments and documentation) is in English (UR-006);
+  only the validation questions are French test data.</li>
+<li><strong>Trade-offs</strong>: about 1,950 lines of Python and 420 of HTML/CSS/JS in <code>src/</code> (+ about 850 lines
+  of tests) for a "hello world", a good part of which is guardrails and measurement. Prompts are Python constants, not separately versioned files.</li>
+<li><strong>Skill demonstrated</strong>: Software architecture, Python.</li>
+</ul>
+<h2 id="d-28-testing-strategy">D-28 — Testing strategy<a class="headerlink" href="#d-28-testing-strategy" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-02 · <strong>Milestone</strong>: J5 (review)</li>
+<li><strong>Choice</strong>: three levels.</li>
+<li><strong>Unit, offline</strong> (<code>uv run pytest</code>, 108 tests in ~16 s at v1.11.2): sheet chunking, SQL guardrails
+     (rejection of <code>DELETE</code> / <code>DROP</code> / <code>PRAGMA</code> / <code>ATTACH</code> / <code>load_extension</code>, row limit),
+     MCP contracts via a <strong>real MCP client connected in memory</strong>, agent loop and full graph
+     with a <strong>scripted LLM</strong> (budgets, deduplication, last call without tools, retry when a
+     required tool is ignored, tool error), post-processing, case checks; the web demo
+     (<code>tests/test_web.py</code>); the user requirements, including the language and diagram checks
+     of the documentation (<code>tests/test_user_requirements.py</code>); and <code>tests/test_guardrails.py</code>,
+     added after the review for the guardrails that had no test: per-step call cap, invalid
+     JSON arguments, tool not offered, <code>max_tokens</code> caps, tool timeout, SQLite authorizer, SQL
+     timeout (plus the v1.11.2 fixes: required tool never called, <code>;</code> in a literal, daily
+     re-seed, web path).</li>
+<li><strong>Integration with models</strong> (<code>pytest -m models</code>): end-to-end RAG on GPU.</li>
+<li><strong>System with the real LLMs</strong> (<code>hello-support bench</code>): 6 cases × N × models, automatic
+     checks and archived answers.</li>
+<li><strong>Why</strong>: what is deterministic (guardrails, contracts, orchestration) is tested
+  deterministically. What depends on the model is <strong>measured</strong>, not "tested green". The scripted
+  LLM makes it possible to reproduce exactly the faulty behaviors observed (answer without the
+  required tool, 46 duplicated calls) and to lock in the fixes.</li>
+<li><strong>Trade-offs</strong>: no CI (out of scope). The benchmark is not run automatically: it needs
+  LM Studio and ~6 min. Keyword checks remain coarse (D-21).</li>
+<li><strong>Skill demonstrated</strong>: Production-grade, reliability.</li>
+</ul>
+<h2 id="d-29-agents-router-and-code-who-decides-what-and-why-there-is-no-loop-between-agents">D-29 — Agents, router and code: who decides what, and why there is no loop between agents<a class="headerlink" href="#d-29-agents-router-and-code-who-decides-what-and-why-there-is-no-loop-between-agents" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-04 · <strong>Milestone</strong>: documentation (no behavior change)</li>
+<li><strong>Need</strong>: make the nature of each block readable. A reader of the diagram asked: "if there
+  are agents, where are the loops?", "is triage an agent?".</li>
+<li><strong>Finding (code)</strong>:</li>
+<li><strong>Agents</strong> = Documentalist and Technician. <code>run_agent</code> loops the LLM over the tools:
+    the model chooses the tool and its arguments, the code executes it and returns the result.
+    The loop makes ≤ 3 LLM calls (<code>MAX_LLM_CALLS</code>), the last one without tools, ≤ 3 tool calls
+    per step. A required tool is retried once if the model ignored it (a second text answer is
+    accepted but flagged, D-17), and the loop stops as soon as there is a text answer.</li>
+<li><strong>Triage = router</strong>: 1 LLM call with a JSON Schema <code>response_format</code> (<code>intent</code>, <code>service</code>),
+    with no tool and no loop. The code derives the graph branch and the tool policy from it (D-17).</li>
+<li><strong>Deterministic code</strong>: loop controls (D-18), post-processing (D-22), reclassification
+    of an outage with no known service as <code>vague</code>.</li>
+<li><strong>Options</strong>: (a) a multi-agent graph with back-edges (the technician can send back to the
+  documentalist, or a supervisor re-arbitrates); (b) <strong>a linear graph, with loops
+  kept inside the agents</strong>.</li>
+<li><strong>Choice</strong>: (b). Each LangGraph node runs at most once per question.</li>
+<li><strong>Why</strong>: the need is sequential: find the sources, then diagnose. A back-edge between agents
+  would add LLM calls (latency, tokens), a risk of ping-pong, and behavior that is harder to
+  test and bound, with no measured gain on the 6 cases. The internal loops are enough to fix a
+  failed query or tool call. The limits (3 LLM calls, tool budgets, <code>recursion_limit=10</code>)
+  guarantee termination.</li>
+<li><strong>Trade-offs</strong>: if the passages found are poor, the technician cannot request a new search.
+  It flags this in its answer. A documentalist ↔ technician loop, or a supervisor, would be the
+  natural evolution, to be measured with the same benchmark.</li>
+<li><strong>Representation</strong>: diagrams with a legend (agent 🟦, router 🟧, code ⬜, MCP tool 🟩,
+  model 🟪) and a zoom on an agent's loop (README, summary above, SPEC §4).</li>
+<li><strong>Skill demonstrated</strong>: AI agents, agent orchestration, workflow execution.</li>
+</ul>
+<h2 id="d-30-out_of_scope-and-vague-skip-the-documentalist">D-30 — <code>out_of_scope</code> and <code>vague</code> skip the documentalist<a class="headerlink" href="#d-30-out_of_scope-and-vague-skip-the-documentalist" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-04 · <strong>Milestone</strong>: v1.10.0 · <strong>User decision, measured before/after</strong></li>
+<li><strong>Need</strong>: avoid paying for a document search on requests that do not need one. For
+  <code>out_of_scope</code> (another product) and <code>vague</code> (undetermined service), the technician has
+  <strong>no tool</strong> (D-17) and must not assert anything. The passages found by the documentalist
+  were useless at best and misleading at worst: unrelated vector neighbors.</li>
+<li><strong>Options</strong>: (a) stay on the common path (documentalist then technician); (b) <strong>conditional
+  edge triage → technician without tools</strong>; (c) a <strong>fixed</strong> answer generated by the code,
+  without an LLM ("Je ne couvre que PostgreSQL, nginx et Redis…" — "I only cover PostgreSQL,
+  nginx and Redis…", "Quel service ?" — "Which service?").</li>
+<li><strong>Choice</strong>: (b). <code>after_triage</code> sends to the documentalist only the categories that use the
+  knowledge base (<code>NEEDS_RETRIEVAL = {malfunction, documentation}</code>). <code>history</code>, <code>out_of_scope</code> and
+  <code>vague</code> go straight to the technician. An outage with no known service, reclassified as <code>vague</code>
+  by the code, also takes this shortcut.</li>
+<li><strong>Why (b) rather than (c)</strong>: (c) would be even faster (0 LLM calls), but a fixed text adapts
+  neither to the language of the question nor to its content. The technician names the
+  out-of-scope product ("je n'ai pas d'informations sur Kafka" — "I have no information about
+  Kafka") and asks a suitable clarifying question ("quel service, quel symptôme ?" — "which
+  service, which symptom?"). (b) changes only one graph edge and keeps the shared
+  post-processing and the same checks. It is the simplest change that remains correct.</li>
+<li><strong>Measurements</strong> (same conditions before/after, 5 runs per case and per model, warm;
+  <code>docs/BENCH.md</code> § v1.10.0):</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Category</th>
+<th>Pass rate</th>
+<th>p50 latency</th>
+<th>LLM calls</th>
+<th>Tokens in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen3-4B</td>
+<td>out_of_scope (Kafka)</td>
+<td>5/5 → 5/5</td>
+<td>1.26 → 0.82 s (−35%)</td>
+<td>3 → 2</td>
+<td>1,139 → 724</td>
+</tr>
+<tr>
+<td>Qwen3-4B</td>
+<td>vague ("ça marche pas")</td>
+<td>5/5 → 5/5</td>
+<td>3.07 → 0.44 s (−86%)</td>
+<td>4 → 2</td>
+<td>2,150 → 710</td>
+</tr>
+<tr>
+<td>Qwen2.5-7B</td>
+<td>out_of_scope (Kafka)</td>
+<td>5/5 → 5/5</td>
+<td>1.96 → 2.02 s (+3%)</td>
+<td>3 → 2</td>
+<td>1,136 → 724</td>
+</tr>
+<tr>
+<td>Qwen2.5-7B</td>
+<td>vague ("ça marche pas")</td>
+<td>5/5 → 5/5</td>
+<td>3.87 → 1.74 s (−55%)</td>
+<td>4 → 2</td>
+<td>1,968 → 710</td>
+</tr>
+</tbody>
+</table>
+<p>Full benchmark (6 cases × 3, each model): 4B 15/18 → 15/18, 7B 18/18 → 17/18. The 7B gap
+  comes from C6 (<code>malfunction</code> path, <strong>unchanged</strong>). Over 10 additional runs, old and new
+  code both score 8/10, so the gap is not a regression of the routing change. Same for C3 with
+  the 4B (old 5/8, new 7/8).</p>
+<p><strong>Correction (v1.11.2, review F-3)</strong>: this account first attributed both 7B failures on C6 to
+  wording only. In the 10-run control on the new code (<code>docs/bench/bench-20261004-124927.md</code>)
+  the two failures are different:
+  - run 1, check "says the check failed": the wording "statut indéterminé… limitation de
+    l'outil" ("undetermined status… tool limitation") was not recognized by the keyword check;
+  - run 3, check "no status asserted": the 7B wrote "il semble que le serveur Redis soit en
+    cours d'exécution mais refuse les connexions" ("the Redis server seems to be running but
+    refuses connections"), an <strong>invented observation</strong> after a tool failure.</p>
+<p>The old check flagged run 3 for the wrong sentence (a suggested check, "vérifiez que le
+  service Redis est en cours d'exécution") and would have missed the real, hedged claim
+  ("soit"). v1.11.2 fixes <code>asserts_status</code> in <code>cases.py</code>: suggested checks ("vérifiez que",
+  "assurez-vous que", "make sure", "check that", "ensure", "verify that") are no longer counted as
+  claims, and hedged claims ("soit", "semble être", "seems to be", "appears to be") are
+  (<code>tests/test_cases_postprocess.py::test_status_assertion_ignores_suggested_checks_and_catches_hedged_claims</code>).
+  Re-scoring every archived run with the fixed check changes only 2 rows: the two 7B C6
+  failures of the full v1.11.2 run (<code>bench-20261004-190049.md</code>), both "assurez-vous que le
+  service est en cours d'exécution", i.e. false positives; the 7B moves from 16/18 raw to 18/18
+  re-scored. A new 10-run 7B C6 control on v1.11.2 with the fixed check
+  (<code>bench-20261004-190503.md</code>) scores 10/10. In short: the 7B did invent a status once in the
+  v1.10.0 control (1/10), and did not in the 13 v1.11.2 runs. The 4B scores 1/3 on C6 in the
+  full v1.11.2 run (<code>bench-20261004-185627.md</code>: 2× "says the check failed", 1× "exact
+  citations").
+- <strong>Trade-offs / findings</strong>:
+  - For <code>out_of_scope</code> with the 7B, <strong>no latency gain</strong>. The old documentalist already did not
+    search (1 short LLM call), and the technician's answer (~100 tokens) dominates. The gain is
+    then limited to input tokens (−36%).
+  - The technician no longer sees a "brief" for these categories. It did not need one: it
+    receives the question, the category and an explicit instruction.
+  - A triage that wrongly classifies a real outage as <code>vague</code> now also loses the search. The
+    risk already existed (no status tool), and triage scores 12/12 on the control set
+    (D-24, measured ad hoc, raw output not archived).
+- <strong>Rollback</strong>: tag <code>pre-1.10.0</code> (v1.9.3); the change is contained in <code>after_triage</code>.
+- <strong>Skill demonstrated</strong>: orchestration, latency/cost, evaluate → engineering plan.</p>
+<h2 id="d-31-web-demo-the-real-pipeline-a-live-trace-one-question-at-a-time">D-31 — Web demo: the real pipeline, a live trace, one question at a time<a class="headerlink" href="#d-31-web-demo-the-real-pipeline-a-live-trace-one-question-at-a-time" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Date</strong>: 2026-10-04 · <strong>Milestone</strong>: v1.11.0</li>
+<li><strong>Need</strong>: show the system in a browser, which a terminal cannot do. It must show the triage
+  category, the path through the graph, each agent's loop, the SQL written by the model and its
+  rows, the guardrails, all <strong>without duplicating the logic</strong>.</li>
+<li><strong>Options</strong>: (a) FastAPI + WebSocket; (b) <strong>Starlette + Server-Sent Events</strong> and a framework-free
+  HTML/JS page; (c) Gradio or Streamlit.</li>
+<li><strong>Choice</strong>: (b). <code>webapp.py</code> calls <code>workflow.run_request</code> and relays to the browser, over SSE, each
+  trace event already emitted by the graph (<code>on_event</code>). The page (<code>static/</code>) only displays
+  them.</li>
+<li><strong>Why</strong>:</li>
+<li>SSE is enough, because the stream flows in one direction only (server → browser); it is native
+    in the browser (<code>EventSource</code>) and easy to test;</li>
+<li>Starlette and uvicorn are already MCP dependencies: no new heavy library;</li>
+<li>Gradio or Streamlit would have imposed their layout and hidden the trace, which is precisely
+    the point of the demo.</li>
+<li><strong>Robustness choices</strong>:</li>
+<li><strong>one question at a time</strong>: an <code>asyncio</code> lock; subsequent questions wait in a queue and see
+    their position. A single 8 GB GPU and <code>numParallelSessions = 1</code> on the LM Studio side would
+    make concurrency illusory anyway;</li>
+<li><strong>a single warm MCP server</strong>, shared: the RAG models load once (~30 s) at
+    startup, not on every question;</li>
+<li><strong>scenario switched warm</strong> via <code>HS_SCENARIO_FILE</code>, a small extension point of <code>data_store</code>
+    tested on its own: restarting the tool server on each switch would have cost ~30 s;</li>
+<li><strong>clear errors</strong> (LM Studio unreachable, model missing), a <strong>maximum time</strong> per question,
+    validated parameters (length, model and scenario on an allowlist).</li>
+<li><strong>HTTP API</strong> (<code>webapp.create_app</code>):</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /</code></td>
+<td>the demo page (<code>static/index.html</code>)</td>
+</tr>
+<tr>
+<td><code>GET /api/health</code></td>
+<td>JSON: version, tool server state (<code>starting</code>, <code>loading</code>, <code>ready</code>, <code>error</code>), <code>busy</code>, <code>waiting</code>, LM Studio status (reachable, available and loaded models), model ids</td>
+</tr>
+<tr>
+<td><code>GET /api/config</code></td>
+<td>JSON: models, scenarios, the six cases, <code>docs_url</code></td>
+</tr>
+<tr>
+<td><code>GET /api/ask?question=&amp;model=slm\|large&amp;scenario=stopped\|running\|tool_error</code></td>
+<td>a Server-Sent Events stream: <code>accepted</code>, <code>queued</code> (position), <code>status</code>, <code>trace</code> (each graph event), <code>result</code>, <code>error</code>, <code>done</code></td>
+</tr>
+</tbody>
+</table>
+<p>The question must be 1–500 characters (otherwise HTTP 400, as for an unknown model or
+  scenario). A keep-alive comment is sent every 15 s. Each web question is saved under <code>runs/</code>
+  like a CLI run. Environment variables: <code>HS_WEB_TIMEOUT_S</code> (per-question timeout, 240 s),
+  <code>HS_WEB_QUEUE_TIMEOUT_S</code> (maximum wait in the queue, 300 s), <code>HS_DOCS_URL</code> (documentation links
+  on the page). Since v1.11.2, the path in the result lists "post-processing" only when the
+  technician produced an answer.
+- <strong>Trade-offs</strong>:
+  - no authentication: the demo is intended for a local network, and <code>127.0.0.1</code> is the default
+    address;
+  - the scenario switch goes through a shared file; this is correct thanks to the lock, but it
+    would be global state to replace with a request parameter in a multi-user version;
+  - a running demo keeps its warm MCP tool server, and therefore the retrieval models (~1 GB,
+    D-10), on the GPU: stop it before running a benchmark on an 8 GB card.
+- <strong>Verification</strong>: 7 tests (<code>tests/test_web.py</code>, scripted LLM and in-memory MCP server: SSE
+  stream, SQL rows, path, scenario switch, LM Studio absent, missing model, queue). In Edge,
+  <strong>all 6 cases × 2 models pass</strong> (category, path, trace, answer, sources), on desktop and
+  on mobile.
+- <strong>Skill demonstrated</strong>: production-grade software, observability, AI agents (shown live).</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../SPEC/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Specification">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Specification
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../BENCH/" class="md-footer__link md-footer__link--next" aria-label="Next: Measurements">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Measurements
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Stéphane Hercot — MIT License
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "navigation.indexes", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../assets/diagram-center.js"></script>
+      
+    
+  </body>
+</html>
