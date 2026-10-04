@@ -45,8 +45,13 @@ SEED_INCIDENTS = [
 
 
 def active_scenario() -> str:
+    """Scenario from HS_SCENARIO_FILE (switchable at runtime, used by the web demo), else HS_SCENARIO, else default."""
     data = json.loads(SCENARIOS_FILE.read_text(encoding="utf-8"))
-    name = os.getenv("HS_SCENARIO") or data["default"]
+    name = None
+    scenario_file = os.getenv("HS_SCENARIO_FILE")
+    if scenario_file and Path(scenario_file).exists():
+        name = Path(scenario_file).read_text(encoding="utf-8").strip() or None
+    name = name or os.getenv("HS_SCENARIO") or data["default"]
     if name not in data["scenarios"]:
         raise ValueError(f"unknown scenario {name!r}; known: {', '.join(data['scenarios'])}")
     return name

@@ -270,3 +270,7 @@ Contrôle rapide après réglage, code v1.10.0 :
 Les latences sont de nouveau stables. Avec 1 seul emplacement parallèle, la mesure de débit à
 concurrence 4 (section J5, faite avec 4 emplacements) ne serait plus reproduite telle quelle : les
 requêtes seraient servies l'une après l'autre.
+
+### Non-régression v1.11.0 (démo web)
+
+Bench rapide après l'ajout de la démo web (`hello-support bench --models slm large --runs 1`, réglages LM Studio stabilisés) : **6/6 pour les deux modèles**, latence p50 4,9 s (4B) et 7,3 s (7B). Rapport : [`145500`](bench/bench-20261004-145500.md).

@@ -153,6 +153,14 @@ def cmd_throughput(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_web(args: argparse.Namespace) -> int:
+    """Web demo: live trace of one question in the browser (Server-Sent Events)."""
+    from .webapp import serve
+
+    serve(host=args.host, port=args.port)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="hello-support", description="Hello-world troubleshooting assistant.")
     p.add_argument("--version", action="version", version=f"hello-support {__version__}")
@@ -181,6 +189,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--concurrency", nargs="*", type=int, default=[1, 4])
     s.add_argument("--requests", type=int, default=8)
     s.set_defaults(func=cmd_throughput)
+    s = sub.add_parser("web", help="web demo with a live trace (http://127.0.0.1:5179 by default)")
+    s.add_argument("--host", default="127.0.0.1", help="bind address (0.0.0.0 to serve the local network)")
+    s.add_argument("--port", type=int, default=5179)
+    s.set_defaults(func=cmd_web)
     return p
 
 

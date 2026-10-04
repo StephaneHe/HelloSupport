@@ -460,12 +460,15 @@ name = "hello-support"
 source = { editable = "." }
 dependencies = [
     { name = "chromadb" },
+    { name = "httpx" },
     { name = "langgraph" },
     { name = "mcp" },
     { name = "openai" },
     { name = "python-dotenv" },
     { name = "sentence-transformers" },
+    { name = "starlette" },
     { name = "torch" },
+    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -477,12 +480,15 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "chromadb", specifier = ">=1.0" },
+    { name = "httpx", specifier = ">=0.27" },
     { name = "langgraph", specifier = ">=0.6" },
     { name = "mcp", specifier = ">=1.10" },
     { name = "openai", specifier = ">=1.40" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "sentence-transformers", specifier = ">=3.0" },
+    { name = "starlette", specifier = ">=0.40" },
     { name = "torch", specifier = ">=2.6", index = "https://download.pytorch.org/whl/cu124" },
+    { name = "uvicorn", specifier = ">=0.30" },
 ]
 
 [package.metadata.requires-dev]

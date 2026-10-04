@@ -26,6 +26,7 @@ Convention : `(+ date)` = ajout, `(✔ date)` = fait. Jalons définis dans `docs
 - [x] D-29 et schémas avec légende : agents (boucle LLM ↔ outils) vs routeur vs code `(+ 2026-10-04)` `(✔ 2026-10-04)`
 - [x] D-30 : `out_of_scope` et `vague` sautent le documentaliste ; bench avant/après, aucune régression `(+ 2026-10-04)` `(✔ 2026-10-04)`
 - [x] Réglages LM Studio par modèle (auto-fit off, contexte 8192, parallélisme 1) : latences stabilisées `(+ 2026-10-04)` `(✔ 2026-10-04)`
+- [x] Démo web (`hello-support web`, servie en local) : trace en direct, 6 cas × 2 modèles vérifiés dans Edge `(+ 2026-10-04)` `(✔ 2026-10-04)`
 - [ ] Vérifications C6/C3 sensibles à la formulation (« statut indéterminé », citations) : envisager un contrôle sémantique `(+ 2026-10-04)`
 
 ## Pistes (hors hello world, cf. SPEC §10)

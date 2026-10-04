@@ -2,11 +2,11 @@
 
 **A local-only, multi-agent troubleshooting assistant: LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, and a measured 4B-vs-7B model comparison. Runs on a single 8 GB GPU.**
 
-[![Version](https://img.shields.io/badge/version-1.10.1-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.11.0-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Local only](https://img.shields.io/badge/runs-100%25%20local-orange)](#requirements)
-[![Tests](https://img.shields.io/badge/tests-40%20passing-brightgreen)](#tests)
+[![Tests](https://img.shields.io/badge/tests-52%20passing-brightgreen)](#tests)
 
 HelloSupport is a deliberately small "hello world" project. It exercises the building blocks
 of modern LLM applications **end to end, for real, and with measurements**. Ask it a support
@@ -24,7 +24,7 @@ Everything runs locally: models served by LM Studio, embeddings on the GPU, no c
 ## Table of contents
 
 - [Architecture](#architecture) · [Features](#features) · [Measured results](#measured-results)
-- [Requirements](#requirements) · [Installation](#installation) · [Usage](#usage) · [Demo](#demo) · [Tests](#tests)
+- [Requirements](#requirements) · [Installation](#installation) · [Usage](#usage) · [Demo](#demo) · [Web demo](#web-demo) · [Tests](#tests)
 - [Repository layout](#repository-layout) · [Design decisions](#design-decisions) · [Known limitations](#known-limitations) · [Roadmap](#roadmap)
 - [License](#license) · [Author](#author)
 
@@ -213,6 +213,7 @@ Configuration is optional (environment variables or a `.env` file, see [`.env.ex
 | `hello-support search "<text>"` | retrieval only: vector candidates, cosine vs rerank scores, relevance flag |
 | `hello-support bench [--models slm large] [--runs 3] [--cases C1 C4]` | the six validation cases → `docs/bench/*.md` + `runs/bench-*.json` |
 | `hello-support throughput [--concurrency 1 4] [--requests 8]` | serving throughput and latency under concurrency |
+| `hello-support web [--host 0.0.0.0] [--port 5179]` | browser demo with a live trace (see [Web demo](#web-demo)) |
 | `hello-support smoke [slm\|large]` | model server check (chat + tool call) |
 | `hello-support-mcp` | the MCP tool server alone (stdio) |
 | `hello-support --version` | version |
@@ -253,6 +254,35 @@ The first question takes ~30 s (the tool server loads the retrieval models), the
 question. An annotated transcript, including a guardrail rejecting an answer that skipped a
 required tool call, is in [`docs/DEMO.md`](docs/DEMO.md).
 
+## Web demo
+
+![Web demo: live trace of a PostgreSQL failure question — triage, both agents, MCP tool calls and guardrails](docs/img/web-demo.png)
+
+A single page to try the assistant in a browser and **watch it work**. It runs the real pipeline
+(same LangGraph graph, agents, MCP tools and LM Studio models) and streams every step live.
+
+```bash
+uv run hello-support web                      # http://127.0.0.1:5179
+uv run hello-support web --host 0.0.0.0       # reachable from your local network
+```
+
+- **Ask** in English or French, pick the model (4B / 7B) and the simulated scenario (`stopped`, `running`, `tool_error`), or replay one of the **six validation cases** in one click.
+- **Live trace** (Server-Sent Events):
+  - the triage category and the path through the graph, with skipped steps greyed out;
+  - each agent's LLM calls (latency, tokens, tools offered and proposed);
+  - MCP tool calls with their arguments, **the SQL the model wrote and the rows it got back**;
+  - guardrails as they fire (rejected answer → retry, dropped duplicate calls, last call without tools).
+- **Answer** with its cited sources, plus metrics: time, LLM calls, tokens, tool calls.
+- **Robust by design**:
+  - one question at a time, later ones wait in a queue and see their position;
+  - a clear message when LM Studio is down or a model is missing;
+  - a per-question timeout;
+  - one warm MCP tool server shared by all questions, so the retrieval models load once (~30 s, first question only).
+- Optional: set `HS_DOCS_URL` to link the page to a local copy of the documentation (sources and architecture).
+
+The page is plain HTML/CSS/JS (`src/hello_support/static/`) served by Starlette (`webapp.py`).
+Nothing in it re-implements the pipeline.
+
 ## Tests
 
 ```bash
@@ -282,6 +312,8 @@ src/hello_support/
   postprocess.py    citation normalisation, simulation note
   cases.py          the six validation cases and their checks
   benchmark.py      benchmark, throughput, cost estimate, reports
+  webapp.py         web demo: Starlette app, SSE live trace, single-question queue
+  static/           web demo page (HTML, CSS, JS)
 data/               knowledge base (3 sheets), scenarios.json
 tests/              offline test suite
 tools/md2pdf.py     Markdown → PDF export (headless Edge/Chrome; Mermaid → SVG via mermaid-cli)
@@ -290,7 +322,7 @@ docs/               specification, design decisions, benchmark, demo (French)
 
 ## Design decisions
 
-All **30 design and development decisions** are documented ADR-style (need → options →
+All **31 design and development decisions** are documented ADR-style (need → options →
 choice → rationale → trade-offs → skill demonstrated) in
 [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) ([PDF](docs/DESIGN_DECISIONS.pdf)). The
 specification is in [`docs/SPEC.md`](docs/SPEC.md) ([PDF](docs/SPEC.pdf)). These documents are in French.

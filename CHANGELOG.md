@@ -8,6 +8,17 @@ Every release bumps the version **and** adds an entry here.
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-04
+
+### Added
+- **Web demo** (`hello-support web`, default `http://127.0.0.1:5179`): one page that runs the real pipeline and streams its live trace over Server-Sent Events — triage category and path through the graph, each agent's LLM calls, MCP tool calls with the SQL written by the model and the rows returned, guardrails as they fire — then the answer with its cited sources and metrics. Model and scenario selectors, the six validation cases as one-click buttons, light/dark mode, mobile layout.
+- Robustness: one question at a time (queue with position), clear errors when LM Studio is down or a model is missing, per-question timeout, one warm MCP tool server shared by all questions.
+- `HS_SCENARIO_FILE`: the simulated scenario can be switched at runtime (used by the demo).
+- Tests: web endpoints, SSE stream, scenario switching, LM Studio offline / model missing, queue (`tests/test_web.py`); `docs/DESIGN_DECISIONS.md` D-31.
+
+### Changed
+- Direct dependencies declared for the demo: `starlette`, `uvicorn`, `httpx` (already installed through `mcp`).
+
 ## [1.10.1] - 2026-10-04
 
 ### Added
@@ -118,7 +129,8 @@ Every release bumps the version **and** adds an entry here.
 ### Added
 - Initial project scaffold.
 
-[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.10.1...HEAD
+[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/StephaneHe/HelloSupport/compare/v1.10.1...v1.11.0
 [1.10.1]: https://github.com/StephaneHe/HelloSupport/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.3...v1.10.0
 [1.9.3]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.2...v1.9.3

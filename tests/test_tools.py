@@ -58,3 +58,16 @@ def test_query_incidents_select_and_rejection():
 def test_search_docs_rejects_empty_query():
     is_error, text = call("search_docs", {"query": "  "})
     assert is_error and "non-empty" in text
+
+
+def test_scenario_can_be_switched_at_runtime_with_a_file(monkeypatch, tmp_path):
+    scenario_file = tmp_path / "scenario.txt"
+    monkeypatch.setenv("HS_SCENARIO_FILE", str(scenario_file))
+    monkeypatch.setenv("HS_SCENARIO", "stopped")
+    scenario_file.write_text("running", encoding="utf-8")
+    assert json.loads(call("get_service_status", {"service_name": "postgres"})[1])["status"] == "running"
+    scenario_file.write_text("tool_error", encoding="utf-8")
+    is_error, text = call("get_service_status", {"service_name": "postgres"})
+    assert is_error and "simulated tool failure" in text
+    scenario_file.unlink()  # missing file: falls back to HS_SCENARIO
+    assert json.loads(call("get_service_status", {"service_name": "postgres"})[1])["status"] == "stopped"

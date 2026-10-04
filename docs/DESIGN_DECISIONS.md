@@ -7,7 +7,7 @@
 >   au moment où la décision est prise (avec ce qu'on savait alors).
 > - **À la fin (J5)** : consolidation. Synthèse en tête, entrées relues à la lumière des
 >   mesures ([`BENCH.md`](BENCH.md)), export PDF ([`DESIGN_DECISIONS.pdf`](DESIGN_DECISIONS.pdf)).
->   **Statut : consolidé le 2026-10-02 (v1.8.0), 28 décisions ; D-29 et D-30 ajoutées le 2026-10-04.**
+>   **Statut : consolidé le 2026-10-02 (v1.8.0), 28 décisions ; D-29 à D-31 ajoutées le 2026-10-04.**
 >
 > Format d'une entrée : **Besoin → Options envisagées → Choix → Pourquoi → Compromis /
 > limites → Compétence visée**. Une décision révisée n'est pas effacée : elle passe en
@@ -196,6 +196,7 @@ périmètre : systèmes distribués, scale réel, leadership (cf. [`SPEC.md`](SP
 | D-28 | Stratégie de tests : unitaires hors ligne, intégration modèles, bench système | J5 | Acceptée | Production-grade, reliability |
 | D-29 | Agents (boucle LLM ↔ outils) vs routeur (triage) vs code ; graphe linéaire, aucune boucle entre agents | doc | Acceptée | AI agents, orchestration |
 | D-30 | `out_of_scope` et `vague` sautent le documentaliste (arête conditionnelle), mesuré avant/après | v1.10.0 | Acceptée | Orchestration, latency/cost |
+| D-31 | Démo web : Starlette + SSE sur le vrai pipeline, une question à la fois, serveur MCP chaud | v1.11.0 | Acceptée | Production-grade, observability |
 
 ---
 
@@ -925,3 +926,41 @@ périmètre : systèmes distribués, scale réel, leadership (cf. [`SPEC.md`](SP
     (D-24).
 - **Retour arrière** : tag `pre-1.10.0` (v1.9.3) ; le changement tient dans `after_triage`.
 - **Compétence visée** : orchestration, latency/cost, evaluate → engineering plan.
+
+## D-31 — Démo web : le vrai pipeline, une trace en direct, une question à la fois
+
+- **Date** : 2026-10-04 · **Jalon** : v1.11.0
+- **Besoin** : montrer le système dans un navigateur, ce qu'un terminal ne permet pas. On doit y voir
+  la catégorie du triage, le chemin dans le graphe, la boucle de chaque agent, le SQL écrit par le
+  modèle et ses lignes, les garde-fous, et tout cela **sans dupliquer la logique**.
+- **Options** : (a) FastAPI + WebSocket ; (b) **Starlette + Server-Sent Events** et une page HTML/JS
+  sans framework ; (c) Gradio ou Streamlit.
+- **Choix** : (b). `webapp.py` appelle `workflow.run_request` et relaie au navigateur, en SSE, chaque
+  événement de trace déjà émis par le graphe (`on_event`). La page (`static/`) ne fait que les
+  afficher.
+- **Pourquoi** :
+  - SSE suffit, car le flux va dans un seul sens (serveur → navigateur) ; il est natif dans le
+    navigateur (`EventSource`) et facile à tester ;
+  - Starlette et uvicorn sont déjà des dépendances de MCP : aucune nouvelle bibliothèque lourde ;
+  - Gradio ou Streamlit auraient imposé leur mise en page et caché la trace, qui est justement
+    l'intérêt de la démo.
+- **Choix de robustesse** :
+  - **une question à la fois** : un verrou `asyncio`, les suivantes attendent en file et voient leur
+    position. Un seul GPU de 8 Go et `numParallelSessions = 1` côté LM Studio rendraient de toute
+    façon la concurrence illusoire ;
+  - **un seul serveur MCP chaud**, partagé : les modèles du RAG se chargent une fois (~30 s) au
+    démarrage, pas à chaque question ;
+  - **scénario changé à chaud** via `HS_SCENARIO_FILE`, petit point d'extension de `data_store`
+    testé seul : relancer le serveur d'outils à chaque changement aurait coûté ~30 s ;
+  - **erreurs claires** (LM Studio injoignable, modèle absent), **délai maximal** par question,
+    paramètres validés (longueur, modèle et scénario sur liste blanche).
+- **Compromis** :
+  - pas d'authentification : la démo est prévue pour un réseau local, et `127.0.0.1` est l'adresse
+    par défaut ;
+  - le changement de scénario passe par un fichier partagé ; c'est correct grâce au verrou, mais ce
+    serait un état global à remplacer par un paramètre de requête dans une version multi-utilisateur.
+- **Vérification** : 7 tests (`tests/test_web.py`, LLM scripté et serveur MCP en mémoire : flux
+  SSE, lignes SQL, chemin, changement de scénario, LM Studio absent, modèle manquant, file
+  d'attente). Dans Edge, les **6 cas × 2 modèles passent** (catégorie, chemin, trace, réponse,
+  sources), en bureau et en mobile.
+- **Compétence visée** : production-grade software, observability, AI agents (montrés en direct).

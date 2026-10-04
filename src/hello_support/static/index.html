@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HelloSupport — live demo</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">HS</span>
+    <div>
+      <h1>HelloSupport <span class="muted">· live demo</span></h1>
+      <p class="tagline">Multi-agent troubleshooting assistant — LangGraph, RAG + reranking, MCP tools, read-only SQL, local LLMs</p>
+    </div>
+  </div>
+  <nav class="links">
+    <span id="version" class="badge">v…</span>
+    <span id="health" class="pill">checking…</span>
+    <a id="docs-link" href="#" target="_blank" rel="noopener" hidden>Docs</a>
+    <a id="arch-link" href="#" target="_blank" rel="noopener" hidden>Architecture</a>
+    <a href="https://github.com/StephaneHe/HelloSupport" target="_blank" rel="noopener">GitHub</a>
+    <button id="theme" class="ghost" title="Toggle light/dark">◐</button>
+  </nav>
+</header>
+
+<main class="grid">
+  <section class="col">
+    <div class="card">
+      <h2>Ask a question</h2>
+      <form id="ask-form">
+        <textarea id="question" rows="3" maxlength="500" required
+          placeholder="e.g. My application can no longer connect to PostgreSQL. What should I check?"></textarea>
+        <div class="row">
+          <label>Model <select id="model"></select></label>
+          <label>Scenario <select id="scenario"></select></label>
+        </div>
+        <button id="ask-btn" type="submit" class="primary">Ask</button>
+        <p class="hint">Questions in English or French. Service statuses are <b>simulated</b>; nothing real is touched.</p>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Validation cases <span class="muted small">one click = replay</span></h2>
+      <div id="cases" class="cases"></div>
+    </div>
+
+    <div class="card">
+      <h2>Path through the graph</h2>
+      <div id="path" class="path">
+        <div class="step router" data-step="triage"><b>Triage</b><small>ROUTER · 1 LLM call</small></div>
+        <div class="arrow">→</div>
+        <div class="step agent" data-step="documentalist"><b>Documentalist</b><small>AGENT · search_docs</small></div>
+        <div class="arrow">→</div>
+        <div class="step agent" data-step="technician"><b>Technician</b><small>AGENT · tools by category</small></div>
+        <div class="arrow">→</div>
+        <div class="step code" data-step="post-processing"><b>Post-processing</b><small>CODE · no LLM</small></div>
+      </div>
+      <div id="category" class="category muted">The triage picks 1 of 5 fixed categories:
+        <code>malfunction</code> · <code>documentation</code> → documentalist → technician;
+        <code>history</code> · <code>out_of_scope</code> · <code>vague</code> → technician directly.</div>
+      <div class="legend">
+        <span class="lg router">router</span><span class="lg agent">agent (LLM ↔ tools loop, ≤ 3 LLM calls)</span>
+        <span class="lg code">code</span><span class="lg tool">MCP tool</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="col wide">
+    <div class="card">
+      <div class="card-head">
+        <h2>Answer</h2>
+        <span id="run-status" class="pill neutral">idle</span>
+      </div>
+      <div id="answer" class="answer muted">Ask a question or replay a validation case.</div>
+      <div id="sources" class="sources"></div>
+      <div id="metrics" class="metrics"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Live trace</h2>
+        <span class="muted small">every LLM call, tool call and guardrail, as it happens</span>
+      </div>
+      <ol id="trace" class="trace"></ol>
+    </div>
+  </section>
+</main>
+
+<footer class="foot muted small">
+  Local demo · one question at a time · models served by LM Studio on this machine.
+</footer>
+<script src="/static/app.js"></script>
+</body>
+</html>
