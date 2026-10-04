@@ -2,7 +2,7 @@
 
 **A local-only, multi-agent troubleshooting assistant: LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, and a measured 4B-vs-7B model comparison. Runs on a single 8 GB GPU.**
 
-[![Version](https://img.shields.io/badge/version-1.12.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.12.1-blue)](CHANGELOG.md)
 [![Docs](https://github.com/StephaneHe/HelloSupport/actions/workflows/docs.yml/badge.svg)](https://stephanehe.github.io/HelloSupport/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)

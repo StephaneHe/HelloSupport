@@ -8,6 +8,11 @@ Every release bumps the version **and** adds an entry here.
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-10-04
+
+### Fixed
+- Docs workflow: `astral-sh/setup-uv` pinned to `v10.2.0` (the action publishes no `v10` major tag, so the v1.12.0 run failed before building; the 1.12 documentation is published from this release).
+
 ## [1.12.0] - 2026-10-04
 
 ### Added
