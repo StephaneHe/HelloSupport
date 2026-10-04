@@ -4,6 +4,7 @@ Usage: python tools/md2pdf.py docs/SPEC.md docs/DESIGN_DECISIONS.md
 pandoc is not required. The PDF is written next to each Markdown file.
 """
 
+import json
 import re
 import shutil
 import subprocess
@@ -21,6 +22,7 @@ table{border-collapse:collapse;width:100%;margin:.5em 0;font-size:8.5pt}th,td{bo
 vertical-align:top}th{background:#eef}tr{page-break-inside:avoid}
 pre{background:#f6f6f6;padding:6px;line-height:1.15;white-space:pre-wrap}code{font-family:Consolas,monospace;font-size:8.5pt}
 pre code{font-size:7pt}blockquote{color:#555;border-left:3px solid #ccd;margin-left:0;padding-left:.8em}
+p.diagram{text-align:center;page-break-inside:avoid}p.diagram img{max-width:100%;max-height:24cm}
 @page{size:A4;margin:1.4cm 1cm}"""
 
 BROWSERS = [
@@ -32,9 +34,40 @@ BROWSERS = [
 
 def find_browser() -> str:
     for b in BROWSERS:
-        if Path(b).exists() or shutil.which(b):
+        if Path(b).exists():
             return b
+        if shutil.which(b):
+            return shutil.which(b)
     raise SystemExit("no Edge/Chrome found for headless PDF printing")
+
+
+MERMAID = re.compile(r"```mermaid\n(.*?)```", re.S)
+
+
+def mermaid_to_svg(text: str, tmp: Path, browser: str) -> str:
+    """Replace each ```mermaid block by an <img> of its SVG, rendered by mermaid-cli (`mmdc`).
+
+    mmdc drives the same Edge/Chrome through Puppeteer (no Chromium download needed). Without
+    mmdc, the blocks are left as code and a warning is printed.
+    """
+    blocks = MERMAID.findall(text)
+    if not blocks:
+        return text
+    mmdc = shutil.which("mmdc")
+    if not mmdc:
+        print("warning: mmdc (npm i -g @mermaid-js/mermaid-cli) not found; Mermaid left as code", file=sys.stderr)
+        return text
+    config = tmp / "puppeteer.json"
+    config.write_text(json.dumps({"executablePath": browser, "args": ["--no-sandbox"]}), encoding="utf-8")
+    images = []
+    for i, block in enumerate(blocks, start=1):
+        src, svg = tmp / f"diagram-{i}.mmd", tmp / f"diagram-{i}.svg"
+        src.write_text(block, encoding="utf-8")
+        subprocess.run([mmdc, "-p", str(config), "-i", str(src), "-o", str(svg), "-b", "white", "-q"],
+                       check=True, capture_output=True)
+        images.append(f'<p class="diagram"><img src="{svg.name}" alt="diagram {i}"></p>\n')
+    it = iter(images)
+    return MERMAID.sub(lambda m: next(it), text)
 
 
 LIST_ITEM = re.compile(r"^(\s*)([-*]|\d+\.) ")
@@ -57,8 +90,9 @@ def github_lists(text: str) -> str:
 
 
 def render(md_path: Path, browser: str) -> Path:
-    body = markdown.markdown(github_lists(md_path.read_text(encoding="utf-8")), extensions=["tables", "fenced_code"])
     tmp = Path(tempfile.mkdtemp(prefix="md2pdf-"))
+    text = mermaid_to_svg(md_path.read_text(encoding="utf-8"), tmp, browser)
+    body = markdown.markdown(github_lists(text), extensions=["tables", "fenced_code", "md_in_html"])
     html = tmp / (md_path.stem + ".html")
     html.write_text(f'<!doctype html><html lang="fr"><meta charset="utf-8"><title>{md_path.stem}</title>'
                     f"<style>{CSS}</style><body>{body}</body></html>", encoding="utf-8")

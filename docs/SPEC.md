@@ -85,25 +85,30 @@ automatisés passent, le tableau de mesures (§5, J5) est rempli avec des chiffr
 
 ## 4. Architecture
 
-```
-            ┌──────────────── hello-support (process hôte, Python) ────────────────┐
- question → │ cli.py ─► workflow.py (LangGraph StateGraph, état typé, limites)     │
-            │              │                                                       │
-            │      [documentalist] ──► [technician] ──► END  (answer + trace.json) │
-            │              │   agents.py : boucle LLM ↔ tool calls                 │
-            │              ▼                                                       │
-            │        llm.py (client OpenAI-compatible) ──HTTP──► LM Studio :1234   │
-            │              │                                  (SLM 3-4B | 7B, GPU) │
-            │        client MCP (stdio)                                            │
-            └──────────────┼───────────────────────────────────────────────────────┘
-                           ▼
-            ┌──── mcp_server.py (sous-processus, FastMCP) ────┐
-            │ search_docs ─► retrieval.py : ST embeddings     │
-            │               → Chroma (top-5) → cross-encoder  │
-            │               rerank (top-2)   [cuda]           │
-            │ get_service_status ─► data/scenarios.json       │
-            │ query_incidents ─► data/incidents.db (SQLite ro)│
-            └─────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    Q(["question"]) --> CLI
+
+    subgraph HOST["hello-support — processus hôte (Python)"]
+        CLI["cli.py"] --> WF["workflow.py<br/>LangGraph StateGraph, état typé, limites"]
+        WF --> DOC["documentalist"] --> TEC["technician"] --> FIN(["END : answer + trace.json"])
+        AG["agents.py<br/>boucle LLM ↔ tool calls"]
+        LLM["llm.py<br/>client OpenAI-compatible"]
+        MC["client MCP (stdio)"]
+        DOC & TEC -.-> AG
+        AG --> LLM
+        AG --> MC
+    end
+
+    LLM -- "HTTP" --> LMS["LM Studio :1234<br/>SLM 3-4B | 7B, GPU"]
+
+    subgraph SRV["mcp_server.py — sous-processus (FastMCP)"]
+        T1["search_docs"] --> R["retrieval.py : embeddings ST<br/>→ Chroma (top-5) → cross-encoder (top-2), cuda"]
+        T2["get_service_status"] --> SC[("data/scenarios.json")]
+        T3["query_incidents"] --> DB[("data/incidents.db<br/>SQLite lecture seule")]
+    end
+
+    MC --> T1 & T2 & T3
 ```
 
 Arborescence cible :

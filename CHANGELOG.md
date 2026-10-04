@@ -8,6 +8,12 @@ Every release bumps the version **and** adds an entry here.
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-10-04
+
+### Changed
+- Architecture diagrams (README, `docs/SPEC.md`, `docs/DESIGN_DECISIONS.md`) converted from ASCII art to **Mermaid** flowcharts, rendered natively by GitHub.
+- `tools/md2pdf.py` renders Mermaid blocks to SVG with mermaid-cli (`mmdc`, driving the installed Edge/Chrome) and embeds them in the PDFs; `SPEC.pdf` and `DESIGN_DECISIONS.pdf` regenerated.
+
 ## [1.9.0] - 2026-10-02
 
 ### Added
@@ -80,5 +86,6 @@ Every release bumps the version **and** adds an entry here.
 ### Added
 - Initial project scaffold.
 
-[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.1...HEAD
+[1.9.1]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/StephaneHe/HelloSupport/releases/tag/v1.9.0

@@ -2,7 +2,7 @@
 
 **A local-only, multi-agent troubleshooting assistant: LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, and a measured 4B-vs-7B model comparison. Runs on a single 8 GB GPU.**
 
-[![Version](https://img.shields.io/badge/version-1.9.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.9.1-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Local only](https://img.shields.io/badge/runs-100%25%20local-orange)](#requirements)
@@ -30,24 +30,35 @@ Everything runs locally: models served by LM Studio, embeddings on the GPU, no c
 
 ## Architecture
 
-```
-                      ┌────────────────────── host process: hello-support ───────────────────────┐
- question ──────────► │  LangGraph StateGraph (typed shared state, JSON trace)                   │
-                      │                                                                          │
-                      │   triage ──► documentalist ──► technician ──► post-processing ──► answer │
-                      │  (JSON schema)      │       ▲   (tool policy     (citations,             │
-                      │        └── history ─┼───────┘    by intent)       simulation note)       │
-                      │                     │                                                    │
-                      │   LLM client (OpenAI-compatible) ── HTTP ──► LM Studio :1234             │
-                      │                                              Qwen3-4B | Qwen2.5-7B (GPU) │
-                      │   MCP client (stdio)                                                     │
-                      └─────────────┬────────────────────────────────────────────────────────────┘
-                                    ▼
-                      ┌──────── MCP server: hello-support-tools ──────────────────────────────────┐
-                      │ search_docs         Sentence-Transformers (CUDA) → Chroma → cross-encoder │
-                      │ get_service_status  data/scenarios.json  (simulated, never touches a host)│
-                      │ query_incidents     data/incidents.db    (SQLite, read-only, 5 guards)    │
-                      └───────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    Q(["Question (EN / FR)"]) --> T
+
+    subgraph HOST["Host process: hello-support — LangGraph StateGraph, typed shared state"]
+        direction LR
+        T["Triage<br/>structured JSON output"] -->|"other intents"| D["Documentalist<br/>retrieval agent"]
+        T -->|"history"| TE
+        D --> TE["Technician<br/>tool policy by intent"]
+        TE --> P["Post-processing<br/>citations, simulation note"]
+    end
+
+    P --> A(["Answer + JSON trace"])
+    HOST -. "LLM calls (HTTP)" .-> M
+
+    subgraph SERVING["LM Studio :1234 — OpenAI-compatible API"]
+        M["Qwen3-4B | Qwen2.5-7B<br/>Q4_K_M on GPU"]
+    end
+
+    subgraph TOOLS["MCP server: hello-support-tools (stdio)"]
+        direction LR
+        S1["search_docs<br/>embeddings (CUDA) → Chroma<br/>→ cross-encoder rerank"]
+        S2["get_service_status<br/>simulated scenarios (JSON)"]
+        S3["query_incidents<br/>SQLite read-only, 5 guards"]
+    end
+
+    D -- "MCP" --> S1
+    TE -- "MCP" --> S2
+    TE -- "MCP" --> S3
 ```
 
 - **Code decides the structure, the model decides the content.** The graph, the branch taken
@@ -101,7 +112,7 @@ RTX 2070 Super 8 GB. Full method and raw answers: [`docs/BENCH.md`](docs/BENCH.m
 - **GPU**: NVIDIA, 8 GB VRAM is enough (the 7B in Q4_K_M takes ~4.7 GB). CPU works for the retrieval models, slowly.
 - **[LM Studio](https://lmstudio.ai/)** with its `lms` CLI, to download and serve the LLMs.
 - **Python 3.12** and **[uv](https://docs.astral.sh/uv/)**.
-- Optional: **Node.js** to inspect the MCP server with MCP Inspector.
+- Optional: **Node.js** to inspect the MCP server with MCP Inspector, and [mermaid-cli](https://github.com/mermaid-js/mermaid-cli) (`npm i -g @mermaid-js/mermaid-cli`) to rebuild the PDFs with their diagrams.
 - ~10 GB of disk (two LLMs, PyTorch CUDA, retrieval models). No account, no API key.
 
 ## Installation
@@ -213,7 +224,7 @@ src/hello_support/
   benchmark.py      benchmark, throughput, cost estimate, reports
 data/               knowledge base (3 sheets), scenarios.json
 tests/              offline test suite
-tools/md2pdf.py     Markdown → PDF export (headless Edge/Chrome)
+tools/md2pdf.py     Markdown → PDF export (headless Edge/Chrome; Mermaid → SVG via mermaid-cli)
 docs/               specification, design decisions, benchmark, demo (French)
 ```
 

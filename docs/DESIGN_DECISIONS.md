@@ -24,12 +24,16 @@ sources et sépare l'observé de l'hypothétique. Les outils passent par un **se
 l'orchestration par **LangGraph**, les modèles (SLM 4 B / 7 B) sont servis par **LM Studio**
 sur GPU.
 
-```
-question ─► triage (LLM, JSON schema) ─┬─► documentalist ── search_docs ──┐
-                                        │                                   ▼
-                                        └─(history)──────────────► technician ── get_service_status / query_incidents
-                                                                         │            (via MCP stdio)
-                                         post-processing (citations, simulation footer) ─► answer + trace JSON
+```mermaid
+flowchart LR
+    Q(["Question"]) --> T["Triage<br/>LLM, schéma JSON"]
+    T -->|"autres intentions"| D["Documentaliste"]
+    T -->|"history"| TE["Technicien"]
+    D --> TE
+    D <-->|"MCP stdio"| K["search_docs<br/>embeddings → Chroma → reranking"]
+    TE <-->|"MCP stdio"| O["get_service_status<br/>query_incidents"]
+    TE --> P["Post-traitement<br/>citations, mention de simulation"]
+    P --> A(["Réponse + trace JSON"])
 ```
 
 **Table de correspondance composant → décision → compétence visée**
