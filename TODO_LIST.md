@@ -24,6 +24,8 @@ Convention : `(+ date)` = ajout, `(✔ date)` = fait. Jalons définis dans `docs
 
 - [x] Ajouter les entrées `D-xx` à chaque jalon dans `docs/DESIGN_DECISIONS.md` (28 décisions, consolidé + PDF) `(+ 2026-10-02)` `(✔ 2026-10-02)`
 - [x] D-29 et schémas avec légende : agents (boucle LLM ↔ outils) vs routeur vs code `(+ 2026-10-04)` `(✔ 2026-10-04)`
+- [x] D-30 : `out_of_scope` et `vague` sautent le documentaliste ; bench avant/après, aucune régression `(+ 2026-10-04)` `(✔ 2026-10-04)`
+- [ ] Vérifications C6/C3 sensibles à la formulation (« statut indéterminé », citations) : envisager un contrôle sémantique `(+ 2026-10-04)`
 
 ## Pistes (hors hello world, cf. SPEC §10)
 

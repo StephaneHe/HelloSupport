@@ -8,6 +8,16 @@ Every release bumps the version **and** adds an entry here.
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-04
+
+### Changed
+- **Routing**: `out_of_scope` and `vague` questions now skip the documentalist and go straight to the technician (no tool), like `history`; only `malfunction` and `documentation` use retrieval (`NEEDS_RETRIEVAL` in `workflow.py`). Measured before/after on both models: `vague` −55 % (7B) to −86 % (4B) median latency, `out_of_scope` −35 % (4B) / unchanged (7B), 2 LLM calls instead of 3–4, 36–67 % fewer input tokens; no regression on the six validation cases (`docs/BENCH.md`, D-30).
+- Diagrams (README, SPEC §4, DESIGN_DECISIONS) show the new paths of the 5 triage categories; PDFs regenerated.
+
+### Added
+- Tests: `out_of_scope` / `vague` / malfunction-without-service skip the documentalist; `documentation` still uses it.
+- `docs/DESIGN_DECISIONS.md` D-30; `docs/BENCH.md` v1.10.0 before/after section.
+
 ## [1.9.3] - 2026-10-04
 
 ### Added
@@ -102,7 +112,8 @@ Every release bumps the version **and** adds an entry here.
 ### Added
 - Initial project scaffold.
 
-[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.3...HEAD
+[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.10.0...HEAD
+[1.10.0]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.3...v1.10.0
 [1.9.3]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.2...v1.9.3
 [1.9.2]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.1...v1.9.2
 [1.9.1]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.0...v1.9.1

@@ -92,8 +92,8 @@ flowchart TB
     subgraph HOST["hello-support — processus hôte (Python) · graphe LangGraph linéaire, sans boucle entre agents"]
         CLI["cli.py"] --> WF["workflow.py<br/>LangGraph StateGraph, état typé, limites"]
         WF --> TRI{{"<b>ROUTEUR · triage</b> (agents.py)<br/>1 appel LLM, sortie JSON<br/>1 des 5 catégories fixes"}}
-        TRI -->|"malfunction · documentation<br/>out_of_scope · vague"| DOC["<b>AGENT · documentalist</b><br/>search_docs"]
-        TRI -->|"history = historique<br/>des incidents"| TEC
+        TRI -->|"malfunction · documentation"| DOC["<b>AGENT · documentalist</b><br/>search_docs"]
+        TRI -->|"history = historique des incidents<br/>out_of_scope · vague"| TEC
         DOC -->|"↻ boucle LLM ↔ outils"| DOC
         DOC --> TEC["<b>AGENT · technician</b> — outils selon la catégorie<br/>malfunction → get_service_status exigé<br/>history → query_incidents (SQL) exigé<br/>documentation · out_of_scope · vague → aucun outil"]
         TEC -->|"↻ boucle LLM ↔ outils"| TEC

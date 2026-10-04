@@ -7,7 +7,7 @@
 >   au moment où la décision est prise (avec ce qu'on savait alors).
 > - **À la fin (J5)** : consolidation. Synthèse en tête, entrées relues à la lumière des
 >   mesures ([`BENCH.md`](BENCH.md)), export PDF ([`DESIGN_DECISIONS.pdf`](DESIGN_DECISIONS.pdf)).
->   **Statut : consolidé le 2026-10-02 (v1.8.0), 28 décisions ; D-29 ajoutée le 2026-10-04.**
+>   **Statut : consolidé le 2026-10-02 (v1.8.0), 28 décisions ; D-29 et D-30 ajoutées le 2026-10-04.**
 >
 > Format d'une entrée : **Besoin → Options envisagées → Choix → Pourquoi → Compromis /
 > limites → Compétence visée**. Une décision révisée n'est pas effacée : elle passe en
@@ -30,8 +30,8 @@ flowchart TB
 
     subgraph G["Graphe LangGraph — linéaire : chaque étape s'exécute une fois, aucune boucle entre agents"]
         T{{"<b>ROUTEUR · Triage</b><br/>1 appel LLM, sortie JSON contrainte<br/>sans outil · sans boucle"}}
-        T -->|"malfunction = panne sur postgres/nginx/redis<br/>documentation = « que dois-je vérifier ? »<br/>out_of_scope = autre produit<br/>vague = service indéterminé"| D
-        T -->|"history = historique des incidents → SQL<br/>(saute la recherche)"| TE
+        T -->|"malfunction = panne sur postgres/nginx/redis<br/>documentation = « que dois-je vérifier ? »"| D
+        T -->|"history = historique des incidents → SQL<br/>out_of_scope = autre produit<br/>vague = service indéterminé<br/>(sautent la recherche)"| TE
         D["<b>AGENT · Documentaliste</b><br/>outil : search_docs (≤ 2 appels)"]
         D -->|"↻ boucle LLM ↔ outils<br/>≤ 3 appels LLM"| D
         D --> TE
@@ -83,7 +83,8 @@ c'est le cas du Documentaliste et du Technicien. Le *triage* n'est pas un agent 
 Le *post-traitement* et les contrôles de la boucle sont du **code** déterministe (D-18, D-22).
 
 **Pourquoi aucune boucle entre agents ?** Le graphe LangGraph est **linéaire** : triage →
-documentaliste → technicien (ou triage → technicien pour `history`), et chaque nœud s'exécute
+documentaliste → technicien pour `malfunction` et `documentation`, triage → technicien directement pour
+`history`, `out_of_scope` et `vague` (D-30), et chaque nœud s'exécute
 une fois par question. Les seules boucles sont **à l'intérieur** de chaque agent, et elles sont
 bornées (D-18, D-29) :
 
@@ -194,6 +195,7 @@ périmètre : systèmes distribués, scale réel, leadership (cf. [`SPEC.md`](SP
 | D-27 | Structure du code : modules à responsabilité unique, frontière MCP | J5 | Acceptée | Software architecture, Python |
 | D-28 | Stratégie de tests : unitaires hors ligne, intégration modèles, bench système | J5 | Acceptée | Production-grade, reliability |
 | D-29 | Agents (boucle LLM ↔ outils) vs routeur (triage) vs code ; graphe linéaire, aucune boucle entre agents | doc | Acceptée | AI agents, orchestration |
+| D-30 | `out_of_scope` et `vague` sautent le documentaliste (arête conditionnelle), mesuré avant/après | v1.10.0 | Acceptée | Orchestration, latency/cost |
 
 ---
 
@@ -540,6 +542,9 @@ périmètre : systèmes distribués, scale réel, leadership (cf. [`SPEC.md`](SP
   loin »). Le chargement de LangGraph ajoute des dépendances.
 - **Compétence visée** : Orchestration, LangGraph.
 
+- **Révision (v1.10.0, D-30)** : l'arête conditionnelle envoie aussi `out_of_scope` et `vague`
+  directement au technicien ; seules `malfunction` et `documentation` passent par le documentaliste.
+
 ## D-17 — Triage par sortie structurée + politique d'outils appliquée par le code
 
 - **Date** : 2026-10-02 · **Jalon** : J3 · **Décision issue d'un échec mesuré**
@@ -873,3 +878,50 @@ périmètre : systèmes distribués, scale réel, leadership (cf. [`SPEC.md`](SP
 - **Représentation** : schémas avec légende (agent 🟦, routeur 🟧, code ⬜, outil MCP 🟩,
   modèle 🟪) et zoom sur la boucle d'un agent (README, synthèse ci-dessus, SPEC §4).
 - **Compétence visée** : AI agents, agent orchestration, workflow execution.
+
+## D-30 — `out_of_scope` et `vague` sautent le documentaliste
+
+- **Date** : 2026-10-04 · **Jalon** : v1.10.0 · **Décision de l'utilisateur, mesurée avant/après**
+- **Besoin** : ne pas payer une recherche documentaire pour des demandes qui n'en ont pas
+  besoin. Pour `out_of_scope` (autre produit) et `vague` (service indéterminé), le technicien
+  n'a **aucun outil** (D-17) et ne doit rien affirmer. Les passages trouvés par le documentaliste
+  étaient au mieux inutiles, au pire trompeurs : des voisins vectoriels sans rapport.
+- **Options** : (a) rester sur le chemin commun (documentaliste puis technicien) ; (b) **arête
+  conditionnelle triage → technicien sans outil** ; (c) réponse **fixe** générée par le code,
+  sans LLM (« Je ne couvre que PostgreSQL, nginx et Redis… », « Quel service ? »).
+- **Choix** : (b). `after_triage` envoie au documentaliste les seules catégories qui utilisent la
+  base (`NEEDS_RETRIEVAL = {malfunction, documentation}`). `history`, `out_of_scope` et `vague` vont
+  directement au technicien. Une panne sans service connu, reclassée `vague` par le code, prend
+  aussi ce raccourci.
+- **Pourquoi (b) plutôt que (c)** : (c) serait encore plus rapide (0 appel LLM), mais un texte fixe
+  ne s'adapte ni à la langue de la question, ni à son contenu. Le technicien nomme le produit
+  hors périmètre (« je n'ai pas d'informations sur Kafka ») et formule une question de précision
+  adaptée (« quel service, quel symptôme ? »). (b) ne change qu'une arête du graphe, garde le
+  post-traitement commun et les mêmes vérifications. C'est le changement le plus simple qui
+  reste juste.
+- **Mesures** (mêmes conditions avant/après, 5 exécutions par cas et par modèle, à chaud ;
+  `docs/BENCH.md` § v1.10.0) :
+
+  | Modèle | Catégorie | Réussite | Latence p50 | Appels LLM | Tokens in |
+  |---|---|---|---|---|---|
+  | Qwen3-4B | out_of_scope (Kafka) | 5/5 → 5/5 | 1,26 → 0,82 s (−35 %) | 3 → 2 | 1 139 → 724 |
+  | Qwen3-4B | vague (« ça marche pas ») | 5/5 → 5/5 | 3,07 → 0,44 s (−86 %) | 4 → 2 | 2 150 → 710 |
+  | Qwen2.5-7B | out_of_scope (Kafka) | 5/5 → 5/5 | 1,96 → 2,02 s (+3 %) | 3 → 2 | 1 136 → 724 |
+  | Qwen2.5-7B | vague (« ça marche pas ») | 5/5 → 5/5 | 3,87 → 1,74 s (−55 %) | 4 → 2 | 1 968 → 710 |
+
+  Bench complet (6 cas × 3, chaque modèle) : 4B 15/18 → 15/18, 7B 18/18 → 17/18. L'écart du 7B
+  vient de C6 (chemin `malfunction`, **inchangé**). Sur 10 exécutions supplémentaires, ancien et
+  nouveau code font tous deux 8/10 : c'est une instabilité préexistante (formulation « statut
+  indéterminé » non reconnue par une vérification par mots-clés), pas une régression. Idem pour
+  C3 avec le 4B (ancien 5/8, nouveau 7/8).
+- **Compromis / constats** :
+  - Pour `out_of_scope` avec le 7B, **aucun gain de latence**. L'ancien documentaliste ne
+    cherchait déjà pas (1 appel LLM court), et c'est la réponse du technicien (~100 tokens) qui
+    domine. Le gain se limite alors aux tokens d'entrée (−36 %).
+  - Le technicien ne voit plus de « brief » pour ces catégories. Il n'en avait pas besoin : il
+    reçoit la question, la catégorie et une consigne explicite.
+  - Un triage qui classe à tort une vraie panne en `vague` perd désormais aussi la recherche. Le
+    risque existait déjà (pas d'outil de statut) et le triage fait 12/12 sur le jeu de contrôle
+    (D-24).
+- **Retour arrière** : tag `pre-1.10.0` (v1.9.3) ; le changement tient dans `after_triage`.
+- **Compétence visée** : orchestration, latency/cost, evaluate → engineering plan.

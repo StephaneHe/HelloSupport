@@ -1,7 +1,7 @@
 """LangGraph workflow with an explicit shared state:
 
-    START -> triage -> documentalist -> technician -> END
-                  \\-- (history) --------/
+    START -> triage -> documentalist -> technician -> END     (malfunction, documentation)
+                  \\-------------------------/                (history, out_of_scope, vague)
 
 The graph (code) decides the sequence of steps and the tool policy per intent; inside each
 step the model chooses the tool arguments and writes the answer (bounded by agents.run_agent).
@@ -28,6 +28,7 @@ from .toolbox import ToolBox
 
 RUNS_DIR = PROJECT_ROOT / "runs"
 DOCUMENTALIST_TOOLS = {"search_docs": 2}
+NEEDS_RETRIEVAL = {"malfunction", "documentation"}  # triage categories that go through the documentalist
 FALLBACK_ANSWER = ("I could not produce an answer (see errors in the trace). "
                    "No corrective action was executed.")
 
@@ -122,8 +123,9 @@ def build_graph(llm: LLMClient, toolbox: ToolBox, on_event: Callable[[dict], Non
         return END if state.get("status") == "failed" else "technician"
 
     def after_triage(state: State) -> str:
-        # Incident history questions are answered from the database: the knowledge base is not needed.
-        return "technician" if state["route"]["intent"] == "history" else "documentalist"
+        # Only malfunction and documentation answers use the knowledge base. history is answered from
+        # the incidents database; out_of_scope and vague get no tool and no evidence anyway (D-30).
+        return "documentalist" if state["route"]["intent"] in NEEDS_RETRIEVAL else "technician"
 
     g = StateGraph(State)
     g.add_node("triage", triage_node)

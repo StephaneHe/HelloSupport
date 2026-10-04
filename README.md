@@ -2,7 +2,7 @@
 
 **A local-only, multi-agent troubleshooting assistant: LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, and a measured 4B-vs-7B model comparison. Runs on a single 8 GB GPU.**
 
-[![Version](https://img.shields.io/badge/version-1.9.3-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.10.0-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Local only](https://img.shields.io/badge/runs-100%25%20local-orange)](#requirements)
@@ -36,8 +36,8 @@ flowchart TB
 
     subgraph G["LangGraph graph — linear: each step runs once, no loop between agents"]
         T{{"<b>ROUTER · Triage</b><br/>1 LLM call, structured JSON output<br/>no tool · no loop"}}
-        T -->|"malfunction = failure on postgres/nginx/redis<br/>documentation = 'what should I check?'<br/>out_of_scope = another product<br/>vague = service unclear"| D
-        T -->|"history = incident history → SQL<br/>(skips retrieval)"| TE
+        T -->|"malfunction = failure on postgres/nginx/redis<br/>documentation = 'what should I check?'"| D
+        T -->|"history = incident history → SQL<br/>out_of_scope = another product<br/>vague = service unclear<br/>(skip retrieval)"| TE
         D["<b>AGENT · Documentalist</b><br/>tool: search_docs (≤ 2 calls)"]
         D -->|"↻ LLM ↔ tools loop<br/>≤ 3 LLM calls"| D
         D --> TE
@@ -81,8 +81,8 @@ flowchart TB
 | 🟩 green parallelogram | **MCP TOOL** | Exposed by the separate MCP server; called by the agents | — |
 | 🟪 purple cylinder | **MODEL** | LLM served locally by LM Studio (OpenAI-compatible API) | — |
 
-The **LangGraph graph is linear**: triage → documentalist → technician (or triage → technician
-for `history`). Each node runs once per question and nothing flows back from the technician to
+The **LangGraph graph is linear**: triage → documentalist → technician for `malfunction` and `documentation`, triage → technician
+directly for `history`, `out_of_scope` and `vague`. Each node runs once per question and nothing flows back from the technician to
 the documentalist. The only loops are **inside** each agent:
 
 ```mermaid
@@ -154,6 +154,7 @@ RTX 2070 Super 8 GB. Full method and raw answers: [`docs/BENCH.md`](docs/BENCH.m
 
 **Takeaways**
 - The 4B model is ~1.5× faster, but it **invents source ids when a tool fails** (case C6, 3/3). The 7B is therefore the default ([ADR D-25](docs/DESIGN_DECISIONS.md)).
+- Since v1.10.0, `out_of_scope` and `vague` skip retrieval: −55 % to −86 % latency on `vague`, −35 % on `out_of_scope` with the 4B (no change with the 7B), 2 LLM calls instead of 3–4 ([BENCH](docs/BENCH.md), D-30).
 - Running 4 requests concurrently gives **1.6–1.8× more aggregate throughput** but **doubles per-request latency**.
 - Cost is driven by **context** (~2,700 input tokens vs ~370 output), not by model size.
 - Before the fixes of milestone J4, the same benchmark scored 10/18 (7B) and 7/18 (4B). Each fix came from an observed failure (see [Design decisions](#design-decisions)).
@@ -281,7 +282,7 @@ docs/               specification, design decisions, benchmark, demo (French)
 
 ## Design decisions
 
-All **29 design and development decisions** are documented ADR-style (need → options →
+All **30 design and development decisions** are documented ADR-style (need → options →
 choice → rationale → trade-offs → skill demonstrated) in
 [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) ([PDF](docs/DESIGN_DECISIONS.pdf)). The
 specification is in [`docs/SPEC.md`](docs/SPEC.md) ([PDF](docs/SPEC.pdf)). These documents are in French.

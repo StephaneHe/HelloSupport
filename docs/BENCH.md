@@ -194,3 +194,60 @@ Lecture :
 Ce n'est pas un test de charge : une seule machine, LM Studio (outil desktop), 8 requêtes. Un vrai
 test de débit se ferait avec vLLM (batching continu) et une montée en charge progressive
 (« pour aller plus loin »).
+
+## v1.10.0 — `out_of_scope` et `vague` sautent le documentaliste (2026-10-04)
+
+Changement mesuré **avant** (tag `pre-1.10.0`, v1.9.3) et **après** (v1.10.0), dans les mêmes
+conditions : un seul modèle chargé à la fois dans LM Studio (déchargement entre les séries), mesures à chaud.
+Décision : D-30.
+
+### Gain ciblé (5 exécutions par cas et par modèle)
+
+Deux questions : `out_of_scope` = C5 « Mon Kafka est lent, que faire ? », `vague` = « ça marche pas, que faire ? ».
+
+| Modèle | Catégorie | Réussite | Latence p50 | Appels LLM | Tokens in (moy.) | Tokens out (moy.) |
+|---|---|---|---|---|---|---|
+| Qwen3-4B | out_of_scope | 5/5 → 5/5 | 1,26 → **0,82 s (−35 %)** | 3 → 2 | 1 139 → 724 | 79 → 63 |
+| Qwen3-4B | vague | 5/5 → 5/5 | 3,07 → **0,44 s (−86 %)** | 4 → 2 | 2 150 → 710 | 122 → 25 |
+| Qwen2.5-7B | out_of_scope | 5/5 → 5/5 | 1,96 → 2,02 s (+3 %) | 3 → 2 | 1 136 → 724 | 110 → 104 |
+| Qwen2.5-7B | vague | 5/5 → 5/5 | 3,87 → **1,74 s (−55 %)** | 4 → 2 | 1 968 → 710 | 147 → 83 |
+
+Lecture :
+- **`vague`** : l'ancien documentaliste **cherchait** (« it is not working » → 3 passages hors sujet) puis
+  rédigeait un brief, soit 2 appels LLM et un appel d'outil. Ils sont supprimés, d'où −55 à −86 %.
+- **`out_of_scope`** : l'ancien documentaliste répondait déjà **sans chercher** (1 appel court). Le gain
+  est réel avec le 4B (−35 %), nul avec le 7B, dont la réponse du technicien (~100 tokens) domine la
+  durée. Dans tous les cas, les tokens d'entrée baissent de 36 à 67 %.
+
+### Bench complet (6 cas × 3, par modèle)
+
+| | 4B avant | 4B après | 7B avant | 7B après |
+|---|---|---|---|---|
+| Cas réussis | 15/18 | 15/18 | 18/18 | 17/18 |
+| C1 · C2 · C3 · C4 · C5 · C6 | 3·3·3·3·3·0 | 3·3·2·3·3·1 | 3·3·3·3·3·3 | 3·3·3·3·3·2 |
+| C5 latence p50 | 1,43 s | 0,92 s | 2,06 s | 1,72 s |
+| Latence p50 (toutes requêtes) | 9,5 s ⚠ | 4,4 s | 8,2 s | 7,8 s |
+
+**Écarts sur des chemins inchangés, vérifiés comme préexistants** (re-mesurés sur l'ancien et le nouveau code) :
+
+| Cas (chemin) | Modèle | Vérification qui échoue | Ancien code | Nouveau code |
+|---|---|---|---|---|
+| C6 (`malfunction`) | 7B | « dit que la vérification a échoué » : réponse « statut indéterminé… limitation de l'outil » | 8/10 (+ 5/5) | 8/10 (+ 4/5) |
+| C3 (`documentation`) | 4B | citations exactes / en français | 5/8 | 7/8 |
+
+Aucune régression attribuable au changement. Ces deux cas montrent une **instabilité de formulation**
+des modèles malgré la température 0 (lots parallèles de LM Studio), combinée à des vérifications par
+mots-clés grossières (D-21).
+
+⚠ **Conditions machine** : LM Studio charge désormais les modèles avec un contexte par défaut de 25 600
+tokens et 4 emplacements parallèles. L'option `-c` de `lms load` est ignorée, et la configuration de
+LM Studio est hors du projet. La VRAM monte alors à ~7 Go et, avec les modèles d'embedding du serveur
+MCP, le GPU sature par moments : appels LLM à 50–100 s dans la série « 4B avant », puis interruption
+d'une seconde série à 590 s. Les **latences globales du 4B ne sont donc pas comparables** entre les deux
+séries. Les comparaisons ciblées ci-dessus, aux écarts serrés, et les taux de réussite restent valables.
+
+Rapports : avant [`bench-20261004-120325`](bench/bench-20261004-120325.md) (4B),
+[`bench-20261004-121113`](bench/bench-20261004-121113.md) (7B) ; après
+[`bench-20261004-121546`](bench/bench-20261004-121546.md) (4B), [`bench-20261004-122103`](bench/bench-20261004-122103.md)
+(7B) ; contrôles C6 [`122349`](bench/bench-20261004-122349.md) (nouveau ×5), [`122531`](bench/bench-20261004-122531.md)
+(ancien ×5), [`122757`](bench/bench-20261004-122757.md) (ancien ×10), [`124927`](bench/bench-20261004-124927.md) (nouveau ×10) ; contrôles C3 (4B) [`125119`](bench/bench-20261004-125119.md) (nouveau ×8), [`125223`](bench/bench-20261004-125223.md) (ancien ×8).

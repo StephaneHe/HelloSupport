@@ -2,6 +2,8 @@
 
 import asyncio
 
+import pytest
+
 from hello_support.config import Settings
 from hello_support.llm import LLMResult, ToolCall
 from hello_support.mcp_server import server
@@ -51,3 +53,35 @@ def test_required_tool_is_enforced_when_the_model_answers_without_it():
     state = run(llm, "How many postgres incidents?")
     assert state["answer"].startswith("6 incidents.")
     assert any("answer discarded" in e.get("detail", "") for e in state["trace"])
+
+
+@pytest.mark.parametrize("route,question", [
+    ('{"intent": "out_of_scope", "service": null}', "Mon Kafka est lent, que faire ?"),
+    ('{"intent": "vague", "service": null}', "ça marche pas"),
+    ('{"intent": "malfunction", "service": null}', "rien ne marche"),  # reclassified as vague by the code
+])
+def test_out_of_scope_and_vague_skip_the_documentalist(route, question):
+    llm = ScriptedLLM(LLMResult("m", route), LLMResult("m", "Quel service est concerné ?"))
+    state = run(llm, question)
+    assert state["route"]["intent"] in ("out_of_scope", "vague")
+    assert "documentalist" not in state["counters"]  # conditional edge: triage -> technician
+    assert not any(e["agent"] == "documentalist" for e in state["trace"])
+    assert llm.calls[1]["tools"] == []  # the technician gets no tool for these categories
+    assert state["metrics"]["llm_calls"] == 2  # triage + technician only
+    assert state["status"] == "done"
+
+
+def test_documentation_still_goes_through_the_documentalist(monkeypatch):
+    # The retriever is not loaded in-process: make search_docs fail fast instead of waiting for it.
+    import hello_support.mcp_server as srv
+    monkeypatch.setattr(srv._retriever_ready, "wait", lambda timeout=None: True)
+    monkeypatch.setattr(srv, "_retriever_error", RuntimeError("retriever not loaded in tests"))
+    llm = ScriptedLLM(
+        LLMResult("m", '{"intent": "documentation", "service": "redis"}'),
+        LLMResult("m", None, [ToolCall("s", "search_docs", {"query": "redis unreachable"}, "")]),
+        LLMResult("m", "EVIDENCE: none"),
+        LLMResult("m", "Vérifiez redis-cli ping."),
+    )
+    state = run(llm, "Quelles vérifications pour un Redis inaccessible ?")
+    assert "documentalist" in state["counters"]
+    assert [e["agent"] for e in state["trace"] if e["type"] == "start"] == ["documentalist", "technician"]
