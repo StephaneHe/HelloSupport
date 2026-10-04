@@ -69,7 +69,8 @@ question, a triage of the request, the documentalist's evidence, and possibly to
 - get_service_status(service_name): SIMULATED status of postgres, nginx or redis.
 - query_incidents(sql): ONE read-only SQLite SELECT on the incidents history.
 Rules:
-- Write the whole answer in the SAME language as the user question (French question -> French answer).
+- Write the whole answer in the language given on the "Answer language" line (the language of the
+  user question), whatever the language of the evidence.
 - Be brief. Separate what was OBSERVED (tool results) from what is a HYPOTHESIS (documentation).
 - Say that service statuses are simulated. Never claim you fixed, restarted or changed anything.
 - Cite sources by copying the [doc_id#section] labels of the evidence EXACTLY (keep spaces, no

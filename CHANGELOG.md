@@ -17,6 +17,9 @@ Every release bumps the version **and** adds an entry here.
 - `CONTRIBUTING.md`, `SECURITY.md` (private reporting through GitHub), `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), issue and pull request templates.
 - UR-008 and UR-009 in `docs/USER_REQUIREMENTS.md`, with tests: strict documentation build without ignored files, no local-only name in the published site configuration, CI strict build and versioned deployment, no personal host name or path in tracked files, README sections, version badge and valid links.
 
+### Fixed
+- **English questions answered in French** by the 7B (found by testing the README quick start on a fresh clone; 3/3 runs): the code now states the answer language ("Answer language: English|French", same heuristic as the simulation note) in the technician input, and the prompt refers to it. Verified on both models; quick benchmark 4B 5/6, 7B 6/6; 4B C1 and C6 × 5: 5/5 each (`docs/bench/bench-20261004-215221.md`, `-215435.md`). Test: `test_the_code_tells_the_technician_the_answer_language`.
+
 ### Changed
 - README reviewed: quick start (tested from a fresh clone), documentation section and docs badge, contributing and security sections, `uv run` note, design principles heading, `HS_DOCS_URL` example pointing to the public site, US spelling throughout.
 - The language check (UR-006) also covers `CONTRIBUTING.md`, `SECURITY.md` and `CODE_OF_CONDUCT.md`.

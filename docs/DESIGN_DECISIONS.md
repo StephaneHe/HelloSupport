@@ -735,6 +735,13 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
   simulation, nothing was executed, the list of existing sections), the code says, instead of
   hoping the model will say it. This makes the answer verifiable and consistent with the
   expected answer in the initial document.
+- **Revision (v1.12.0)**: the same principle now covers the **answer language**. Testing the
+  README quick start showed the 7B answering an English question in French every time, although
+  the prompt said "same language as the question" (with a French example). The code now detects
+  the language (same heuristic as the footer) and ends the technician input with
+  "Answer language: English|French". Test:
+  `tests/test_workflow_fake_llm.py::test_the_code_tells_the_technician_the_answer_language`;
+  measured in [BENCH](BENCH.md), section v1.12.0.
 - **Trade-offs**: C1's "says simulated" check is now satisfied **by construction**. It tests the
   system, not the model, and that must be stated. Language detection is a heuristic (French
   function words).

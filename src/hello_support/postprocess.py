@@ -40,6 +40,10 @@ def looks_french(text: str) -> bool:
     return len(re.findall(r"\b(le|la|les|est|de|du|des|que|mon|ma|ne|pas|ces|d|l|pour|combien|quelles?)\b", text.lower())) >= 2
 
 
+def answer_language(question: str) -> str:
+    return "French" if looks_french(question) else "English"
+
+
 def simulation_footer(observations: list[dict], question: str) -> str:
     statuses = [o for o in observations if o["tool"] == "get_service_status" and o["ok"]
                 and isinstance(o["result"], dict) and o["result"].get("simulated")]

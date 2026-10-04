@@ -22,7 +22,7 @@ from .agents import (DOCUMENTALIST_PROMPT, TECHNICIAN_POLICY, TECHNICIAN_PROMPT,
                      triage)
 from .config import Settings, load_settings
 from .llm import LLMClient
-from .postprocess import normalize_citations, simulation_footer
+from .postprocess import answer_language, normalize_citations, simulation_footer
 from .retrieval import PROJECT_ROOT
 from .toolbox import ToolBox
 
@@ -100,7 +100,10 @@ def build_graph(llm: LLMClient, toolbox: ToolBox, on_event: Callable[[dict], Non
                 f"Triage: intent={route['intent']}, service={route['service']}\n\n"
                 f"Documentalist brief:\n{state.get('brief') or '(none)'}\n\n"
                 f"Evidence passages:\n{format_evidence(state.get('evidence', []))}\n\n"
-                f"Task: {policy['instruction'].format(service=route['service'])}")
+                f"Task: {policy['instruction'].format(service=route['service'])}\n\n"
+                # Said by the code: with "same language as the question" alone, the 7B answered an
+                # English question in French (the prompt and test data are mostly French examples).
+                f"Answer language: {answer_language(state['question'])}")
         run = await run_agent("technician", TECHNICIAN_PROMPT, user, policy["tools"],
                               llm, state["model"], toolbox, emit, require_tool_first=policy["require_tool"])
         counters = {**state.get("counters", {}),

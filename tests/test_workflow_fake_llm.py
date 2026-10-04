@@ -85,3 +85,14 @@ def test_documentation_still_goes_through_the_documentalist(monkeypatch):
     state = run(llm, "Quelles vérifications pour un Redis inaccessible ?")
     assert "documentalist" in state["counters"]
     assert [e["agent"] for e in state["trace"] if e["type"] == "start"] == ["documentalist", "technician"]
+
+
+@pytest.mark.parametrize("question,language", [
+    ("My app can no longer connect to PostgreSQL. What should I check?", "English"),
+    ("Mon application ne parvient plus à se connecter à PostgreSQL. Que dois-je vérifier ?", "French"),
+])
+def test_the_code_tells_the_technician_the_answer_language(question, language):
+    # Found by the README quick start: the 7B answered this English question in French.
+    llm = ScriptedLLM(LLMResult("m", '{"intent": "vague", "service": null}'), LLMResult("m", "Which service?"))
+    run(llm, question)
+    assert llm.calls[1]["messages"][1]["content"].endswith(f"Answer language: {language}")

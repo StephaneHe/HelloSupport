@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Local only](https://img.shields.io/badge/runs-100%25%20local-orange)](#requirements)
-[![Tests](https://img.shields.io/badge/tests-117%20passing-brightgreen)](#tests)
+[![Tests](https://img.shields.io/badge/tests-121%20passing-brightgreen)](#tests)
 
 HelloSupport is a deliberately small "hello world" project. It exercises the building blocks
 of modern LLM applications **end to end, for real, and with measurements**. Ask it a support
@@ -46,8 +46,9 @@ uv run hello-support ask "My app can no longer connect to PostgreSQL. What shoul
 uv run hello-support web                                   # browser demo on http://127.0.0.1:5179
 ```
 
-The first question takes ~30 s while the retrieval models download and load. Details and the
-8 GB GPU settings are in [Installation](#installation).
+The first `uv sync` downloads PyTorch CUDA (~2.5 GB). The first question takes one to two minutes
+(retrieval models downloaded and loaded, vector index built); later questions take ~20–30 s from the
+command line and 2–15 s in the web demo. Details and the 8 GB GPU settings are in [Installation](#installation).
 
 ## Architecture
 
@@ -337,7 +338,7 @@ Nothing in it re-implements the pipeline.
 ## Tests
 
 ```bash
-uv run pytest              # 117 offline tests, ~16 s: SQL guards, MCP contracts (real MCP client, in-memory server),
+uv run pytest              # 121 offline tests, ~16 s: SQL guards, MCP contracts (real MCP client, in-memory server),
                            # agent loop and whole graph with a scripted LLM, guardrails, post-processing,
                            # validation checks, web demo, user requirements (docs/USER_REQUIREMENTS.md)
 uv run pytest -m models    # retrieval end to end on the GPU (downloads the HF models)

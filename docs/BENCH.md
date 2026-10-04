@@ -315,3 +315,21 @@ citations" (an invented source id, 1 run in 3 versus 3 in 3 on v1.7.0).
 
 The README table now shows these v1.11.2 figures; the v1.7.0 table above is kept for history.
 
+## v1.12.0 — answer language stated by the code
+
+Found while testing the README quick start from a fresh clone: the 7B answered the English question
+"My app can no longer connect to PostgreSQL. What should I check?" **in French**, 3 times out of 3,
+although every input (question, brief, passages) was in English. The prompt only said "same language
+as the question (French question -> French answer)". The code now states "Answer language: English" or
+"French" in the technician input (D-22).
+
+| Check | Before | After |
+|---|---|---|
+| English question, 7B (`ask`, scenario `stopped`) | French answer, 3/3 | English answer |
+| English question, 4B | — | English answer |
+| Six cases × 1, both models ([`215221`](bench/bench-20261004-215221.md)) | — | 4B 5/6, 7B **6/6** |
+| 4B C1 and C6 × 5 ([`215435`](bench/bench-20261004-215435.md)) | C6 1/3 on v1.11.2 | C1 5/5, C6 5/5 |
+
+The 4B failure in the 6 × 1 run is C6 answered in English with a failed-tool message (and "says the check
+failed" missed); it did not recur in the 5 following runs. The validation questions are French, so the
+measured cases now receive "Answer language: French" explicitly; no regression was observed.
