@@ -2,7 +2,7 @@
 
 **A local-only, multi-agent troubleshooting assistant: LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, and a measured 4B-vs-7B model comparison. Runs on a single 8 GB GPU.**
 
-[![Version](https://img.shields.io/badge/version-1.10.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.10.1-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Local only](https://img.shields.io/badge/runs-100%25%20local-orange)](#requirements)
@@ -186,6 +186,14 @@ uv run hello-support smoke                 # checks chat + tool calling on both 
 
 The embedding and reranking models (~0.5 GB) are pulled from the Hugging Face Hub on first use.
 The incidents database `data/incidents.db` is generated on first use.
+
+> **8 GB GPU: pin the load settings.** Recent LM Studio builds auto-fit the context to the free
+> VRAM (e.g. 25,600 tokens × 4 parallel slots for the 4B). Together with the retrieval models this
+> saturates an 8 GB card and makes some LLM calls take 50–100 s. Set a **per-model default** for
+> both models: auto-fit off, **context length 8192**, **1 parallel session**. You can do it in the
+> model's load settings in the app, or with a per-model config file. Note that `lms load -c` alone
+> is overridden by auto-fit. [`docs/BENCH.md`](docs/BENCH.md) says which runs were affected and shows the
+> stable latencies after the fix.
 
 Configuration is optional (environment variables or a `.env` file, see [`.env.example`](.env.example)):
 

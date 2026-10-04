@@ -8,6 +8,12 @@ Every release bumps the version **and** adds an entry here.
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-10-04
+
+### Added
+- README installation note for 8 GB GPUs: pin a per-model LM Studio load config (auto-fit off, context 8192, 1 parallel session); recent builds auto-fit the context (25,600 × 4 slots) and saturate the GPU.
+- `docs/BENCH.md`: quick check after the fix — 4B p50/max 4.38 s / 7.6 s on the six cases (was 9.5 s / 100.9 s when saturated), 7B stable on C1/C3.
+
 ## [1.10.0] - 2026-10-04
 
 ### Changed
@@ -112,7 +118,8 @@ Every release bumps the version **and** adds an entry here.
 ### Added
 - Initial project scaffold.
 
-[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.10.1...HEAD
+[1.10.1]: https://github.com/StephaneHe/HelloSupport/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.3...v1.10.0
 [1.9.3]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.2...v1.9.3
 [1.9.2]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.1...v1.9.2

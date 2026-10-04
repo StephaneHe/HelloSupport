@@ -251,3 +251,22 @@ Rapports : avant [`bench-20261004-120325`](bench/bench-20261004-120325.md) (4B),
 [`bench-20261004-121546`](bench/bench-20261004-121546.md) (4B), [`bench-20261004-122103`](bench/bench-20261004-122103.md)
 (7B) ; contrôles C6 [`122349`](bench/bench-20261004-122349.md) (nouveau ×5), [`122531`](bench/bench-20261004-122531.md)
 (ancien ×5), [`122757`](bench/bench-20261004-122757.md) (ancien ×10), [`124927`](bench/bench-20261004-124927.md) (nouveau ×10) ; contrôles C3 (4B) [`125119`](bench/bench-20261004-125119.md) (nouveau ×8), [`125223`](bench/bench-20261004-125223.md) (ancien ×8).
+
+### Réglages LM Studio stabilisés (2026-10-04, après la mesure v1.10.0)
+
+La saturation GPU signalée ci-dessus venait de l'**auto-ajustement du contexte** de LM Studio :
+25 600 tokens × 4 emplacements parallèles, ~7 Go de VRAM pour le 4B. Une configuration par modèle
+désactive l'auto-ajustement, fixe le **contexte à 8 192** et le **parallélisme à 1**. Elle est
+appliquée aux chargements manuels comme aux chargements à la demande (JIT). VRAM avec le modèle
+chargé et le serveur MCP actif : 4B ~4,6 Go, 7B ~5,9 Go.
+
+Contrôle rapide après réglage, code v1.10.0 :
+
+| Série | Réussite | Latence p50 / max | Comparaison |
+|---|---|---|---|
+| 4B, 6 cas × 3 ([`132504`](bench/bench-20261004-132504.md)) | 16/18 | **4,38 s / 7,6 s** | « 4B avant » saturé : 9,5 s / **100,9 s** |
+| 7B, C1 + C3 × 3 ([`132635`](bench/bench-20261004-132635.md)) | 6/6 | 8,8 s / 11,2 s | C1 et C3 étaient les cas aux pics de 50–100 s |
+
+Les latences sont de nouveau stables. Avec 1 seul emplacement parallèle, la mesure de débit à
+concurrence 4 (section J5, faite avec 4 emplacements) ne serait plus reproduite telle quelle : les
+requêtes seraient servies l'une après l'autre.
