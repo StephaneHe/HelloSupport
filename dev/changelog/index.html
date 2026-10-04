@@ -873,6 +873,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#1121-2026-10-04" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [1.12.1] - 2026-10-04
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[1.12.1] - 2026-10-04">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#1120-2026-10-04" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -889,6 +917,17 @@
     <span class="md-ellipsis">
       
         Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
       
     </span>
   </a>
@@ -924,7 +963,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fixed" class="md-nav__link">
+  <a href="#fixed_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         Fixed
@@ -1763,6 +1802,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#1121-2026-10-04" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [1.12.1] - 2026-10-04
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[1.12.1] - 2026-10-04">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#1120-2026-10-04" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1779,6 +1846,17 @@
     <span class="md-ellipsis">
       
         Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
       
     </span>
   </a>
@@ -1814,7 +1892,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fixed" class="md-nav__link">
+  <a href="#fixed_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         Fixed
@@ -2427,6 +2505,11 @@
 and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.
 Every release bumps the version <strong>and</strong> adds an entry here.</p>
 <h2 id="unreleased"><a href="https://github.com/StephaneHe/HelloSupport/compare/v1.11.1...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<h2 id="1121-2026-10-04">[1.12.1] - 2026-10-04<a class="headerlink" href="#1121-2026-10-04" title="Permanent link">&para;</a></h2>
+<h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Docs workflow: <code>astral-sh/setup-uv</code> pinned to <code>v10.2.0</code> (the action publishes no <code>v10</code> major tag, so the v1.12.0 run failed before building; the 1.12 documentation is published from this release).</li>
+</ul>
 <h2 id="1120-2026-10-04">[1.12.0] - 2026-10-04<a class="headerlink" href="#1120-2026-10-04" title="Permanent link">&para;</a></h2>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>
@@ -2436,6 +2519,10 @@ Every release bumps the version <strong>and</strong> adds an entry here.</p>
 <li><code>CONTRIBUTING.md</code>, <code>SECURITY.md</code> (private reporting through GitHub), <code>CODE_OF_CONDUCT.md</code> (Contributor Covenant 2.1), issue and pull request templates.</li>
 <li>UR-008 and UR-009 in <code>docs/USER_REQUIREMENTS.md</code>, with tests: strict documentation build without ignored files, no local-only name in the published site configuration, CI strict build and versioned deployment, no personal host name or path in tracked files, README sections, version badge and valid links.</li>
 </ul>
+<h3 id="fixed_1">Fixed<a class="headerlink" href="#fixed_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>English questions answered in French</strong> by the 7B (found by testing the README quick start on a fresh clone; 3/3 runs): the code now states the answer language ("Answer language: English|French", same heuristic as the simulation note) in the technician input, and the prompt refers to it. Verified on both models; quick benchmark 4B 5/6, 7B 6/6; 4B C1 and C6 × 5: 5/5 each (<code>docs/bench/bench-20261004-215221.md</code>, <code>-215435.md</code>). Test: <code>test_the_code_tells_the_technician_the_answer_language</code>.</li>
+</ul>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
 <ul>
 <li>README reviewed: quick start (tested from a fresh clone), documentation section and docs badge, contributing and security sections, <code>uv run</code> note, design principles heading, <code>HS_DOCS_URL</code> example pointing to the public site, US spelling throughout.</li>
@@ -2443,7 +2530,7 @@ Every release bumps the version <strong>and</strong> adds an entry here.</p>
 </ul>
 <h2 id="1112-2026-10-04">[1.11.2] - 2026-10-04<a class="headerlink" href="#1112-2026-10-04" title="Permanent link">&para;</a></h2>
 <p>Fixes from the independent documentation-to-code review (<code>docs/REVIEW_DOC_CODE.md</code>, 31 findings, each now marked resolved or accepted).</p>
-<h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
+<h3 id="fixed_2">Fixed<a class="headerlink" href="#fixed_2" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Incidents database dates no longer drift</strong> (review F-1): the seed day is stored in <code>PRAGMA user_version</code> and the database is re-seeded when the day changes. Before, dates stayed relative to the first run and case C4 ("3 incidents in the last 30 days") would have failed for a correct answer about 12 days after the seed. SQLite connections used for seeding are now closed explicitly (on Windows an open handle blocked the re-seed).</li>
 <li><strong>C6 check <code>no status asserted</code></strong> (review F-3): a suggested check ("assurez-vous que le service est en cours d'exécution", "make sure the service is running") is no longer counted as a status claim, and hedged claims ("il semble que Redis soit en cours d'exécution", "seems to be running") are now caught. Re-scoring all archived runs changes two rows only (7B, v1.11.2 run: 16/18 → 18/18).</li>

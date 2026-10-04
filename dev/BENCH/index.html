@@ -726,6 +726,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#v1120-answer-language-stated-by-the-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.12.0 — answer language stated by the code
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1586,6 +1597,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#v1120-answer-language-stated-by-the-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.12.0 — answer language stated by the code
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2349,6 +2371,46 @@ Raw reports are kept as generated; the re-scored figures are the ones above.</p>
 <p>4B failures (C6): twice "says the check failed" (the wording is not in the keyword list), once "exact
 citations" (an invented source id, 1 run in 3 versus 3 in 3 on v1.7.0).</p>
 <p>The README table now shows these v1.11.2 figures; the v1.7.0 table above is kept for history.</p>
+<h2 id="v1120-answer-language-stated-by-the-code">v1.12.0 — answer language stated by the code<a class="headerlink" href="#v1120-answer-language-stated-by-the-code" title="Permanent link">&para;</a></h2>
+<p>Found while testing the README quick start from a fresh clone: the 7B answered the English question
+"My app can no longer connect to PostgreSQL. What should I check?" <strong>in French</strong>, 3 times out of 3,
+although every input (question, brief, passages) was in English. The prompt only said "same language
+as the question (French question -&gt; French answer)". The code now states "Answer language: English" or
+"French" in the technician input (D-22).</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>English question, 7B (<code>ask</code>, scenario <code>stopped</code>)</td>
+<td>French answer, 3/3</td>
+<td>English answer</td>
+</tr>
+<tr>
+<td>English question, 4B</td>
+<td>—</td>
+<td>English answer</td>
+</tr>
+<tr>
+<td>Six cases × 1, both models (<a href="../bench/bench-20261004-215221/"><code>215221</code></a>)</td>
+<td>—</td>
+<td>4B 5/6, 7B <strong>6/6</strong></td>
+</tr>
+<tr>
+<td>4B C1 and C6 × 5 (<a href="../bench/bench-20261004-215435/"><code>215435</code></a>)</td>
+<td>C6 1/3 on v1.11.2</td>
+<td>C1 5/5, C6 5/5</td>
+</tr>
+</tbody>
+</table>
+<p>The 4B failure in the 6 × 1 run is C6 answered in English with a failed-tool message (and "says the check
+failed" missed); it did not recur in the 5 following runs. The validation questions are French, so the
+measured cases now receive "Answer language: French" explicitly; no regression was observed.</p>
 
 
 

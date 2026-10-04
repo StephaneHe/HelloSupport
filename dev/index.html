@@ -1553,12 +1553,12 @@
 
 <h1 id="hellosupport">HelloSupport<a class="headerlink" href="#hellosupport" title="Permanent link">&para;</a></h1>
 <p><strong>A local-only, multi-agent troubleshooting assistant: LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, and a measured 4B-vs-7B model comparison. Runs on a single 8 GB GPU.</strong></p>
-<p><a href="changelog/"><img alt="Version" src="https://img.shields.io/badge/version-1.12.0-blue" /></a>
+<p><a href="changelog/"><img alt="Version" src="https://img.shields.io/badge/version-1.12.1-blue" /></a>
 <a href="https://stephanehe.github.io/HelloSupport/"><img alt="Docs" src="https://github.com/StephaneHe/HelloSupport/actions/workflows/docs.yml/badge.svg" /></a>
 <a href="license/"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
 <a href="https://www.python.org/"><img alt="Python" src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&amp;logoColor=white" /></a>
 <a href="#requirements"><img alt="Local only" src="https://img.shields.io/badge/runs-100%25%20local-orange" /></a>
-<a href="#tests"><img alt="Tests" src="https://img.shields.io/badge/tests-117%20passing-brightgreen" /></a></p>
+<a href="#tests"><img alt="Tests" src="https://img.shields.io/badge/tests-121%20passing-brightgreen" /></a></p>
 <p>HelloSupport is a deliberately small "hello world" project. It exercises the building blocks
 of modern LLM applications <strong>end to end, for real, and with measurements</strong>. Ask it a support
 question in English or French ("my app can't connect to PostgreSQL, what should I check?") and
@@ -1589,8 +1589,9 @@ three steps cooperate:</p>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>uv<span class="w"> </span>run<span class="w"> </span>hello-support<span class="w"> </span>ask<span class="w"> </span><span class="s2">"My app can no longer connect to PostgreSQL. What should I check?"</span><span class="w"> </span>--scenario<span class="w"> </span>stopped
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>uv<span class="w"> </span>run<span class="w"> </span>hello-support<span class="w"> </span>web<span class="w">                                   </span><span class="c1"># browser demo on http://127.0.0.1:5179</span>
 </code></pre></div>
-<p>The first question takes ~30 s while the retrieval models download and load. Details and the
-8 GB GPU settings are in <a href="#installation">Installation</a>.</p>
+<p>The first <code>uv sync</code> downloads PyTorch CUDA (~2.5 GB). The first question takes one to two minutes
+(retrieval models downloaded and loaded, vector index built); later questions take ~20–30 s from the
+command line and 2–15 s in the web demo. Details and the 8 GB GPU settings are in <a href="#installation">Installation</a>.</p>
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
 <div class="diagram-scroll">
 <pre class="mermaid"><code>flowchart TB
@@ -2053,7 +2054,7 @@ required tool call, is in <a href="DEMO/"><code>docs/DEMO.md</code></a>.</p>
 <p>The page is plain HTML/CSS/JS (<code>src/hello_support/static/</code>) served by Starlette (<code>webapp.py</code>).
 Nothing in it re-implements the pipeline.</p>
 <h2 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w">              </span><span class="c1"># 117 offline tests, ~16 s: SQL guards, MCP contracts (real MCP client, in-memory server),</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w">              </span><span class="c1"># 121 offline tests, ~16 s: SQL guards, MCP contracts (real MCP client, in-memory server),</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">                           </span><span class="c1"># agent loop and whole graph with a scripted LLM, guardrails, post-processing,</span>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">                           </span><span class="c1"># validation checks, web demo, user requirements (docs/USER_REQUIREMENTS.md)</span>
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span>models<span class="w">    </span><span class="c1"># retrieval end to end on the GPU (downloads the HF models)</span>
