@@ -2,7 +2,7 @@
 
 **A local-only, multi-agent troubleshooting assistant: LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, and a measured 4B-vs-7B model comparison. Runs on a single 8 GB GPU.**
 
-[![Version](https://img.shields.io/badge/version-1.9.2-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.9.3-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Local only](https://img.shields.io/badge/runs-100%25%20local-orange)](#requirements)
@@ -32,31 +32,85 @@ Everything runs locally: models served by LM Studio, embeddings on the GPU, no c
 
 ```mermaid
 flowchart TB
-    Q(["Question (EN / FR)"]) --> T["<b>Triage</b> (LLM, JSON schema)<br/>picks 1 of 5 fixed categories"]
-    T -->|"malfunction · documentation<br/>out_of_scope · vague"| D["<b>Documentalist</b><br/>search_docs: retrieves cited passages"]
-    T -->|"history<br/>(skips retrieval)"| H
+    Q(["Question"]) --> T
 
-    D --> M["<b>malfunction</b><br/>= failure reported on postgres/nginx/redis<br/>Technician: get_service_status REQUIRED"]
-    D --> DO["<b>documentation</b><br/>= 'what should I check?'<br/>Technician: no tool, sourced checklist"]
-    D --> O["<b>out_of_scope</b><br/>= another product (Kafka…)<br/>Technician: no tool, states its limits"]
-    D --> V["<b>vague</b><br/>= service unclear<br/>Technician: no tool, asks 1 question"]
-    H["<b>history</b><br/>= incident history<br/>Technician: query_incidents (SQL) REQUIRED"]
-
-    M & DO & O & V & H --> P["<b>Post-processing</b><br/>exact citations, simulation note"]
+    subgraph G["LangGraph graph — linear: each step runs once, no loop between agents"]
+        T{{"<b>ROUTER · Triage</b><br/>1 LLM call, structured JSON output<br/>no tool · no loop"}}
+        T -->|"malfunction = failure on postgres/nginx/redis<br/>documentation = 'what should I check?'<br/>out_of_scope = another product<br/>vague = service unclear"| D
+        T -->|"history = incident history → SQL<br/>(skips retrieval)"| TE
+        D["<b>AGENT · Documentalist</b><br/>tool: search_docs (≤ 2 calls)"]
+        D -->|"↻ LLM ↔ tools loop<br/>≤ 3 LLM calls"| D
+        D --> TE
+        TE["<b>AGENT · Technician</b><br/>tools depend on the category:<br/>malfunction → get_service_status REQUIRED<br/>history → query_incidents (SQL) REQUIRED<br/>documentation · out_of_scope · vague → no tool"]
+        TE -->|"↻ LLM ↔ tools loop<br/>≤ 3 LLM calls"| TE
+        TE --> P["<b>CODE · Post-processing</b> (no LLM)<br/>exact citations, simulation note"]
+    end
     P --> A(["Answer + JSON trace"])
 
-    subgraph TOOLS["MCP server: hello-support-tools (stdio)"]
-        S1["search_docs<br/>embeddings → Chroma → rerank"]
-        S2["get_service_status<br/>simulated scenarios"]
-        S3["query_incidents<br/>SQLite read-only, 5 guards"]
+    subgraph MCP["MCP tool server (stdio)"]
+        S1[/"search_docs<br/>embeddings → Chroma → rerank"/]
+        S2[/"get_service_status<br/>simulated scenarios"/]
+        S3[/"query_incidents<br/>SQLite read-only"/]
     end
     D -. "MCP" .-> S1
-    M -. "MCP" .-> S2
-    H -. "MCP" .-> S3
+    TE -. "MCP" .-> S2
+    TE -. "MCP" .-> S3
 
-    LLM[("LM Studio :1234<br/>Qwen3-4B / Qwen2.5-7B, GPU")]
-    T -. "every LLM step" .-> LLM
+    LLM[("<b>MODEL · LM Studio</b> :1234<br/>Qwen3-4B / Qwen2.5-7B, GPU")]
+    G -. "every LLM call<br/>(triage + both agents)" .-> LLM
+
+    classDef agent fill:#dbeafe,stroke:#1d4ed8,stroke-width:3px,color:#0b2a6b
+    classDef router fill:#ffedd5,stroke:#c2410c,stroke-width:2px,color:#5a1d03
+    classDef code fill:#f3f4f6,stroke:#6b7280,stroke-width:1px,stroke-dasharray:5 3,color:#111827
+    classDef tool fill:#dcfce7,stroke:#15803d,color:#0f3d1f
+    classDef model fill:#ede9fe,stroke:#6d28d9,color:#2e1065
+    class D,TE agent
+    class T router
+    class P code
+    class S1,S2,S3 tool
+    class LLM model
 ```
+
+**Legend**
+
+| Style in the diagram | Kind | What it is | Loop? |
+|---|---|---|---|
+| 🟦 blue, thick border | **AGENT** | An LLM that chooses which tools to call and with which arguments, reads the results and answers (`run_agent`) | **yes**: LLM ↔ tools, ≤ 3 LLM calls |
+| 🟧 orange hexagon | **ROUTER** | One LLM call constrained to a JSON schema: picks 1 of 5 fixed categories. No tool, so not an agent | no |
+| ⬜ grey, dashed border | **CODE** | Deterministic Python, no LLM | no |
+| 🟩 green parallelogram | **MCP TOOL** | Exposed by the separate MCP server; called by the agents | — |
+| 🟪 purple cylinder | **MODEL** | LLM served locally by LM Studio (OpenAI-compatible API) | — |
+
+The **LangGraph graph is linear**: triage → documentalist → technician (or triage → technician
+for `history`). Each node runs once per question and nothing flows back from the technician to
+the documentalist. The only loops are **inside** each agent:
+
+```mermaid
+flowchart TB
+    S(["Agent step starts<br/>(Documentalist or Technician)"]) --> L
+    L["AGENT · LLM call n° i  (i ≤ 3 = MAX_LLM_CALLS)<br/>tools offered within their budget<br/>3rd call: NO tool offered → must answer"]
+    L --> Q1{"Did the model<br/>request tools?"}
+    Q1 -->|"yes"| F["CODE · checks<br/>de-duplicate · ≤ 3 calls per step<br/>per-tool budget · valid JSON arguments"]
+    F --> X[/"MCP · run the tools"/]
+    X --> R["CODE · results (or errors)<br/>appended to the conversation"]
+    R -->|"↻ next LLM call"| L
+    Q1 -->|"no: text answer"| Q2{"Tool REQUIRED<br/>but not called yet?"}
+    Q2 -->|"yes, first time"| REJ["CODE · answer rejected → retry<br/>'call the tool now'"]
+    REJ -->|"↻"| L
+    Q2 -->|"no"| OUT(["Exit: final text answer"])
+
+    classDef agent fill:#dbeafe,stroke:#1d4ed8,stroke-width:3px,color:#0b2a6b
+    classDef code fill:#f3f4f6,stroke:#6b7280,stroke-width:1px,stroke-dasharray:5 3,color:#111827
+    classDef tool fill:#dcfce7,stroke:#15803d,color:#0f3d1f
+    class L agent
+    class F,R,REJ,Q1,Q2 code
+    class X tool
+```
+
+- **3 LLM calls at most** (`MAX_LLM_CALLS`). The last one is made without tools, so the agent always ends with a text answer.
+- **3 tool calls at most per step**, after removing duplicates. Each tool also has its own budget (`search_docs` ≤ 2, `get_service_status` ≤ 1, `query_incidents` ≤ 2).
+- **Required tool**: for `malfunction` and `history`, a tool call is required. If the model answers without calling it, the code rejects that answer and retries once.
+- **Exit**: the loop ends as soon as the model answers in text without requesting a tool.
 
 - **Code decides the structure, the model decides the content.** The graph, the branch taken
   and the tools offered or *required* for each intent are enforced by code; the model writes
@@ -227,7 +281,7 @@ docs/               specification, design decisions, benchmark, demo (French)
 
 ## Design decisions
 
-All **28 design and development decisions** are documented ADR-style (need → options →
+All **29 design and development decisions** are documented ADR-style (need → options →
 choice → rationale → trade-offs → skill demonstrated) in
 [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) ([PDF](docs/DESIGN_DECISIONS.pdf)). The
 specification is in [`docs/SPEC.md`](docs/SPEC.md) ([PDF](docs/SPEC.pdf)). These documents are in French.

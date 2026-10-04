@@ -8,6 +8,16 @@ Every release bumps the version **and** adds an entry here.
 
 ## [Unreleased]
 
+## [1.9.3] - 2026-10-04
+
+### Added
+- Diagram **legend** (README, `docs/DESIGN_DECISIONS.md`, `docs/SPEC.md`): each block is typed and styled — 🟦 **agent** (Documentalist, Technician), 🟧 **router** (triage), ⬜ deterministic **code**, 🟩 **MCP tool**, 🟪 served **model**.
+- Second diagram, **inside an agent**: the bounded LLM ↔ tools loop (≤ 3 LLM calls, ≤ 3 tool calls per step, last call without tools, required tool → rejected answer → retry, exit on a text answer).
+- `docs/DESIGN_DECISIONS.md` **D-29**: agent vs router vs code, and why the LangGraph graph is linear with no loop between agents.
+
+### Changed
+- Architecture diagrams redrawn: agents show their loop, the triage is drawn as a router (1 structured-output LLM call, no tool, no loop), post-processing as code, and the graph is labelled linear. Assistant behaviour unchanged. PDFs regenerated.
+
 ## [1.9.2] - 2026-10-04
 
 ### Changed
@@ -92,7 +102,8 @@ Every release bumps the version **and** adds an entry here.
 ### Added
 - Initial project scaffold.
 
-[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.2...HEAD
+[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.3...HEAD
+[1.9.3]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.2...v1.9.3
 [1.9.2]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.1...v1.9.2
 [1.9.1]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/StephaneHe/HelloSupport/releases/tag/v1.9.0

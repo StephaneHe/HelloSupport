@@ -89,31 +89,51 @@ automatisés passent, le tableau de mesures (§5, J5) est rempli avec des chiffr
 flowchart TB
     Q(["question"]) --> CLI
 
-    subgraph HOST["hello-support — processus hôte (Python)"]
+    subgraph HOST["hello-support — processus hôte (Python) · graphe LangGraph linéaire, sans boucle entre agents"]
         CLI["cli.py"] --> WF["workflow.py<br/>LangGraph StateGraph, état typé, limites"]
-        WF --> TRI["triage (agents.py)<br/>1 des 5 catégories fixes"]
-        TRI -->|"malfunction · documentation<br/>out_of_scope · vague"| DOC["documentalist<br/>search_docs"]
+        WF --> TRI{{"<b>ROUTEUR · triage</b> (agents.py)<br/>1 appel LLM, sortie JSON<br/>1 des 5 catégories fixes"}}
+        TRI -->|"malfunction · documentation<br/>out_of_scope · vague"| DOC["<b>AGENT · documentalist</b><br/>search_docs"]
         TRI -->|"history = historique<br/>des incidents"| TEC
-        DOC --> TEC["technician — outils selon la catégorie<br/>malfunction → get_service_status exigé<br/>history → query_incidents (SQL) exigé<br/>documentation · out_of_scope · vague → aucun outil"]
-        TEC --> FIN(["END : answer + trace.json"])
-        AG["agents.py<br/>boucle LLM ↔ tool calls"]
+        DOC -->|"↻ boucle LLM ↔ outils"| DOC
+        DOC --> TEC["<b>AGENT · technician</b> — outils selon la catégorie<br/>malfunction → get_service_status exigé<br/>history → query_incidents (SQL) exigé<br/>documentation · out_of_scope · vague → aucun outil"]
+        TEC -->|"↻ boucle LLM ↔ outils"| TEC
+        TEC --> PP["<b>CODE · post-traitement</b><br/>postprocess.py (sans LLM)"]
+        PP --> FIN(["END : answer + trace.json"])
+        AG["<b>CODE · agents.py</b><br/>run_agent : boucle bornée<br/>≤ 3 appels LLM · ≤ 3 outils/étape · relance"]
         LLM["llm.py<br/>client OpenAI-compatible"]
-        MC["client MCP (stdio)"]
-        TRI & DOC & TEC -.-> AG
+        MC["toolbox.py<br/>client MCP (stdio)"]
+        DOC & TEC -.-> AG
         AG --> LLM
         AG --> MC
     end
 
-    LLM -- "HTTP" --> LMS["LM Studio :1234<br/>SLM 4B | 7B, GPU"]
+    LLM -- "HTTP" --> LMS[("<b>MODÈLE · LM Studio</b> :1234<br/>SLM 4B | 7B, GPU")]
 
     subgraph SRV["mcp_server.py — sous-processus (MCP)"]
-        T1["search_docs"] --> R["retrieval.py : embeddings ST<br/>→ Chroma (top-5) → cross-encoder (top-3), cuda"]
-        T2["get_service_status"] --> SC[("data/scenarios.json")]
-        T3["query_incidents"] --> DB[("data/incidents.db<br/>SQLite lecture seule")]
+        T1[/"search_docs"/] --> R["retrieval.py : embeddings ST<br/>→ Chroma (top-5) → cross-encoder (top-3), cuda"]
+        T2[/"get_service_status"/] --> SC[("data/scenarios.json")]
+        T3[/"query_incidents"/] --> DB[("data/incidents.db<br/>SQLite lecture seule")]
     end
 
     MC --> T1 & T2 & T3
+
+    classDef agent fill:#dbeafe,stroke:#1d4ed8,stroke-width:3px,color:#0b2a6b
+    classDef router fill:#ffedd5,stroke:#c2410c,stroke-width:2px,color:#5a1d03
+    classDef code fill:#f3f4f6,stroke:#6b7280,stroke-width:1px,stroke-dasharray:5 3,color:#111827
+    classDef tool fill:#dcfce7,stroke:#15803d,color:#0f3d1f
+    classDef model fill:#ede9fe,stroke:#6d28d9,color:#2e1065
+    class DOC,TEC agent
+    class TRI router
+    class PP,AG code
+    class T1,T2,T3 tool
+    class LMS model
 ```
+
+**Légende** : 🟦 **agent** (LLM qui choisit ses outils et boucle LLM ↔ outils, ≤ 3 appels LLM) ·
+🟧 **routeur** (triage : 1 appel LLM en sortie JSON, sans outil ni boucle) · ⬜ **code** déterministe ·
+🟩 **outil MCP** · 🟪 **modèle** servi par LM Studio. Le graphe LangGraph est linéaire : aucune boucle
+entre agents. Le détail de la boucle d'un agent et le choix « agent / routeur / code » sont expliqués dans
+[`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md) (synthèse et D-29).
 
 Arborescence cible :
 

@@ -23,6 +23,7 @@ Convention : `(+ date)` = ajout, `(✔ date)` = fait. Jalons définis dans `docs
 ## Journal de décisions
 
 - [x] Ajouter les entrées `D-xx` à chaque jalon dans `docs/DESIGN_DECISIONS.md` (28 décisions, consolidé + PDF) `(+ 2026-10-02)` `(✔ 2026-10-02)`
+- [x] D-29 et schémas avec légende : agents (boucle LLM ↔ outils) vs routeur vs code `(+ 2026-10-04)` `(✔ 2026-10-04)`
 
 ## Pistes (hors hello world, cf. SPEC §10)
 

@@ -7,7 +7,7 @@
 >   au moment où la décision est prise (avec ce qu'on savait alors).
 > - **À la fin (J5)** : consolidation. Synthèse en tête, entrées relues à la lumière des
 >   mesures ([`BENCH.md`](BENCH.md)), export PDF ([`DESIGN_DECISIONS.pdf`](DESIGN_DECISIONS.pdf)).
->   **Statut : consolidé le 2026-10-02 (v1.8.0), 28 décisions.**
+>   **Statut : consolidé le 2026-10-02 (v1.8.0), 28 décisions ; D-29 ajoutée le 2026-10-04.**
 >
 > Format d'une entrée : **Besoin → Options envisagées → Choix → Pourquoi → Compromis /
 > limites → Compétence visée**. Une décision révisée n'est pas effacée : elle passe en
@@ -26,23 +26,93 @@ sur GPU.
 
 ```mermaid
 flowchart TB
-    Q(["Question"]) --> T["<b>Triage</b> (LLM, schéma JSON)<br/>choisit 1 des 5 catégories fixes"]
-    T -->|"malfunction · documentation<br/>out_of_scope · vague"| D["<b>Documentaliste</b><br/>search_docs : passages cités (RAG)"]
-    T -->|"history<br/>(saute la recherche)"| H
+    Q(["Question"]) --> T
 
-    D --> M["<b>malfunction</b><br/>= panne signalée sur postgres/nginx/redis<br/>Technicien : get_service_status EXIGÉ"]
-    D --> DO["<b>documentation</b><br/>= « que dois-je vérifier ? »<br/>Technicien : sans outil, réponse sourcée"]
-    D --> O["<b>out_of_scope</b><br/>= autre produit (Kafka…)<br/>Technicien : sans outil, dit sa limite"]
-    D --> V["<b>vague</b><br/>= service indéterminé<br/>Technicien : sans outil, 1 question de précision"]
-    H["<b>history</b><br/>= historique des incidents<br/>Technicien : query_incidents (SQL) EXIGÉ"]
-
-    M & DO & O & V & H --> P["<b>Post-traitement</b><br/>citations exactes, mention de simulation"]
+    subgraph G["Graphe LangGraph — linéaire : chaque étape s'exécute une fois, aucune boucle entre agents"]
+        T{{"<b>ROUTEUR · Triage</b><br/>1 appel LLM, sortie JSON contrainte<br/>sans outil · sans boucle"}}
+        T -->|"malfunction = panne sur postgres/nginx/redis<br/>documentation = « que dois-je vérifier ? »<br/>out_of_scope = autre produit<br/>vague = service indéterminé"| D
+        T -->|"history = historique des incidents → SQL<br/>(saute la recherche)"| TE
+        D["<b>AGENT · Documentaliste</b><br/>outil : search_docs (≤ 2 appels)"]
+        D -->|"↻ boucle LLM ↔ outils<br/>≤ 3 appels LLM"| D
+        D --> TE
+        TE["<b>AGENT · Technicien</b><br/>outils selon la catégorie :<br/>malfunction → get_service_status EXIGÉ<br/>history → query_incidents (SQL) EXIGÉ<br/>documentation · out_of_scope · vague → aucun"]
+        TE -->|"↻ boucle LLM ↔ outils<br/>≤ 3 appels LLM"| TE
+        TE --> P["<b>CODE · Post-traitement</b> (sans LLM)<br/>citations exactes, mention de simulation"]
+    end
     P --> A(["Réponse + trace JSON"])
 
-    D -. "MCP" .-> S1["search_docs<br/>embeddings → Chroma → reranking"]
-    M -. "MCP" .-> S2["get_service_status<br/>statuts simulés"]
-    H -. "MCP" .-> S3["query_incidents<br/>SQLite lecture seule"]
+    subgraph MCP["Serveur d'outils MCP (stdio)"]
+        S1[/"search_docs<br/>embeddings → Chroma → reranking"/]
+        S2[/"get_service_status<br/>statuts simulés"/]
+        S3[/"query_incidents<br/>SQLite lecture seule"/]
+    end
+    D -. "MCP" .-> S1
+    TE -. "MCP" .-> S2
+    TE -. "MCP" .-> S3
+
+    LLM[("<b>MODÈLE · LM Studio</b> :1234<br/>Qwen3-4B / Qwen2.5-7B, GPU")]
+    G -. "tous les appels LLM<br/>(triage + 2 agents)" .-> LLM
+
+    classDef agent fill:#dbeafe,stroke:#1d4ed8,stroke-width:3px,color:#0b2a6b
+    classDef router fill:#ffedd5,stroke:#c2410c,stroke-width:2px,color:#5a1d03
+    classDef code fill:#f3f4f6,stroke:#6b7280,stroke-width:1px,stroke-dasharray:5 3,color:#111827
+    classDef tool fill:#dcfce7,stroke:#15803d,color:#0f3d1f
+    classDef model fill:#ede9fe,stroke:#6d28d9,color:#2e1065
+    class D,TE agent
+    class T router
+    class P code
+    class S1,S2,S3 tool
+    class LLM model
 ```
+
+**Légende**
+
+| Style dans le schéma | Nature | Ce que c'est | Boucle ? |
+|---|---|---|---|
+| 🟦 bleu, bord épais | **AGENT** | Un LLM qui choisit quels outils appeler et avec quels arguments, lit les résultats puis répond (`run_agent`) | **oui** : LLM ↔ outils, ≤ 3 appels LLM |
+| 🟧 hexagone orange | **ROUTEUR** | Un seul appel LLM contraint par un schéma JSON, qui choisit 1 des 5 catégories fixes. Sans outil, donc pas un agent | non |
+| ⬜ gris, bord pointillé | **CODE** | Python déterministe, sans LLM | non |
+| 🟩 parallélogramme vert | **OUTIL MCP** | Exposé par le serveur MCP séparé, appelé par les agents | — |
+| 🟪 cylindre violet | **MODÈLE** | LLM servi localement par LM Studio (API OpenAI-compatible) | — |
+
+**Agent, routeur ou code ?** On appelle *agent* un LLM qui **décide lui-même** de ses actions
+(quels outils, quels arguments) et **boucle** sur leurs résultats jusqu'à pouvoir répondre :
+c'est le cas du Documentaliste et du Technicien. Le *triage* n'est pas un agent mais un
+**routeur**. Il fait un seul appel LLM, sans outil, dont la sortie est contrainte à
+`{intent, service}` ; c'est le **code** qui en tire le chemin et les outils autorisés (D-17).
+Le *post-traitement* et les contrôles de la boucle sont du **code** déterministe (D-18, D-22).
+
+**Pourquoi aucune boucle entre agents ?** Le graphe LangGraph est **linéaire** : triage →
+documentaliste → technicien (ou triage → technicien pour `history`), et chaque nœud s'exécute
+une fois par question. Les seules boucles sont **à l'intérieur** de chaque agent, et elles sont
+bornées (D-18, D-29) :
+
+```mermaid
+flowchart TB
+    S(["Début de l'étape d'un agent<br/>(Documentaliste ou Technicien)"]) --> L
+    L["<b>AGENT · appel LLM n° i</b>  (i ≤ 3 = MAX_LLM_CALLS)<br/>outils proposés dans la limite de leur budget<br/>3ᵉ appel : AUCUN outil proposé → doit répondre"]
+    L --> Q1{"Le modèle demande-t-il<br/>des outils ?"}
+    Q1 -->|"oui"| F["<b>CODE · contrôles</b><br/>dédoublonnage · ≤ 3 appels par étape<br/>budget par outil · arguments JSON valides"]
+    F --> X[/"MCP · exécution des outils"/]
+    X --> R["<b>CODE</b> · résultats (ou erreurs)<br/>ajoutés à la conversation"]
+    R -->|"↻ appel LLM suivant"| L
+    Q1 -->|"non : réponse texte"| Q2{"Outil EXIGÉ<br/>et pas encore appelé ?"}
+    Q2 -->|"oui, 1re fois"| REJ["<b>CODE</b> · réponse rejetée → relance<br/>« appelle l'outil maintenant »"]
+    REJ -->|"↻"| L
+    Q2 -->|"non"| OUT(["Sortie : réponse finale"])
+
+    classDef agent fill:#dbeafe,stroke:#1d4ed8,stroke-width:3px,color:#0b2a6b
+    classDef code fill:#f3f4f6,stroke:#6b7280,stroke-width:1px,stroke-dasharray:5 3,color:#111827
+    classDef tool fill:#dcfce7,stroke:#15803d,color:#0f3d1f
+    class L agent
+    class F,R,REJ,Q1,Q2 code
+    class X tool
+```
+
+- **Au plus 3 appels LLM** (`MAX_LLM_CALLS`). Le dernier est fait sans outils : l'agent finit toujours par répondre en texte.
+- **Au plus 3 appels d'outil par étape**, après dédoublonnage. Chaque outil a aussi son budget (`search_docs` ≤ 2, `get_service_status` ≤ 1, `query_incidents` ≤ 2).
+- **Outil imposé** : pour `malfunction` et `history`, un appel d'outil est exigé. Si le modèle répond sans l'avoir fait, le code rejette cette réponse et relance une fois.
+- **Sortie** : la boucle s'arrête dès que le modèle répond en texte sans demander d'outil.
 
 **Table de correspondance composant → décision → compétence visée**
 
@@ -123,6 +193,7 @@ périmètre : systèmes distribués, scale réel, leadership (cf. [`SPEC.md`](SP
 | D-26 | Méthode de mesure : latence à chaud/froid, débit à concurrence 1/4, coût estimé | J5 | Acceptée | Latency, throughput, cost |
 | D-27 | Structure du code : modules à responsabilité unique, frontière MCP | J5 | Acceptée | Software architecture, Python |
 | D-28 | Stratégie de tests : unitaires hors ligne, intégration modèles, bench système | J5 | Acceptée | Production-grade, reliability |
+| D-29 | Agents (boucle LLM ↔ outils) vs routeur (triage) vs code ; graphe linéaire, aucune boucle entre agents | doc | Acceptée | AI agents, orchestration |
 
 ---
 
@@ -771,3 +842,34 @@ périmètre : systèmes distribués, scale réel, leadership (cf. [`SPEC.md`](SP
 - **Compromis** : pas de CI (hors périmètre). Le bench n'est pas lancé automatiquement : il
   faut LM Studio et ~6 min. Les vérifications par mots-clés restent grossières (D-21).
 - **Compétence visée** : Production-grade, reliability.
+
+## D-29 — Agents, routeur et code : qui décide quoi, et pourquoi aucune boucle entre agents
+
+- **Date** : 2026-10-04 · **Jalon** : documentation (aucun changement de comportement)
+- **Besoin** : rendre la nature de chaque bloc lisible. Un lecteur du schéma demandait : « s'il y
+  a des agents, où sont les boucles ? », « le triage est-il un agent ? ».
+- **Constat (code)** :
+  - **Agents** = Documentaliste et Technicien. `run_agent` fait boucler le LLM sur les outils :
+    le modèle choisit l'outil et ses arguments, le code l'exécute et renvoie le résultat. La boucle
+    fait ≤ 3 appels LLM (`MAX_LLM_CALLS`), le dernier sans outils, ≤ 3 appels d'outil par étape.
+    Un outil exigé est relancé une fois si le modèle l'a ignoré, et la boucle s'arrête dès une
+    réponse texte.
+  - **Triage = routeur** : 1 appel LLM en `response_format` JSON Schema (`intent`, `service`),
+    sans outil ni boucle. Le code en tire la branche du graphe et la politique d'outils (D-17).
+  - **Code déterministe** : contrôles de la boucle (D-18), post-traitement (D-22), reclassement
+    d'une panne sans service connu en `vague`.
+- **Options** : (a) un graphe multi-agents avec retours (le technicien peut renvoyer au
+  documentaliste, ou un superviseur ré-arbitre) ; (b) **un graphe linéaire, les boucles
+  restant à l'intérieur des agents**.
+- **Choix** : (b). Chaque nœud LangGraph s'exécute au plus une fois par question.
+- **Pourquoi** : le besoin est séquentiel : trouver les sources, puis diagnostiquer. Un retour
+  entre agents ajouterait des appels LLM (latence, tokens), un risque de ping-pong, et un
+  comportement plus difficile à tester et à borner, sans gain mesuré sur les 6 cas. Les
+  boucles internes suffisent pour corriger une requête ou un appel d'outil raté. Les limites
+  (3 appels LLM, budgets d'outils, `recursion_limit=10`) garantissent l'arrêt.
+- **Compromis** : si les passages trouvés sont mauvais, le technicien ne peut pas demander une
+  nouvelle recherche. Il le signale dans sa réponse. Une boucle documentaliste ↔ technicien, ou
+  un superviseur, serait l'évolution naturelle, à mesurer avec le même bench.
+- **Représentation** : schémas avec légende (agent 🟦, routeur 🟧, code ⬜, outil MCP 🟩,
+  modèle 🟪) et zoom sur la boucle d'un agent (README, synthèse ci-dessus, SPEC §4).
+- **Compétence visée** : AI agents, agent orchestration, workflow execution.
