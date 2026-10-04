@@ -8,6 +8,12 @@ Every release bumps the version **and** adds an entry here.
 
 ## [Unreleased]
 
+## [1.9.2] - 2026-10-04
+
+### Changed
+- Diagrams (README, `docs/SPEC.md` §4, `docs/DESIGN_DECISIONS.md` synthesis) now show the **5 fixed triage categories** and the path each one actually takes in `workflow.py` / `agents.py`: `malfunction`, `documentation`, `out_of_scope` and `vague` go through the documentalist, then the technician with its per-category tools (`get_service_status` required for `malfunction`, no tool otherwise); `history` (incident history) skips retrieval and requires `query_incidents` (SQL).
+- `docs/SPEC.md` §4 diagram: reranking returns the top-3 (it said top-2). PDFs regenerated.
+
 ## [1.9.1] - 2026-10-04
 
 ### Changed
@@ -86,6 +92,7 @@ Every release bumps the version **and** adds an entry here.
 ### Added
 - Initial project scaffold.
 
-[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.1...HEAD
+[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.2...HEAD
+[1.9.2]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.1...v1.9.2
 [1.9.1]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/StephaneHe/HelloSupport/releases/tag/v1.9.0

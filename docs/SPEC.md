@@ -91,19 +91,23 @@ flowchart TB
 
     subgraph HOST["hello-support — processus hôte (Python)"]
         CLI["cli.py"] --> WF["workflow.py<br/>LangGraph StateGraph, état typé, limites"]
-        WF --> DOC["documentalist"] --> TEC["technician"] --> FIN(["END : answer + trace.json"])
+        WF --> TRI["triage (agents.py)<br/>1 des 5 catégories fixes"]
+        TRI -->|"malfunction · documentation<br/>out_of_scope · vague"| DOC["documentalist<br/>search_docs"]
+        TRI -->|"history = historique<br/>des incidents"| TEC
+        DOC --> TEC["technician — outils selon la catégorie<br/>malfunction → get_service_status exigé<br/>history → query_incidents (SQL) exigé<br/>documentation · out_of_scope · vague → aucun outil"]
+        TEC --> FIN(["END : answer + trace.json"])
         AG["agents.py<br/>boucle LLM ↔ tool calls"]
         LLM["llm.py<br/>client OpenAI-compatible"]
         MC["client MCP (stdio)"]
-        DOC & TEC -.-> AG
+        TRI & DOC & TEC -.-> AG
         AG --> LLM
         AG --> MC
     end
 
-    LLM -- "HTTP" --> LMS["LM Studio :1234<br/>SLM 3-4B | 7B, GPU"]
+    LLM -- "HTTP" --> LMS["LM Studio :1234<br/>SLM 4B | 7B, GPU"]
 
-    subgraph SRV["mcp_server.py — sous-processus (FastMCP)"]
-        T1["search_docs"] --> R["retrieval.py : embeddings ST<br/>→ Chroma (top-5) → cross-encoder (top-2), cuda"]
+    subgraph SRV["mcp_server.py — sous-processus (MCP)"]
+        T1["search_docs"] --> R["retrieval.py : embeddings ST<br/>→ Chroma (top-5) → cross-encoder (top-3), cuda"]
         T2["get_service_status"] --> SC[("data/scenarios.json")]
         T3["query_incidents"] --> DB[("data/incidents.db<br/>SQLite lecture seule")]
     end

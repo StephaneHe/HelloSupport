@@ -2,7 +2,7 @@
 
 **A local-only, multi-agent troubleshooting assistant: LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, and a measured 4B-vs-7B model comparison. Runs on a single 8 GB GPU.**
 
-[![Version](https://img.shields.io/badge/version-1.9.1-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.9.2-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Local only](https://img.shields.io/badge/runs-100%25%20local-orange)](#requirements)
@@ -32,33 +32,30 @@ Everything runs locally: models served by LM Studio, embeddings on the GPU, no c
 
 ```mermaid
 flowchart TB
-    Q(["Question (EN / FR)"]) --> T
+    Q(["Question (EN / FR)"]) --> T["<b>Triage</b> (LLM, JSON schema)<br/>picks 1 of 5 fixed categories"]
+    T -->|"malfunction · documentation<br/>out_of_scope · vague"| D["<b>Documentalist</b><br/>search_docs: retrieves cited passages"]
+    T -->|"history<br/>(skips retrieval)"| H
 
-    subgraph HOST["Host process: hello-support — LangGraph StateGraph, typed shared state"]
-        direction LR
-        T["Triage<br/>structured JSON output"] -->|"other intents"| D["Documentalist<br/>retrieval agent"]
-        T -->|"history"| TE
-        D --> TE["Technician<br/>tool policy by intent"]
-        TE --> P["Post-processing<br/>citations, simulation note"]
-    end
+    D --> M["<b>malfunction</b><br/>= failure reported on postgres/nginx/redis<br/>Technician: get_service_status REQUIRED"]
+    D --> DO["<b>documentation</b><br/>= 'what should I check?'<br/>Technician: no tool, sourced checklist"]
+    D --> O["<b>out_of_scope</b><br/>= another product (Kafka…)<br/>Technician: no tool, states its limits"]
+    D --> V["<b>vague</b><br/>= service unclear<br/>Technician: no tool, asks 1 question"]
+    H["<b>history</b><br/>= incident history<br/>Technician: query_incidents (SQL) REQUIRED"]
 
+    M & DO & O & V & H --> P["<b>Post-processing</b><br/>exact citations, simulation note"]
     P --> A(["Answer + JSON trace"])
-    HOST -. "LLM calls (HTTP)" .-> M
-
-    subgraph SERVING["LM Studio :1234 — OpenAI-compatible API"]
-        M["Qwen3-4B | Qwen2.5-7B<br/>Q4_K_M on GPU"]
-    end
 
     subgraph TOOLS["MCP server: hello-support-tools (stdio)"]
-        direction LR
-        S1["search_docs<br/>embeddings (CUDA) → Chroma<br/>→ cross-encoder rerank"]
-        S2["get_service_status<br/>simulated scenarios (JSON)"]
+        S1["search_docs<br/>embeddings → Chroma → rerank"]
+        S2["get_service_status<br/>simulated scenarios"]
         S3["query_incidents<br/>SQLite read-only, 5 guards"]
     end
+    D -. "MCP" .-> S1
+    M -. "MCP" .-> S2
+    H -. "MCP" .-> S3
 
-    D -- "MCP" --> S1
-    TE -- "MCP" --> S2
-    TE -- "MCP" --> S3
+    LLM[("LM Studio :1234<br/>Qwen3-4B / Qwen2.5-7B, GPU")]
+    T -. "every LLM step" .-> LLM
 ```
 
 - **Code decides the structure, the model decides the content.** The graph, the branch taken

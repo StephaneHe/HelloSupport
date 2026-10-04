@@ -25,15 +25,23 @@ l'orchestration par **LangGraph**, les modèles (SLM 4 B / 7 B) sont servis par 
 sur GPU.
 
 ```mermaid
-flowchart LR
-    Q(["Question"]) --> T["Triage<br/>LLM, schéma JSON"]
-    T -->|"autres intentions"| D["Documentaliste"]
-    T -->|"history"| TE["Technicien"]
-    D --> TE
-    D <-->|"MCP stdio"| K["search_docs<br/>embeddings → Chroma → reranking"]
-    TE <-->|"MCP stdio"| O["get_service_status<br/>query_incidents"]
-    TE --> P["Post-traitement<br/>citations, mention de simulation"]
+flowchart TB
+    Q(["Question"]) --> T["<b>Triage</b> (LLM, schéma JSON)<br/>choisit 1 des 5 catégories fixes"]
+    T -->|"malfunction · documentation<br/>out_of_scope · vague"| D["<b>Documentaliste</b><br/>search_docs : passages cités (RAG)"]
+    T -->|"history<br/>(saute la recherche)"| H
+
+    D --> M["<b>malfunction</b><br/>= panne signalée sur postgres/nginx/redis<br/>Technicien : get_service_status EXIGÉ"]
+    D --> DO["<b>documentation</b><br/>= « que dois-je vérifier ? »<br/>Technicien : sans outil, réponse sourcée"]
+    D --> O["<b>out_of_scope</b><br/>= autre produit (Kafka…)<br/>Technicien : sans outil, dit sa limite"]
+    D --> V["<b>vague</b><br/>= service indéterminé<br/>Technicien : sans outil, 1 question de précision"]
+    H["<b>history</b><br/>= historique des incidents<br/>Technicien : query_incidents (SQL) EXIGÉ"]
+
+    M & DO & O & V & H --> P["<b>Post-traitement</b><br/>citations exactes, mention de simulation"]
     P --> A(["Réponse + trace JSON"])
+
+    D -. "MCP" .-> S1["search_docs<br/>embeddings → Chroma → reranking"]
+    M -. "MCP" .-> S2["get_service_status<br/>statuts simulés"]
+    H -. "MCP" .-> S3["query_incidents<br/>SQLite lecture seule"]
 ```
 
 **Table de correspondance composant → décision → compétence visée**
