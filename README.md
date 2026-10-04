@@ -2,11 +2,11 @@
 
 **A local-only, multi-agent troubleshooting assistant: LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, and a measured 4B-vs-7B model comparison. Runs on a single 8 GB GPU.**
 
-[![Version](https://img.shields.io/badge/version-1.11.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.11.1-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Local only](https://img.shields.io/badge/runs-100%25%20local-orange)](#requirements)
-[![Tests](https://img.shields.io/badge/tests-52%20passing-brightgreen)](#tests)
+[![Tests](https://img.shields.io/badge/tests-91%20passing-brightgreen)](#tests)
 
 HelloSupport is a deliberately small "hello world" project. It exercises the building blocks
 of modern LLM applications **end to end, for real, and with measurements**. Ask it a support
@@ -230,7 +230,7 @@ npx @modelcontextprotocol/inspector --cli .venv/bin/hello-support-mcp --method t
 
 ## Demo
 
-The six validation cases, in about five minutes (the knowledge base and questions are in French; the code is in English):
+The six validation cases, in about five minutes. The test questions are in French on purpose: the knowledge base is in English, so they exercise cross-lingual retrieval.
 
 ```bash
 uv run hello-support ask "Mon application ne parvient plus à se connecter à PostgreSQL. Que dois-je vérifier ?" --scenario stopped
@@ -286,8 +286,9 @@ Nothing in it re-implements the pipeline.
 ## Tests
 
 ```bash
-uv run pytest              # 40 offline tests, < 3 s: SQL guards, MCP contracts (real MCP client, in-memory server),
-                           # agent loop and whole graph with a scripted LLM, post-processing, validation checks
+uv run pytest              # 91 offline tests, ~15 s: SQL guards, MCP contracts (real MCP client, in-memory server),
+                           # agent loop and whole graph with a scripted LLM, post-processing, validation checks,
+                           # web demo, user requirements (docs/USER_REQUIREMENTS.md)
 uv run pytest -m models    # retrieval end to end on the GPU (downloads the HF models)
 uv run hello-support bench # system-level evaluation with the real models (needs LM Studio, ~6 min)
 ```
@@ -317,7 +318,7 @@ src/hello_support/
 data/               knowledge base (3 sheets), scenarios.json
 tests/              offline test suite
 tools/md2pdf.py     Markdown → PDF export (headless Edge/Chrome; Mermaid → SVG via mermaid-cli)
-docs/               specification, design decisions, benchmark, demo (French)
+docs/               specification, design decisions, benchmark, demo, user requirements
 ```
 
 ## Design decisions
@@ -325,7 +326,8 @@ docs/               specification, design decisions, benchmark, demo (French)
 All **31 design and development decisions** are documented ADR-style (need → options →
 choice → rationale → trade-offs → skill demonstrated) in
 [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) ([PDF](docs/DESIGN_DECISIONS.pdf)). The
-specification is in [`docs/SPEC.md`](docs/SPEC.md) ([PDF](docs/SPEC.pdf)). These documents are in French.
+specification is in [`docs/SPEC.md`](docs/SPEC.md) ([PDF](docs/SPEC.pdf)). All documentation is in English
+(checked by a test, see [`docs/USER_REQUIREMENTS.md`](docs/USER_REQUIREMENTS.md)).
 
 Some lessons that shaped the design, each from a measured failure:
 - **Small models do not decide by themselves to observe.** Left free, neither model called the status tool (0/3). A narrow structured-output router plus a code-enforced tool policy fixed it (D-17).

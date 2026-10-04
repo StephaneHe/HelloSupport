@@ -32,7 +32,7 @@ def test_case_checks_on_a_good_and_a_bad_c1_state():
     assert all(evaluate(c1, good).values())
     bad = {**good, "observations": [], "answer": "It is probably running. Sources: postgres_connection.md#Service_status"}
     result = evaluate(c1, bad)
-    assert not result["statut observé = stopped"] and not result["citations exactes"] and not result["en français"]
+    assert not result["observed status = stopped"] and not result["exact citations"] and not result["in French"]
 
 
 def test_citation_check_rejects_invented_sections():

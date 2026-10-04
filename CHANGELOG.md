@@ -8,6 +8,16 @@ Every release bumps the version **and** adds an entry here.
 
 ## [Unreleased]
 
+## [1.11.1] - 2026-10-04
+
+### Changed
+- **All documentation is now in English**: `docs/SPEC.md`, `docs/DESIGN_DECISIONS.md` (31 decisions, tables, legends, Mermaid diagrams), `docs/BENCH.md`, `docs/DEMO.md`, `TODO_LIST.md`, README harmonized; PDFs regenerated. The French test questions and the raw model answers are kept verbatim (test data).
+- Benchmark output in English: case titles, check names (`cases.py`), report labels and tables (`benchmark.py`); the labels of the existing reports in `docs/bench/` translated, model answers untouched.
+
+### Added
+- `docs/USER_REQUIREMENTS.md`: every user request with its date, verbatim text and protecting test (UR-001 to UR-006).
+- `tests/test_user_requirements.py`: language check on the published Markdown (no document mostly French, documented exceptions) and checks on the architecture diagrams (Mermaid, five triage categories, typed agents/router, agent loop, legend).
+
 ## [1.11.0] - 2026-10-04
 
 ### Added
@@ -129,7 +139,8 @@ Every release bumps the version **and** adds an entry here.
 ### Added
 - Initial project scaffold.
 
-[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.11.0...HEAD
+[Unreleased]: https://github.com/StephaneHe/HelloSupport/compare/v1.11.1...HEAD
+[1.11.1]: https://github.com/StephaneHe/HelloSupport/compare/v1.11.0...v1.11.1
 [1.11.0]: https://github.com/StephaneHe/HelloSupport/compare/v1.10.1...v1.11.0
 [1.10.1]: https://github.com/StephaneHe/HelloSupport/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/StephaneHe/HelloSupport/compare/v1.9.3...v1.10.0

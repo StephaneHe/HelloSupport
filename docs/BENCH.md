@@ -1,20 +1,20 @@
-# BENCH — mesures et observations
+# BENCH — measurements and observations
 
-> Chiffres **mesurés** sur la machine de dev (Windows 11, RTX 2070 Super 8 Go, Python 3.12,
-> torch 2.6.0+cu124), sauf mention contraire. Mesures ponctuelles : un seul passage, pas de
-> statistiques. Elles servent à raisonner, pas à conclure sur la performance en général.
+> Figures **measured** on the dev machine (Windows 11, RTX 2070 Super 8 GB, Python 3.12,
+> torch 2.6.0+cu124), unless stated otherwise. One-off measurements: a single pass, no
+> statistics. They are meant for reasoning, not for drawing general conclusions about performance.
 
-## J1 — RAG : recherche vectorielle puis reranking (2026-10-02)
+## J1 — RAG: vector search then reranking (2026-10-02)
 
-Pipeline : 12 sections (3 fiches × 4) → `paraphrase-multilingual-MiniLM-L12-v2` → Chroma
-(cosinus, top-5) → `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` → top-2. Device : `cuda`.
+Pipeline: 12 sections (3 sheets × 4) → `paraphrase-multilingual-MiniLM-L12-v2` → Chroma
+(cosine, top-5) → `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` → top-2. Device: `cuda`.
 
-Commande : `hello-support search "<question>"` (colonnes : rang final, rang vectoriel, cosinus,
-score du reranker).
+Command: `hello-support search "<question>"` (columns: final rank, vector rank, cosine,
+reranker score).
 
-### « connexion refusée postgres » (FR, fiches en anglais)
+### "connexion refusée postgres" (FR, sheets in English)
 
-| final | vecteur | cosinus | rerank | section |
+| final | vector | cosine | rerank | section |
 |---|---|---|---|---|
 | **1** | 2 | 0.507 | 7.41 | postgres_connection.md#Service status |
 | **2** | 5 | 0.465 | 7.30 | postgres_connection.md#Symptoms |
@@ -22,255 +22,255 @@ score du reranker).
 | 4 | 3 | 0.486 | -2.03 | nginx_unavailable.md#Service status |
 | 5 | 4 | 0.474 | -2.92 | nginx_unavailable.md#Symptoms |
 
-→ **Le reranking change l'ordre** : la section *Symptoms* (qui contient littéralement
-« connection refused ») passe de la 5ᵉ à la 2ᵉ place. Deux sections **nginx** étaient devant
-elle en recherche vectorielle seule. Sans reranking, le top-2 aurait été *Checks* et
-*Service status* : correct, mais sans la section symptômes.
+→ **Reranking changes the order**: the *Symptoms* section (which literally contains
+"connection refused") moves from 5th to 2nd place. Two **nginx** sections were ahead of
+it with vector search alone. Without reranking, the top-2 would have been *Checks* and
+*Service status*: correct, but without the symptoms section.
 
-### « My website shows 502 Bad Gateway »
+### "My website shows 502 Bad Gateway"
 
-| final | vecteur | cosinus | rerank | section |
+| final | vector | cosine | rerank | section |
 |---|---|---|---|---|
 | **1** | 1 | 0.600 | 3.88 | nginx_unavailable.md#Symptoms |
 | **2** | 5 | 0.451 | -4.30 | nginx_unavailable.md#Checks |
 | 3 | 2 | 0.503 | -7.08 | nginx_unavailable.md#Service status |
 
-→ *Checks* (qui explique 502 = upstream en panne) passe de la 5ᵉ à la 2ᵉ place.
+→ *Checks* (which explains 502 = upstream down) moves from 5th to 2nd place.
 
-### « Que vérifier si Redis répond NOAUTH ? »
+### "Que vérifier si Redis répond NOAUTH ?" (What should I check if Redis answers NOAUTH?)
 
-Top-2 : `redis_unreachable.md#Checks` (6.08), puis `#Symptoms` (-0.76, remontée du rang 3 au rang 2).
+Top-2: `redis_unreachable.md#Checks` (6.08), then `#Symptoms` (-0.76, moved up from rank 3 to rank 2).
 
-### « Kafka consumer lag is growing » (hors base)
+### "Kafka consumer lag is growing" (not in the knowledge base)
 
-| final | vecteur | cosinus | rerank | section |
+| final | vector | cosine | rerank | section |
 |---|---|---|---|---|
 | 1 | 2 | 0.122 | -9.25 | redis_unreachable.md#Symptoms |
 | 2 | 3 | 0.120 | -9.65 | redis_unreachable.md#Limits |
 | 5 | 1 | 0.212 | -10.56 | postgres_connection.md#Limits |
 
-→ La recherche vectorielle **renvoie toujours des voisins**, même quand rien ne correspond.
-Tous les scores du reranker sont ≤ -9.2, alors que les passages utiles des autres requêtes
-sont ≥ -4.3. D'où un seuil grossier `RELEVANCE_THRESHOLD = -5` qui marque les passages
-« hors sujet ». Il permet à l'agent de répondre « pas couvert » (cas C5).
+→ Vector search **always returns neighbors**, even when nothing matches.
+All reranker scores are ≤ -9.2, whereas the useful passages of the other queries
+are ≥ -4.3. Hence a coarse threshold `RELEVANCE_THRESHOLD = -5` that flags passages as
+"off-topic". It lets the agent answer "not covered" (case C5).
 
-### Latences (J1)
+### Latencies (J1)
 
-| Étape | Mesure |
+| Step | Measurement |
 |---|---|
-| Import de `sentence_transformers` (à froid) | ~15 s (coût fixe local : chargement de `transformers`, pas du réseau) |
-| Chargement complet du `Retriever` (imports + 2 modèles sur GPU + Chroma + échauffement) | ~27 s |
-| Première requête sans échauffement (initialisation des kernels CUDA) | ~2,9 s |
-| Requête après échauffement (encodage + Chroma + reranking de 5 paires) | ~0,4–0,6 s |
-| Construction de l'index (12 sections) | incluse dans le premier chargement ; réutilisé ensuite (empreinte du contenu) |
+| Import of `sentence_transformers` (cold) | ~15 s (fixed local cost: loading `transformers`, not network) |
+| Full load of the `Retriever` (imports + 2 models on GPU + Chroma + warm-up) | ~27 s |
+| First query without warm-up (CUDA kernel initialization) | ~2.9 s |
+| Query after warm-up (encoding + Chroma + reranking of 5 pairs) | ~0.4–0.6 s |
+| Index build (12 sections) | included in the first load; reused afterwards (content fingerprint) |
 
-Le coût de chargement est payé **une fois par session** du serveur MCP (J2), pas à chaque question.
+The loading cost is paid **once per session** of the MCP server (J2), not for every question.
 
-## J3 — Agents + orchestration : premiers essais réels (2026-10-02)
+## J3 — Agents + orchestration: first real runs (2026-10-02)
 
-Modèle par défaut : `qwen2.5-7b-instruct` (Q4_K_M), température 0. Une exécution par cas :
-**ce n'est pas encore l'évaluation J4**. Les traces complètes sont dans `runs/` (gitignoré).
+Default model: `qwen2.5-7b-instruct` (Q4_K_M), temperature 0. One run per case:
+**this is not yet the J4 evaluation**. Full traces are in `runs/` (gitignored).
 
-### Le modèle choisit-il d'observer ? (avant le triage, cf. D-17)
+### Does the model choose to observe? (before triage, see D-17)
 
-Entrée réelle du technicien (question + brief + 3 passages), outils proposés en `tool_choice=auto`,
-3 essais :
+Real technician input (question + brief + 3 passages), tools offered with `tool_choice=auto`,
+3 attempts:
 
-| Modèle | Entrée complète | Sans brief | Question en dernier |
+| Model | Full input | Without brief | Question last |
 |---|---|---|---|
 | Qwen2.5-7B | 0/3 | 0/3 | 0/3 |
 | Qwen3-4B-2507 | 0/3 | 0/3 | 0/3 |
 
-### Triage par sortie structurée (6 questions types)
+### Triage via structured output (6 sample questions)
 
-| Modèle | Correct | Erreurs |
+| Model | Correct | Errors |
 |---|---|---|
-| Qwen2.5-7B | 4/6 | Kafka → `vague` (attendu `out_of_scope`) ; « ça marche pas » → `malfunction` sans service (requalifié en `vague` par le code) |
-| Qwen3-4B-2507 | 4/6 | « ne parvient plus à se connecter… que vérifier ? » → `documentation` (prompt précisé ensuite) ; « ça marche pas » → `malfunction/postgres` |
+| Qwen2.5-7B | 4/6 | Kafka → `vague` (expected `out_of_scope`); "ça marche pas" ("it doesn't work") → `malfunction` without a service (requalified as `vague` by the code) |
+| Qwen3-4B-2507 | 4/6 | "ne parvient plus à se connecter… que vérifier ?" ("can no longer connect… what should I check?") → `documentation` (prompt clarified afterwards); "ça marche pas" → `malfunction/postgres` |
 
-Latence du triage : ~0,3 s à chaud, ~3–9 s pour le premier appel (chargement du modèle par LM Studio).
+Triage latency: ~0.3 s warm, ~3–9 s for the first call (model loading by LM Studio).
 
-### Exécutions de bout en bout après triage + garde-fous (7 B)
+### End-to-end runs after triage + guardrails (7B)
 
-| Cas | Comportement observé | Durée totale |
+| Case | Observed behavior | Total duration |
 |---|---|---|
-| C1 postgres `stopped` | `get_service_status(postgres)` → `stopped` ; diagnostic « service arrêté, lire les logs avant de relancer », source `Service status` | ~41 s |
-| C2 postgres `running` | → `running` (simulé) ; conclusion différente : réseau / config / identifiants | ~40 s |
-| C3 Redis documentaire | aucun appel de statut ; liste de vérifications sourcées (une « Observation » inventée dans la 1ʳᵉ version, d'où la consigne ajoutée) | ~44 s |
-| C4 incidents postgres 30 j | SQL valide `COUNT(*), MAX(resolved)` → `[3, 1]` ; « 3 incidents » ✔ ; « le dernier n'est pas résolu » est **vrai mais non déduit** du résultat ✘ | ~7 s |
-| C5 « Mon Kafka est lent » | demande de précision, aucune fiche inventée | ~6,5 s |
-| C5 « ça marche pas » | « Quel service ? » | ~32 s |
-| C6 Redis `tool_error` | erreur d'outil tracée ; réponse « statut non vérifiable » + pistes sourcées ; avant correctif : 46 appels dupliqués en 18 s | ~40 s |
+| C1 postgres `stopped` | `get_service_status(postgres)` → `stopped`; diagnosis "service stopped, read the logs before restarting", source `Service status` | ~41 s |
+| C2 postgres `running` | → `running` (simulated); different conclusion: network / config / credentials | ~40 s |
+| C3 Redis documentation | no status call; list of sourced checks (an invented "Observation" in the 1st version, hence the added instruction) | ~44 s |
+| C4 postgres incidents 30 d | valid SQL `COUNT(*), MAX(resolved)` → `[3, 1]`; "3 incidents" ✔; "the last one is not resolved" is **true but not derived** from the result ✘ | ~7 s |
+| C5 "Mon Kafka est lent" ("My Kafka is slow") | request for clarification, no invented sheet | ~6.5 s |
+| C5 "ça marche pas" | "Which service?" | ~32 s |
+| C6 Redis `tool_error` | tool error traced; answer "status cannot be verified" + sourced leads; before the fix: 46 duplicate calls in 18 s | ~40 s |
 
-Sur ~40 s, ~21–27 s correspondent au **chargement du RAG** dans le serveur MCP (une fois par
-session). Les appels LLM totalisent ~11–13 s pour 4–5 appels, et ~2 300–3 000 tokens en entrée.
+Of the ~40 s, ~21–27 s correspond to **loading the RAG** in the MCP server (once per
+session). LLM calls total ~11–13 s for 4–5 calls, and ~2,300–3,000 input tokens.
 
-## J4 — Validation : 6 cas × 3 exécutions × 2 modèles (2026-10-02)
+## J4 — Validation: 6 cases × 3 runs × 2 models (2026-10-02)
 
-Commande : `hello-support bench --models slm large --runs 3`. Vérifications automatiques par cas
-(`src/hello_support/cases.py`), mesures **à chaud** (session MCP et modèle déjà chargés).
-Rapports complets avec **toutes les réponses** : [`bench/bench-20261002-172401.md`](bench/bench-20261002-172401.md)
-(avant correctifs) et [`bench/bench-20261002-173250.md`](bench/bench-20261002-173250.md) (après).
+Command: `hello-support bench --models slm large --runs 3`. Automatic checks per case
+(`src/hello_support/cases.py`), **warm** measurements (MCP session and model already loaded).
+Full reports with **all answers**: [`bench/bench-20261002-172401.md`](bench/bench-20261002-172401.md)
+(before fixes) and [`bench/bench-20261002-173250.md`](bench/bench-20261002-173250.md) (after).
 
-### Avant / après les correctifs de J4
+### Before / after the J4 fixes
 
-| | SLM Qwen3-4B avant | SLM après | 7 B avant | 7 B après |
+| | SLM Qwen3-4B before | SLM after | 7B before | 7B after |
 |---|---|---|---|---|
-| Cas réussis | 7/18 | **15/18** | 10/18 | **18/18** |
-| Vérifications réussies | 81/108 | 105/108 | 98/108 | 108/108 |
+| Cases passed | 7/18 | **15/18** | 10/18 | **18/18** |
+| Checks passed | 81/108 | 105/108 | 98/108 | 108/108 |
 
-Correctifs entre les deux runs, chacun motivé par un échec observé :
-- **D-22** : citations normalisées et mention de simulation ajoutée par le code ;
-- **D-23** : requêtes SQL dans la même étape ;
-- **D-24** : règles et exemples dans le triage.
+Fixes between the two runs, each driven by an observed failure:
+- **D-22**: citations normalized and simulation notice added by the code;
+- **D-23**: SQL queries in the same step;
+- **D-24**: rules and examples in the triage.
 
-Deux vérifications étaient elles-mêmes **fausses** et ont été corrigées :
-- l'analyse des citations séparées par un espace ;
-- un « statut affirmé » détecté dans une phrase conditionnelle « si le serveur Redis est arrêté ».
+Two checks were themselves **wrong** and were fixed:
+- parsing of citations separated by a space;
+- an "asserted status" detected in a conditional sentence "if the Redis server is stopped".
 
-### Résultat final (run n° 2)
+### Final result (run no. 2)
 
-| Indicateur | `qwen/qwen3-4b-2507` | `qwen2.5-7b-instruct` |
+| Indicator | `qwen/qwen3-4b-2507` | `qwen2.5-7b-instruct` |
 |---|---|---|
-| Cas réussis (toutes vérifications) | 15/18 | 18/18 |
-| Vérifications réussies | 105/108 | 108/108 |
-| Latence p50 / max par requête | 5.96 s / 11.52 s | 9.04 s / 15.65 s |
-| Appels LLM par requête (moy.) | 4.5 | 4.22 |
-| Tokens in / out par requête (moy.) | 2774 / 347 | 2602 / 391 |
-| Débit de génération (tokens out / s LLM) | 57.9 | 45.3 |
-| Requêtes / min (séquentiel) | 9.9 | 6.9 |
-| Coût local | 0 € (électricité non comptée) | 0 € |
-| Coût estimé si API OpenAI gpt-4o-mini, /1000 req. | ~0.62 $ | ~0.62 $ |
-| Coût estimé si API Anthropic Claude Haiku 4.5, /1000 req. | ~4.51 $ | ~4.56 $ |
+| Cases passed (all checks) | 15/18 | 18/18 |
+| Checks passed | 105/108 | 108/108 |
+| p50 / max latency per request | 5.96 s / 11.52 s | 9.04 s / 15.65 s |
+| LLM calls per request (avg.) | 4.5 | 4.22 |
+| Tokens in / out per request (avg.) | 2774 / 347 | 2602 / 391 |
+| Generation throughput (tokens out / LLM s) | 57.9 | 45.3 |
+| Requests / min (sequential) | 9.9 | 6.9 |
+| Local cost | €0 (electricity not counted) | €0 |
+| Estimated cost with OpenAI gpt-4o-mini API, /1000 req. | ~$0.62 | ~$0.62 |
+| Estimated cost with Anthropic Claude Haiku 4.5 API, /1000 req. | ~$4.51 | ~$4.56 |
 
-| Cas | SLM (réussites · latence p50) | 7 B |
+| Case | SLM (passes · p50 latency) | 7B |
 |---|---|---|
-| C1 PostgreSQL arrêté | 3/3 · 9.6 s | 3/3 · 13.7 s |
-| C2 PostgreSQL actif | 3/3 · 9.0 s | 3/3 · 9.0 s |
-| C3 Question documentaire | 3/3 · 5.7 s | 3/3 · 9.1 s |
-| C4 Question data (SQL) | 3/3 · 3.5 s | 3/3 · 7.7 s |
-| C5 Demande hors périmètre | 3/3 · 1.5 s | 3/3 · 2.1 s |
-| C6 Outil en erreur | **0/3** · 6.6 s | 3/3 · 11.2 s |
+| C1 PostgreSQL stopped | 3/3 · 9.6 s | 3/3 · 13.7 s |
+| C2 PostgreSQL running | 3/3 · 9.0 s | 3/3 · 9.0 s |
+| C3 Documentation question | 3/3 · 5.7 s | 3/3 · 9.1 s |
+| C4 Data question (SQL) | 3/3 · 3.5 s | 3/3 · 7.7 s |
+| C5 Out-of-scope request | 3/3 · 1.5 s | 3/3 · 2.1 s |
+| C6 Tool failure | **0/3** · 6.6 s | 3/3 · 11.2 s |
 
-**Échecs restants (SLM, C6)** : le SLM **invente des identifiants de source**
-(`unreachable.md#Checks`, `[service_status#Service status]`) quand l'outil de statut échoue. Le
-post-traitement les signale dans la trace, mais ne les corrige pas, et c'est voulu.
+**Remaining failures (SLM, C6)**: the SLM **invents source identifiers**
+(`unreachable.md#Checks`, `[service_status#Service status]`) when the status tool fails. The
+post-processing flags them in the trace but does not fix them, and this is intentional.
 
-**Limites de lecture** :
-- les vérifications par mots-clés sont grossières (D-21) ;
-- température 0, donc les 3 exécutions sont très proches : la variance mesurée est surtout celle
-  de la latence ;
-- en relecture, le 7 B présente parfois les symptômes de la fiche comme des « logs observés »
-  (C6), ce que les vérifications ne détectent pas.
+**Reading limits**:
+- keyword-based checks are coarse (D-21);
+- temperature 0, so the 3 runs are very close: the measured variance is mostly that of
+  latency;
+- on review, the 7B sometimes presents the sheet's symptoms as "observed logs"
+  (C6), which the checks do not detect.
 
-Les **coûts cloud** sont des **estimations** : tokens mesurés × prix publics indicatifs
-(`REFERENCE_PRICES_USD_PER_MTOK`, à revérifier), aucun appel ni compte.
+**Cloud costs** are **estimates**: measured tokens × indicative public prices
+(`REFERENCE_PRICES_USD_PER_MTOK`, to be re-checked), no calls and no account.
 
-Démarrage à froid d'une session (RAG + chargement du modèle par LM Studio) : 20–26 s.
+Cold start of a session (RAG + model loading by LM Studio): 20–26 s.
 
-## J5 — Débit du serving (2026-10-02)
+## J5 — Serving throughput (2026-10-02)
 
-Commande : `hello-support throughput --models slm large --concurrency 1 4 --requests 8`.
-La même requête de génération (~160 tokens max, température 0,7) est envoyée 8 fois, une à la
-fois puis par 4 en parallèle, au serveur LM Studio (RTX 2070 Super 8 Go).
+Command: `hello-support throughput --models slm large --concurrency 1 4 --requests 8`.
+The same generation request (~160 tokens max, temperature 0.7) is sent 8 times, one at a
+time and then 4 in parallel, to the LM Studio server (RTX 2070 Super 8 GB).
 
-| Modèle | Concurrence | Requêtes | Durée | Tokens out/s (agrégé) | Req/min | Latence p50 / max |
+| Model | Concurrency | Requests | Duration | Tokens out/s (aggregate) | Req/min | p50 / max latency |
 |---|---|---|---|---|---|---|
 | `qwen/qwen3-4b-2507` | 1 | 8 | 8.61 s | 106.6 | 55.7 | 1.06 s / 1.18 s |
 | `qwen/qwen3-4b-2507` | 4 | 8 | 5.34 s | 172.6 | 90.0 | 1.78 s / 4.17 s |
 | `qwen2.5-7b-instruct` | 1 | 8 | 14.13 s | 71.1 | 34.0 | 1.62 s / 2.24 s |
 | `qwen2.5-7b-instruct` | 4 | 8 | 8.26 s | 127.6 | 58.1 | 3.69 s / 6.29 s |
 
-Lecture :
-- **Taille du modèle** : à concurrence 1, le 4 B génère ~1,5× plus vite que le 7 B (107 contre
+Reading:
+- **Model size**: at concurrency 1, the 4B generates ~1.5× faster than the 7B (107 vs.
   71 tokens/s).
-- **Concurrence** : à 4 requêtes simultanées, le débit agrégé est multiplié par **1,6 (4 B) à
-  1,8 (7 B)**, mais la latence individuelle **double**. C'est le compromis débit / latence d'un
-  serveur qui traite plusieurs requêtes en parallèle.
-- **Écart avec le bench** : le débit de génération y est plus bas (58 et 45 tokens/s) parce que
-  le temps LLM inclut le traitement de prompts de ~600–900 tokens (contexte RAG, résultats
-  d'outils) et plusieurs appels courts.
+- **Concurrency**: with 4 simultaneous requests, aggregate throughput is multiplied by **1.6 (4B) to
+  1.8 (7B)**, but individual latency **doubles**. This is the throughput / latency trade-off of a
+  server that handles several requests in parallel.
+- **Gap with the benchmark**: generation throughput is lower there (58 and 45 tokens/s) because
+  LLM time includes processing prompts of ~600–900 tokens (RAG context, tool
+  results) and several short calls.
 
-Ce n'est pas un test de charge : une seule machine, LM Studio (outil desktop), 8 requêtes. Un vrai
-test de débit se ferait avec vLLM (batching continu) et une montée en charge progressive
-(« pour aller plus loin »).
+This is not a load test: a single machine, LM Studio (a desktop tool), 8 requests. A real
+throughput test would use vLLM (continuous batching) and a gradual ramp-up
+("going further").
 
-## v1.10.0 — `out_of_scope` et `vague` sautent le documentaliste (2026-10-04)
+## v1.10.0 — `out_of_scope` and `vague` skip the documentalist (2026-10-04)
 
-Changement mesuré **avant** (tag `pre-1.10.0`, v1.9.3) et **après** (v1.10.0), dans les mêmes
-conditions : un seul modèle chargé à la fois dans LM Studio (déchargement entre les séries), mesures à chaud.
-Décision : D-30.
+Change measured **before** (tag `pre-1.10.0`, v1.9.3) and **after** (v1.10.0), under the same
+conditions: a single model loaded at a time in LM Studio (unloaded between series), warm measurements.
+Decision: D-30.
 
-### Gain ciblé (5 exécutions par cas et par modèle)
+### Targeted gain (5 runs per case and per model)
 
-Deux questions : `out_of_scope` = C5 « Mon Kafka est lent, que faire ? », `vague` = « ça marche pas, que faire ? ».
+Two questions: `out_of_scope` = C5 "Mon Kafka est lent, que faire ?" ("My Kafka is slow, what should I do?"), `vague` = "ça marche pas, que faire ?" ("it doesn't work, what should I do?").
 
-| Modèle | Catégorie | Réussite | Latence p50 | Appels LLM | Tokens in (moy.) | Tokens out (moy.) |
+| Model | Category | Pass rate | p50 latency | LLM calls | Tokens in (avg.) | Tokens out (avg.) |
 |---|---|---|---|---|---|---|
-| Qwen3-4B | out_of_scope | 5/5 → 5/5 | 1,26 → **0,82 s (−35 %)** | 3 → 2 | 1 139 → 724 | 79 → 63 |
-| Qwen3-4B | vague | 5/5 → 5/5 | 3,07 → **0,44 s (−86 %)** | 4 → 2 | 2 150 → 710 | 122 → 25 |
-| Qwen2.5-7B | out_of_scope | 5/5 → 5/5 | 1,96 → 2,02 s (+3 %) | 3 → 2 | 1 136 → 724 | 110 → 104 |
-| Qwen2.5-7B | vague | 5/5 → 5/5 | 3,87 → **1,74 s (−55 %)** | 4 → 2 | 1 968 → 710 | 147 → 83 |
+| Qwen3-4B | out_of_scope | 5/5 → 5/5 | 1.26 → **0.82 s (−35%)** | 3 → 2 | 1,139 → 724 | 79 → 63 |
+| Qwen3-4B | vague | 5/5 → 5/5 | 3.07 → **0.44 s (−86%)** | 4 → 2 | 2,150 → 710 | 122 → 25 |
+| Qwen2.5-7B | out_of_scope | 5/5 → 5/5 | 1.96 → 2.02 s (+3%) | 3 → 2 | 1,136 → 724 | 110 → 104 |
+| Qwen2.5-7B | vague | 5/5 → 5/5 | 3.87 → **1.74 s (−55%)** | 4 → 2 | 1,968 → 710 | 147 → 83 |
 
-Lecture :
-- **`vague`** : l'ancien documentaliste **cherchait** (« it is not working » → 3 passages hors sujet) puis
-  rédigeait un brief, soit 2 appels LLM et un appel d'outil. Ils sont supprimés, d'où −55 à −86 %.
-- **`out_of_scope`** : l'ancien documentaliste répondait déjà **sans chercher** (1 appel court). Le gain
-  est réel avec le 4B (−35 %), nul avec le 7B, dont la réponse du technicien (~100 tokens) domine la
-  durée. Dans tous les cas, les tokens d'entrée baissent de 36 à 67 %.
+Reading:
+- **`vague`**: the old documentalist **searched** ("it is not working" → 3 off-topic passages) and then
+  wrote a brief, i.e. 2 LLM calls and one tool call. They are removed, hence −55 to −86%.
+- **`out_of_scope`**: the old documentalist already answered **without searching** (1 short call). The gain
+  is real with the 4B (−35%), nil with the 7B, whose technician answer (~100 tokens) dominates the
+  duration. In all cases, input tokens drop by 36 to 67%.
 
-### Bench complet (6 cas × 3, par modèle)
+### Full benchmark (6 cases × 3, per model)
 
-| | 4B avant | 4B après | 7B avant | 7B après |
+| | 4B before | 4B after | 7B before | 7B after |
 |---|---|---|---|---|
-| Cas réussis | 15/18 | 15/18 | 18/18 | 17/18 |
+| Cases passed | 15/18 | 15/18 | 18/18 | 17/18 |
 | C1 · C2 · C3 · C4 · C5 · C6 | 3·3·3·3·3·0 | 3·3·2·3·3·1 | 3·3·3·3·3·3 | 3·3·3·3·3·2 |
-| C5 latence p50 | 1,43 s | 0,92 s | 2,06 s | 1,72 s |
-| Latence p50 (toutes requêtes) | 9,5 s ⚠ | 4,4 s | 8,2 s | 7,8 s |
+| C5 p50 latency | 1.43 s | 0.92 s | 2.06 s | 1.72 s |
+| p50 latency (all requests) | 9.5 s ⚠ | 4.4 s | 8.2 s | 7.8 s |
 
-**Écarts sur des chemins inchangés, vérifiés comme préexistants** (re-mesurés sur l'ancien et le nouveau code) :
+**Deviations on unchanged paths, verified as pre-existing** (re-measured on the old and the new code):
 
-| Cas (chemin) | Modèle | Vérification qui échoue | Ancien code | Nouveau code |
+| Case (path) | Model | Failing check | Old code | New code |
 |---|---|---|---|---|
-| C6 (`malfunction`) | 7B | « dit que la vérification a échoué » : réponse « statut indéterminé… limitation de l'outil » | 8/10 (+ 5/5) | 8/10 (+ 4/5) |
-| C3 (`documentation`) | 4B | citations exactes / en français | 5/8 | 7/8 |
+| C6 (`malfunction`) | 7B | "says the check failed": answer "statut indéterminé… limitation de l'outil" ("status undetermined… tool limitation") | 8/10 (+ 5/5) | 8/10 (+ 4/5) |
+| C3 (`documentation`) | 4B | exact citations / in French | 5/8 | 7/8 |
 
-Aucune régression attribuable au changement. Ces deux cas montrent une **instabilité de formulation**
-des modèles malgré la température 0 (lots parallèles de LM Studio), combinée à des vérifications par
-mots-clés grossières (D-21).
+No regression attributable to the change. These two cases show **wording instability**
+in the models despite temperature 0 (LM Studio parallel batches), combined with coarse
+keyword-based checks (D-21).
 
-⚠ **Conditions machine** : LM Studio charge désormais les modèles avec un contexte par défaut de 25 600
-tokens et 4 emplacements parallèles. L'option `-c` de `lms load` est ignorée, et la configuration de
-LM Studio est hors du projet. La VRAM monte alors à ~7 Go et, avec les modèles d'embedding du serveur
-MCP, le GPU sature par moments : appels LLM à 50–100 s dans la série « 4B avant », puis interruption
-d'une seconde série à 590 s. Les **latences globales du 4B ne sont donc pas comparables** entre les deux
-séries. Les comparaisons ciblées ci-dessus, aux écarts serrés, et les taux de réussite restent valables.
+⚠ **Machine conditions**: LM Studio now loads models with a default context of 25,600
+tokens and 4 parallel slots. The `-c` option of `lms load` is ignored, and the LM Studio
+configuration is outside the project. VRAM then rises to ~7 GB and, together with the MCP server's
+embedding models, the GPU saturates at times: LLM calls of 50–100 s in the "4B before" series, then
+a second series aborted at 590 s. The **overall 4B latencies are therefore not comparable** between the two
+series. The targeted comparisons above, with their tight gaps, and the pass rates remain valid.
 
-Rapports : avant [`bench-20261004-120325`](bench/bench-20261004-120325.md) (4B),
-[`bench-20261004-121113`](bench/bench-20261004-121113.md) (7B) ; après
+Reports: before [`bench-20261004-120325`](bench/bench-20261004-120325.md) (4B),
+[`bench-20261004-121113`](bench/bench-20261004-121113.md) (7B); after
 [`bench-20261004-121546`](bench/bench-20261004-121546.md) (4B), [`bench-20261004-122103`](bench/bench-20261004-122103.md)
-(7B) ; contrôles C6 [`122349`](bench/bench-20261004-122349.md) (nouveau ×5), [`122531`](bench/bench-20261004-122531.md)
-(ancien ×5), [`122757`](bench/bench-20261004-122757.md) (ancien ×10), [`124927`](bench/bench-20261004-124927.md) (nouveau ×10) ; contrôles C3 (4B) [`125119`](bench/bench-20261004-125119.md) (nouveau ×8), [`125223`](bench/bench-20261004-125223.md) (ancien ×8).
+(7B); C6 controls [`122349`](bench/bench-20261004-122349.md) (new ×5), [`122531`](bench/bench-20261004-122531.md)
+(old ×5), [`122757`](bench/bench-20261004-122757.md) (old ×10), [`124927`](bench/bench-20261004-124927.md) (new ×10); C3 (4B) controls [`125119`](bench/bench-20261004-125119.md) (new ×8), [`125223`](bench/bench-20261004-125223.md) (old ×8).
 
-### Réglages LM Studio stabilisés (2026-10-04, après la mesure v1.10.0)
+### Stabilized LM Studio settings (2026-10-04, after the v1.10.0 measurement)
 
-La saturation GPU signalée ci-dessus venait de l'**auto-ajustement du contexte** de LM Studio :
-25 600 tokens × 4 emplacements parallèles, ~7 Go de VRAM pour le 4B. Une configuration par modèle
-désactive l'auto-ajustement, fixe le **contexte à 8 192** et le **parallélisme à 1**. Elle est
-appliquée aux chargements manuels comme aux chargements à la demande (JIT). VRAM avec le modèle
-chargé et le serveur MCP actif : 4B ~4,6 Go, 7B ~5,9 Go.
+The GPU saturation reported above came from LM Studio's **context auto-adjustment**:
+25,600 tokens × 4 parallel slots, ~7 GB of VRAM for the 4B. A per-model configuration
+disables auto-adjustment and pins the **context to 8,192** and **parallelism to 1**. It is
+applied to manual loads as well as on-demand (JIT) loads. VRAM with the model
+loaded and the MCP server running: 4B ~4.6 GB, 7B ~5.9 GB.
 
-Contrôle rapide après réglage, code v1.10.0 :
+Quick check after tuning, code v1.10.0:
 
-| Série | Réussite | Latence p50 / max | Comparaison |
+| Series | Pass rate | p50 / max latency | Comparison |
 |---|---|---|---|
-| 4B, 6 cas × 3 ([`132504`](bench/bench-20261004-132504.md)) | 16/18 | **4,38 s / 7,6 s** | « 4B avant » saturé : 9,5 s / **100,9 s** |
-| 7B, C1 + C3 × 3 ([`132635`](bench/bench-20261004-132635.md)) | 6/6 | 8,8 s / 11,2 s | C1 et C3 étaient les cas aux pics de 50–100 s |
+| 4B, 6 cases × 3 ([`132504`](bench/bench-20261004-132504.md)) | 16/18 | **4.38 s / 7.6 s** | saturated "4B before": 9.5 s / **100.9 s** |
+| 7B, C1 + C3 × 3 ([`132635`](bench/bench-20261004-132635.md)) | 6/6 | 8.8 s / 11.2 s | C1 and C3 were the cases with 50–100 s spikes |
 
-Les latences sont de nouveau stables. Avec 1 seul emplacement parallèle, la mesure de débit à
-concurrence 4 (section J5, faite avec 4 emplacements) ne serait plus reproduite telle quelle : les
-requêtes seraient servies l'une après l'autre.
+Latencies are stable again. With a single parallel slot, the throughput measurement at
+concurrency 4 (section J5, done with 4 slots) would no longer be reproduced as is: the
+requests would be served one after the other.
 
-### Non-régression v1.11.0 (démo web)
+### v1.11.0 non-regression (web demo)
 
-Bench rapide après l'ajout de la démo web (`hello-support bench --models slm large --runs 1`, réglages LM Studio stabilisés) : **6/6 pour les deux modèles**, latence p50 4,9 s (4B) et 7,3 s (7B). Rapport : [`145500`](bench/bench-20261004-145500.md).
+Quick benchmark after adding the web demo (`hello-support bench --models slm large --runs 1`, stabilized LM Studio settings): **6/6 for both models**, p50 latency 4.9 s (4B) and 7.3 s (7B). Report: [`145500`](bench/bench-20261004-145500.md).

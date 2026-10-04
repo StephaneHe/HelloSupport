@@ -1,57 +1,57 @@
-# HelloSupport — Décisions de design et de développement
+# HelloSupport — Design and development decisions
 
-> **Livrable final** exigé par la spec ([`SPEC.md`](SPEC.md) §3). Ce document explique
-> **chaque** choix de design et de développement du projet.
+> **Final deliverable** required by the spec ([`SPEC.md`](SPEC.md) §3). This document explains
+> **every** design and development choice in the project.
 >
-> - **Pendant le projet** : journal type ADR. Chaque jalon ajoute ses entrées `D-xx`, datées,
->   au moment où la décision est prise (avec ce qu'on savait alors).
-> - **À la fin (J5)** : consolidation. Synthèse en tête, entrées relues à la lumière des
->   mesures ([`BENCH.md`](BENCH.md)), export PDF ([`DESIGN_DECISIONS.pdf`](DESIGN_DECISIONS.pdf)).
->   **Statut : consolidé le 2026-10-02 (v1.8.0), 28 décisions ; D-29 à D-31 ajoutées le 2026-10-04.**
+> - **During the project**: ADR-style log. Each milestone adds its dated `D-xx` entries
+>   when the decision is made (with what was known at the time).
+> - **At the end (J5)**: consolidation. Summary at the top, entries reviewed in light of the
+>   measurements ([`BENCH.md`](BENCH.md)), PDF export ([`DESIGN_DECISIONS.pdf`](DESIGN_DECISIONS.pdf)).
+>   **Status: consolidated on 2026-10-02 (v1.8.0), 28 decisions; D-29 to D-31 added on 2026-10-04.**
 >
-> Format d'une entrée : **Besoin → Options envisagées → Choix → Pourquoi → Compromis /
-> limites → Compétence visée**. Une décision révisée n'est pas effacée : elle passe en
-> `Remplacée par D-yy`.
+> Entry format: **Need → Options → Choice → Why → Trade-offs /
+> limits → Skill demonstrated**. A revised decision is not deleted: it is marked
+> `Superseded by D-yy`.
 
-## Synthèse (consolidée le 2026-10-02, version 1.8.0)
+## Summary (consolidated on 2026-10-02, version 1.8.0)
 
-**Ce qui a été construit.** Un assistant de dépannage en terminal, 100 % local. Une question en
-français ou en anglais passe par un **triage** (LLM, sortie JSON contrainte), un **documentaliste**
-(recherche sémantique : embeddings → Chroma → reranking) et un **technicien**. Selon
-l'intention, le technicien observe un statut de service **simulé**, interroge une **base SQL
-d'incidents** en lecture seule (text-to-SQL), ou répond depuis la documentation. Il cite ses
-sources et sépare l'observé de l'hypothétique. Les outils passent par un **serveur MCP**,
-l'orchestration par **LangGraph**, les modèles (SLM 4 B / 7 B) sont servis par **LM Studio**
-sur GPU.
+**What was built.** A troubleshooting assistant in the terminal, 100% local. A question in
+French or English goes through **triage** (LLM, constrained JSON output), a **documentalist**
+(semantic search: embeddings → Chroma → reranking) and a **technician**. Depending on the
+intent, the technician observes a **simulated** service status, queries a read-only **SQL
+incident database** (text-to-SQL), or answers from the documentation. It cites its
+sources and separates what was observed from what is hypothetical. Tools go through an **MCP server**,
+orchestration through **LangGraph**, and the models (4B / 7B SLMs) are served by **LM Studio**
+on GPU.
 
 ```mermaid
 flowchart TB
     Q(["Question"]) --> T
 
-    subgraph G["Graphe LangGraph — linéaire : chaque étape s'exécute une fois, aucune boucle entre agents"]
-        T{{"<b>ROUTEUR · Triage</b><br/>1 appel LLM, sortie JSON contrainte<br/>sans outil · sans boucle"}}
-        T -->|"malfunction = panne sur postgres/nginx/redis<br/>documentation = « que dois-je vérifier ? »"| D
-        T -->|"history = historique des incidents → SQL<br/>out_of_scope = autre produit<br/>vague = service indéterminé<br/>(sautent la recherche)"| TE
-        D["<b>AGENT · Documentaliste</b><br/>outil : search_docs (≤ 2 appels)"]
-        D -->|"↻ boucle LLM ↔ outils<br/>≤ 3 appels LLM"| D
+    subgraph G["LangGraph graph — linear: each step runs once, no loop between agents"]
+        T{{"<b>ROUTER · Triage</b><br/>1 LLM call, constrained JSON output<br/>no tool · no loop"}}
+        T -->|"malfunction = failure on postgres/nginx/redis<br/>documentation = 'what should I check?'"| D
+        T -->|"history = incident history → SQL<br/>out_of_scope = other product<br/>vague = undetermined service<br/>(skip the search)"| TE
+        D["<b>AGENT · Documentalist</b><br/>tool: search_docs (≤ 2 calls)"]
+        D -->|"↻ LLM ↔ tools loop<br/>≤ 3 LLM calls"| D
         D --> TE
-        TE["<b>AGENT · Technicien</b><br/>outils selon la catégorie :<br/>malfunction → get_service_status EXIGÉ<br/>history → query_incidents (SQL) EXIGÉ<br/>documentation · out_of_scope · vague → aucun"]
-        TE -->|"↻ boucle LLM ↔ outils<br/>≤ 3 appels LLM"| TE
-        TE --> P["<b>CODE · Post-traitement</b> (sans LLM)<br/>citations exactes, mention de simulation"]
+        TE["<b>AGENT · Technician</b><br/>tools depending on the category:<br/>malfunction → get_service_status REQUIRED<br/>history → query_incidents (SQL) REQUIRED<br/>documentation · out_of_scope · vague → none"]
+        TE -->|"↻ LLM ↔ tools loop<br/>≤ 3 LLM calls"| TE
+        TE --> P["<b>CODE · Post-processing</b> (no LLM)<br/>exact citations, simulation notice"]
     end
-    P --> A(["Réponse + trace JSON"])
+    P --> A(["Answer + JSON trace"])
 
-    subgraph MCP["Serveur d'outils MCP (stdio)"]
+    subgraph MCP["MCP tool server (stdio)"]
         S1[/"search_docs<br/>embeddings → Chroma → reranking"/]
-        S2[/"get_service_status<br/>statuts simulés"/]
-        S3[/"query_incidents<br/>SQLite lecture seule"/]
+        S2[/"get_service_status<br/>simulated statuses"/]
+        S3[/"query_incidents<br/>read-only SQLite"/]
     end
     D -. "MCP" .-> S1
     TE -. "MCP" .-> S2
     TE -. "MCP" .-> S3
 
-    LLM[("<b>MODÈLE · LM Studio</b> :1234<br/>Qwen3-4B / Qwen2.5-7B, GPU")]
-    G -. "tous les appels LLM<br/>(triage + 2 agents)" .-> LLM
+    LLM[("<b>MODEL · LM Studio</b> :1234<br/>Qwen3-4B / Qwen2.5-7B, GPU")]
+    G -. "all LLM calls<br/>(triage + 2 agents)" .-> LLM
 
     classDef agent fill:#dbeafe,stroke:#1d4ed8,stroke-width:3px,color:#0b2a6b
     classDef router fill:#ffedd5,stroke:#c2410c,stroke-width:2px,color:#5a1d03
@@ -65,42 +65,42 @@ flowchart TB
     class LLM model
 ```
 
-**Légende**
+**Legend**
 
-| Style dans le schéma | Nature | Ce que c'est | Boucle ? |
+| Style in the diagram | Kind | What it is | Loop? |
 |---|---|---|---|
-| 🟦 bleu, bord épais | **AGENT** | Un LLM qui choisit quels outils appeler et avec quels arguments, lit les résultats puis répond (`run_agent`) | **oui** : LLM ↔ outils, ≤ 3 appels LLM |
-| 🟧 hexagone orange | **ROUTEUR** | Un seul appel LLM contraint par un schéma JSON, qui choisit 1 des 5 catégories fixes. Sans outil, donc pas un agent | non |
-| ⬜ gris, bord pointillé | **CODE** | Python déterministe, sans LLM | non |
-| 🟩 parallélogramme vert | **OUTIL MCP** | Exposé par le serveur MCP séparé, appelé par les agents | — |
-| 🟪 cylindre violet | **MODÈLE** | LLM servi localement par LM Studio (API OpenAI-compatible) | — |
+| 🟦 blue, thick border | **AGENT** | An LLM that chooses which tools to call and with which arguments, reads the results, then answers (`run_agent`) | **yes**: LLM ↔ tools, ≤ 3 LLM calls |
+| 🟧 orange hexagon | **ROUTER** | A single LLM call constrained by a JSON schema, which picks 1 of the 5 fixed categories. No tool, so not an agent | no |
+| ⬜ gray, dashed border | **CODE** | Deterministic Python, no LLM | no |
+| 🟩 green parallelogram | **MCP TOOL** | Exposed by the separate MCP server, called by the agents | — |
+| 🟪 purple cylinder | **MODEL** | LLM served locally by LM Studio (OpenAI-compatible API) | — |
 
-**Agent, routeur ou code ?** On appelle *agent* un LLM qui **décide lui-même** de ses actions
-(quels outils, quels arguments) et **boucle** sur leurs résultats jusqu'à pouvoir répondre :
-c'est le cas du Documentaliste et du Technicien. Le *triage* n'est pas un agent mais un
-**routeur**. Il fait un seul appel LLM, sans outil, dont la sortie est contrainte à
-`{intent, service}` ; c'est le **code** qui en tire le chemin et les outils autorisés (D-17).
-Le *post-traitement* et les contrôles de la boucle sont du **code** déterministe (D-18, D-22).
+**Agent, router or code?** We call an *agent* an LLM that **decides its own** actions
+(which tools, which arguments) and **loops** on their results until it can answer:
+this is the case for the Documentalist and the Technician. *Triage* is not an agent but a
+**router**. It makes a single LLM call, with no tool, whose output is constrained to
+`{intent, service}`; it is the **code** that derives the path and the allowed tools from it (D-17).
+*Post-processing* and the loop controls are deterministic **code** (D-18, D-22).
 
-**Pourquoi aucune boucle entre agents ?** Le graphe LangGraph est **linéaire** : triage →
-documentaliste → technicien pour `malfunction` et `documentation`, triage → technicien directement pour
-`history`, `out_of_scope` et `vague` (D-30), et chaque nœud s'exécute
-une fois par question. Les seules boucles sont **à l'intérieur** de chaque agent, et elles sont
-bornées (D-18, D-29) :
+**Why no loop between agents?** The LangGraph graph is **linear**: triage →
+documentalist → technician for `malfunction` and `documentation`, triage → technician directly for
+`history`, `out_of_scope` and `vague` (D-30), and each node runs
+once per question. The only loops are **inside** each agent, and they are
+bounded (D-18, D-29):
 
 ```mermaid
 flowchart TB
-    S(["Début de l'étape d'un agent<br/>(Documentaliste ou Technicien)"]) --> L
-    L["<b>AGENT · appel LLM n° i</b>  (i ≤ 3 = MAX_LLM_CALLS)<br/>outils proposés dans la limite de leur budget<br/>3ᵉ appel : AUCUN outil proposé → doit répondre"]
-    L --> Q1{"Le modèle demande-t-il<br/>des outils ?"}
-    Q1 -->|"oui"| F["<b>CODE · contrôles</b><br/>dédoublonnage · ≤ 3 appels par étape<br/>budget par outil · arguments JSON valides"]
-    F --> X[/"MCP · exécution des outils"/]
-    X --> R["<b>CODE</b> · résultats (ou erreurs)<br/>ajoutés à la conversation"]
-    R -->|"↻ appel LLM suivant"| L
-    Q1 -->|"non : réponse texte"| Q2{"Outil EXIGÉ<br/>et pas encore appelé ?"}
-    Q2 -->|"oui, 1re fois"| REJ["<b>CODE</b> · réponse rejetée → relance<br/>« appelle l'outil maintenant »"]
+    S(["Start of an agent's step<br/>(Documentalist or Technician)"]) --> L
+    L["<b>AGENT · LLM call i</b>  (i ≤ 3 = MAX_LLM_CALLS)<br/>tools offered within their budget<br/>3rd call: NO tool offered → must answer"]
+    L --> Q1{"Does the model request<br/>tools?"}
+    Q1 -->|"yes"| F["<b>CODE · controls</b><br/>deduplication · ≤ 3 calls per step<br/>per-tool budget · valid JSON arguments"]
+    F --> X[/"MCP · tool execution"/]
+    X --> R["<b>CODE</b> · results (or errors)<br/>added to the conversation"]
+    R -->|"↻ next LLM call"| L
+    Q1 -->|"no: text answer"| Q2{"REQUIRED tool<br/>not yet called?"}
+    Q2 -->|"yes, 1st time"| REJ["<b>CODE</b> · rejected answer → retry<br/>'call the tool now'"]
     REJ -->|"↻"| L
-    Q2 -->|"non"| OUT(["Sortie : réponse finale"])
+    Q2 -->|"no"| OUT(["Exit: final answer"])
 
     classDef agent fill:#dbeafe,stroke:#1d4ed8,stroke-width:3px,color:#0b2a6b
     classDef code fill:#f3f4f6,stroke:#6b7280,stroke-width:1px,stroke-dasharray:5 3,color:#111827
@@ -110,857 +110,858 @@ flowchart TB
     class X tool
 ```
 
-- **Au plus 3 appels LLM** (`MAX_LLM_CALLS`). Le dernier est fait sans outils : l'agent finit toujours par répondre en texte.
-- **Au plus 3 appels d'outil par étape**, après dédoublonnage. Chaque outil a aussi son budget (`search_docs` ≤ 2, `get_service_status` ≤ 1, `query_incidents` ≤ 2).
-- **Outil imposé** : pour `malfunction` et `history`, un appel d'outil est exigé. Si le modèle répond sans l'avoir fait, le code rejette cette réponse et relance une fois.
-- **Sortie** : la boucle s'arrête dès que le modèle répond en texte sans demander d'outil.
+- **At most 3 LLM calls** (`MAX_LLM_CALLS`). The last one is made without tools: the agent always ends up answering in text.
+- **At most 3 tool calls per step**, after deduplication. Each tool also has its own budget (`search_docs` ≤ 2, `get_service_status` ≤ 1, `query_incidents` ≤ 2).
+- **Required tool**: for `malfunction` and `history`, a tool call is required. If the model answers without making one, the code rejects that answer and retries once.
+- **Exit**: the loop stops as soon as the model answers in text without requesting a tool.
 
-**Table de correspondance composant → décision → compétence visée**
+**Mapping table component → decision → skill demonstrated**
 
-| Composant | Décision retenue | Entrées | Compétence visée |
+| Component | Decision taken | Entries | Skill demonstrated |
 |---|---|---|---|
-| Serving des modèles | LM Studio, API OpenAI-compatible, GPU, Q4_K_M | D-03, D-04 | Model-serving platforms ; GPU |
-| Choix des modèles | 7 B par défaut, SLM 4 B en option mesurée | D-04, D-25 | LLMs and SLMs |
-| Intégration LLM | SDK `openai`, wrapper qui mesure latence et tokens | D-05 | Model integration |
-| Découpage + embeddings | Sections `##`, MiniLM multilingue (Sentence Transformers) | D-06, D-07 | RAG, embeddings, Hugging Face, PyTorch |
-| Base vectorielle | Chroma embarqué persistant, index par empreinte | D-08 | Vector search, vector databases |
-| Reranking | Cross-encoder top-5 → top-3, seuil hors sujet | D-09 | Reranking |
-| GPU | torch CUDA, échauffement | D-10 | GPU, latency |
-| Outils | Serveur MCP stdio, 3 outils typés, `ToolError` | D-11, D-12, D-15, D-20 | MCP, tool integration, tool calling |
-| Données | SQLite d'incidents, scénarios simulés | D-14 | Database systems, SQL engines |
-| Outil SQL | Text-to-SQL en lecture seule, 5 couches de protection | D-13, D-23 | Enterprise data agents |
-| Orchestration | LangGraph : triage → documentaliste → technicien, branche `history` | D-16 | Orchestration, LangGraph |
-| Décision d'outil | Routeur par sortie structurée + politique imposée par le code | D-17, D-24 | AI agents, intelligent workflows |
-| Fiabilité | Boucle bornée, dédup, `required` vérifié, post-traitement | D-18, D-22 | Reliability, production-grade |
-| État et traces | `TypedDict` + reducers, trace JSON horodatée | D-19 | State management |
-| Validation | 6 cas exécutables, bench, vérifications déterministes | D-21, D-28 | Prototype → production |
-| Mesures | Latence à chaud/froid, débit à concurrence 1/4, coût estimé | D-26 | Latency, throughput, cost |
-| Code | Modules à responsabilité unique, frontière MCP | D-02, D-27 | Software architecture, Python |
-| Cadre | 100 % local, 0 € | D-01 | Cost |
+| Model serving | LM Studio, OpenAI-compatible API, GPU, Q4_K_M | D-03, D-04 | Model-serving platforms ; GPU |
+| Model choice | 7B by default, 4B SLM as a measured option | D-04, D-25 | LLMs and SLMs |
+| LLM integration | `openai` SDK, wrapper that measures latency and tokens | D-05 | Model integration |
+| Chunking + embeddings | `##` sections, multilingual MiniLM (Sentence Transformers) | D-06, D-07 | RAG, embeddings, Hugging Face, PyTorch |
+| Vector database | Persistent embedded Chroma, fingerprint-based index | D-08 | Vector search, vector databases |
+| Reranking | Cross-encoder top-5 → top-3, off-topic threshold | D-09 | Reranking |
+| GPU | torch CUDA, warm-up | D-10 | GPU, latency |
+| Tools | stdio MCP server, 3 typed tools, `ToolError` | D-11, D-12, D-15, D-20 | MCP, tool integration, tool calling |
+| Data | SQLite incident database, simulated scenarios | D-14 | Database systems, SQL engines |
+| SQL tool | Read-only text-to-SQL, 5 layers of protection | D-13, D-23 | Enterprise data agents |
+| Orchestration | LangGraph: triage → documentalist → technician, `history` branch | D-16 | Orchestration, LangGraph |
+| Tool decision | Router with structured output + policy enforced by the code | D-17, D-24 | AI agents, intelligent workflows |
+| Reliability | Bounded loop, dedup, `required` checked, post-processing | D-18, D-22 | Reliability, production-grade |
+| State and traces | `TypedDict` + reducers, timestamped JSON trace | D-19 | State management |
+| Validation | 6 executable cases, benchmark, deterministic checks | D-21, D-28 | Prototype → production |
+| Measurements | Warm/cold latency, throughput at concurrency 1/4, estimated cost | D-26 | Latency, throughput, cost |
+| Code | Single-responsibility modules, MCP boundary | D-02, D-27 | Software architecture, Python |
+| Framework | 100% local, €0 | D-01 | Cost |
 
-**Ce que les mesures ont appris** (les décisions qui en découlent sont marquées « suite à un
-échec mesuré ») :
-1. **Les petits modèles ne décident pas seuls d'observer** : laissés libres de choisir, 0/3 pour le 4 B
-   comme pour le 7 B. Un routeur étroit à sortie contrainte, puis une politique imposée par le
-   code, donnent 18/18 avec le 7 B (D-17).
-2. **Une contrainte d'API n'est pas une garantie** : `tool_choice="required"` n'est pas imposé par
-   LM Studio, et le modèle a inventé un statut. Le code vérifie et relance (D-18). La démo finale
-   montre ce garde-fou en action.
-3. **Le modèle hallucine quand il « raconte » l'étape suivante** au lieu de la faire (C4). Faire
-   émettre toutes les requêtes d'un coup supprime le problème (D-23).
-4. **Ce que le code sait, le code le dit** : statut simulé, absence d'action, liste des sources
-   valides (D-22).
-5. **Un réglage de prompt se mesure sur des données tenues à l'écart** : un ajout d'exemples a
-   amélioré le SLM et dégradé le 7 B (D-24).
-6. **Le coût est porté par le contexte, pas par la taille du modèle** : ~2 700 tokens en entrée
-   pour ~370 en sortie (D-26).
-7. **Les vérifications automatiques ont aussi des bugs** : deux d'entre elles étaient fausses
-   (D-21). D'où l'archivage des réponses complètes pour relecture.
+**What the measurements taught us** (the resulting decisions are marked "Decision driven by a
+measured failure"):
+1. **Small models do not decide on their own to observe**: left free to choose, 0/3 for the 4B
+   as for the 7B. A narrow router with constrained output, followed by a policy enforced by the
+   code, gives 18/18 with the 7B (D-17).
+2. **An API constraint is not a guarantee**: `tool_choice="required"` is not enforced by
+   LM Studio, and the model invented a status. The code checks and retries (D-18). The final demo
+   shows this guardrail in action.
+3. **The model hallucinates when it "narrates" the next step** instead of doing it (C4). Having it
+   emit all queries at once removes the problem (D-23).
+4. **What the code knows, the code says**: simulated status, absence of action, list of valid
+   sources (D-22).
+5. **A prompt tweak must be measured on held-out data**: adding examples
+   improved the SLM and degraded the 7B (D-24).
+6. **Cost is driven by context, not by model size**: ~2,700 input tokens
+   for ~370 output tokens (D-26).
+7. **Automatic checks have bugs too**: two of them were wrong
+   (D-21). Hence the archiving of full answers for review.
 
-**Limites assumées** : 3 fiches, 14 incidents, 6 cas, une machine, température 0. Aucune
-mesure n'est statistiquement solide. SQLite n'est pas un moteur d'entreprise. LM Studio n'est
-pas un serveur de production. Le SLM invente encore des sources quand un outil échoue. Hors
-périmètre : systèmes distribués, scale réel, leadership (cf. [`SPEC.md`](SPEC.md) §7 et §10).
+**Accepted limits**: 3 knowledge-base sheets, 14 incidents, 6 cases, one machine, temperature 0. No
+measurement is statistically sound. SQLite is not an enterprise engine. LM Studio is not
+a production server. The SLM still invents sources when a tool fails. Out of
+scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7 and §10).
 
 ## Index
 
-| # | Décision | Jalon | Statut | Compétence visée |
+| # | Decision | Milestone | Status | Skill demonstrated |
 |---|---|---|---|---|
-| D-01 | 100 % local, aucune API cloud payante | cadrage | Acceptée | Cost, model serving |
-| D-02 | Python 3.12 + `uv` + package installable avec CLI | J0 | Acceptée | Python, software architecture |
-| D-03 | LM Studio comme plateforme de serving locale | J0 | Acceptée | Model-serving platforms |
-| D-04 | Choix des modèles : Qwen3-4B-Instruct-2507 (SLM) et Qwen2.5-7B-Instruct, Q4_K_M | J0 | Acceptée, confirmée par D-25 | LLMs & SLMs, GPU |
-| D-05 | Client LLM : SDK `openai` via l'endpoint OpenAI-compatible, mince wrapper maison | J0 | Acceptée | Model integration, latency/cost |
-| D-06 | Découpage des fiches par section `##`, citation `doc_id#section` | J1 | Acceptée | RAG, semantic retrieval |
-| D-07 | Embeddings : `paraphrase-multilingual-MiniLM-L12-v2` (Sentence Transformers) | J1 | Acceptée | Embeddings, Hugging Face |
-| D-08 | Store vectoriel : Chroma embarqué persistant, index reconstruit sur empreinte | J1 | Acceptée | Vector search, vector databases |
-| D-09 | Reranking : cross-encoder `mmarco-mMiniLMv2-L12-H384-v1`, top-5 → top-2, seuil hors sujet | J1 | Acceptée | Reranking |
-| D-10 | Inférence embeddings/reranker sur GPU (torch CUDA), échauffement au chargement | J1 | Acceptée | GPU, PyTorch, latency |
-| D-11 | MCP : serveur d'outils séparé, stdio, SDK `mcp` v2, vérifié avec MCP Inspector | J2 | Acceptée | MCP, tool integration |
-| D-12 | Contrats d'outils typés (`Literal` → `enum`), `ToolError` explicites | J2 | Acceptée | Tool calling, reliability |
-| D-13 | Outil SQL lecture seule : 5 couches (regex, LIMIT, `mode=ro`, authorizer, timeout) | J2 | Acceptée | Enterprise data agents, SQL engines |
-| D-14 | SQLite d'incidents générée (dates relatives), scénarios de statut JSON simulés | J2 | Acceptée | Database integration, data analysis |
-| D-15 | Chargement du RAG en thread au démarrage du serveur MCP | J2 | Acceptée | Latency |
-| D-16 | Orchestration LangGraph : triage → documentaliste → technicien, branche `history` | J3 | Acceptée | Orchestration, LangGraph |
-| D-17 | Triage par sortie structurée + politique d'outils imposée par le code | J3 | Acceptée (suite à un échec mesuré) | AI agents, intelligent workflows |
-| D-18 | Boucle d'agent bornée : budgets, dernier appel sans outils, dédup, `required` vérifié | J3 | Acceptée | Reliability, workflow execution |
-| D-19 | État partagé `TypedDict` (reducers) + trace JSON horodatée avec métriques | J3 | Acceptée | State management, latency/cost |
-| D-20 | Client MCP hôte avec le SDK `mcp` direct (`ToolBox`), sans adaptateur LangChain | J3 | Acceptée | MCP, tool integration |
-| D-21 | Validation : 6 cas exécutables, vérifications déterministes, `bench` avec réponses complètes | J4 | Acceptée | Prototype → production, evaluation |
-| D-22 | Post-traitement déterministe : citations normalisées, mention de simulation | J4 | Acceptée (suite à un échec mesuré) | Reliability |
-| D-23 | Questions data : toutes les requêtes SQL dans la même étape | J4 | Acceptée (suite à un échec mesuré) | Enterprise data agents |
-| D-24 | Triage : règles + exemples, validé sur paraphrases tenues à l'écart (12/12) | J4 | Acceptée (suite à un échec mesuré) | Evaluate AI tech, SLMs |
-| D-25 | **ADR** : modèle par défaut = 7 B (18/18) ; SLM plus rapide mais invente des sources | J5 | Acceptée | LLMs & SLMs, latency/cost, evaluate → plan |
-| D-26 | Méthode de mesure : latence à chaud/froid, débit à concurrence 1/4, coût estimé | J5 | Acceptée | Latency, throughput, cost |
-| D-27 | Structure du code : modules à responsabilité unique, frontière MCP | J5 | Acceptée | Software architecture, Python |
-| D-28 | Stratégie de tests : unitaires hors ligne, intégration modèles, bench système | J5 | Acceptée | Production-grade, reliability |
-| D-29 | Agents (boucle LLM ↔ outils) vs routeur (triage) vs code ; graphe linéaire, aucune boucle entre agents | doc | Acceptée | AI agents, orchestration |
-| D-30 | `out_of_scope` et `vague` sautent le documentaliste (arête conditionnelle), mesuré avant/après | v1.10.0 | Acceptée | Orchestration, latency/cost |
-| D-31 | Démo web : Starlette + SSE sur le vrai pipeline, une question à la fois, serveur MCP chaud | v1.11.0 | Acceptée | Production-grade, observability |
+| D-01 | 100% local, no paid cloud API | scoping | Accepted | Cost, model serving |
+| D-02 | Python 3.12 + `uv` + installable package with CLI | J0 | Accepted | Python, software architecture |
+| D-03 | LM Studio as the local serving platform | J0 | Accepted | Model-serving platforms |
+| D-04 | Model choice: Qwen3-4B-Instruct-2507 (SLM) and Qwen2.5-7B-Instruct, Q4_K_M | J0 | Accepted, confirmed by D-25 | LLMs & SLMs, GPU |
+| D-05 | LLM client: `openai` SDK via the OpenAI-compatible endpoint, thin in-house wrapper | J0 | Accepted | Model integration, latency/cost |
+| D-06 | Chunking knowledge-base sheets by `##` section, `doc_id#section` citation | J1 | Accepted | RAG, semantic retrieval |
+| D-07 | Embeddings: `paraphrase-multilingual-MiniLM-L12-v2` (Sentence Transformers) | J1 | Accepted | Embeddings, Hugging Face |
+| D-08 | Vector store: persistent embedded Chroma, index rebuilt on fingerprint change | J1 | Accepted | Vector search, vector databases |
+| D-09 | Reranking: cross-encoder `mmarco-mMiniLMv2-L12-H384-v1`, top-5 → top-2, off-topic threshold | J1 | Accepted | Reranking |
+| D-10 | Embedding/reranker inference on GPU (torch CUDA), warm-up at load time | J1 | Accepted | GPU, PyTorch, latency |
+| D-11 | MCP: separate tool server, stdio, `mcp` SDK v2, verified with MCP Inspector | J2 | Accepted | MCP, tool integration |
+| D-12 | Typed tool contracts (`Literal` → `enum`), explicit `ToolError` | J2 | Accepted | Tool calling, reliability |
+| D-13 | Read-only SQL tool: 5 layers (regex, LIMIT, `mode=ro`, authorizer, timeout) | J2 | Accepted | Enterprise data agents, SQL engines |
+| D-14 | Generated SQLite incident database (relative dates), simulated JSON status scenarios | J2 | Accepted | Database integration, data analysis |
+| D-15 | Loading the RAG in a thread when the MCP server starts | J2 | Accepted | Latency |
+| D-16 | LangGraph orchestration: triage → documentalist → technician, `history` branch | J3 | Accepted | Orchestration, LangGraph |
+| D-17 | Triage via structured output + tool policy enforced by the code | J3 | Accepted (Decision driven by a measured failure) | AI agents, intelligent workflows |
+| D-18 | Bounded agent loop: budgets, last call without tools, dedup, `required` checked | J3 | Accepted | Reliability, workflow execution |
+| D-19 | `TypedDict` shared state (reducers) + timestamped JSON trace with metrics | J3 | Accepted | State management, latency/cost |
+| D-20 | Host MCP client with the `mcp` SDK directly (`ToolBox`), no LangChain adapter | J3 | Accepted | MCP, tool integration |
+| D-21 | Validation: 6 executable cases, deterministic checks, `bench` with full answers | J4 | Accepted | Prototype → production, evaluation |
+| D-22 | Deterministic post-processing: normalized citations, simulation notice | J4 | Accepted (Decision driven by a measured failure) | Reliability |
+| D-23 | Data questions: all SQL queries in the same step | J4 | Accepted (Decision driven by a measured failure) | Enterprise data agents |
+| D-24 | Triage: rules + examples, validated on held-out paraphrases (12/12) | J4 | Accepted (Decision driven by a measured failure) | Evaluate AI tech, SLMs |
+| D-25 | **ADR**: default model = 7B (18/18); SLM faster but invents sources | J5 | Accepted | LLMs & SLMs, latency/cost, evaluate → plan |
+| D-26 | Measurement method: warm/cold latency, throughput at concurrency 1/4, estimated cost | J5 | Accepted | Latency, throughput, cost |
+| D-27 | Code structure: single-responsibility modules, MCP boundary | J5 | Accepted | Software architecture, Python |
+| D-28 | Testing strategy: offline unit tests, model integration tests, system benchmark | J5 | Accepted | Production-grade, reliability |
+| D-29 | Agents (LLM ↔ tools loop) vs router (triage) vs code; linear graph, no loop between agents | doc | Accepted | AI agents, orchestration |
+| D-30 | `out_of_scope` and `vague` skip the documentalist (conditional edge), measured before/after | v1.10.0 | Accepted | Orchestration, latency/cost |
+| D-31 | Web demo: Starlette + SSE on the real pipeline, one question at a time, warm MCP server | v1.11.0 | Accepted | Production-grade, observability |
 
 ---
 
-## D-01 — 100 % local, aucune API cloud payante
+## D-01 — 100% local, no paid cloud API
 
-- **Date** : 2026-10-02 · **Jalon** : cadrage (décision utilisateur)
-- **Besoin** : pratiquer LLM, agents et RAG sans frais, sans compte, et sans données qui
-  sortent de la machine.
-- **Options** : (a) API cloud (OpenAI, Anthropic…), (b) modèles locaux, (c) mixte : local par
-  défaut, cloud pour comparer.
-- **Choix** : (b) 100 % local. Le coût cloud est **estimé** dans le benchmark (tokens mesurés ×
-  prix publics), sans compte.
-- **Pourquoi** : coût nul, aucun secret à gérer, reproductible hors ligne. Surtout, ça oblige à
-  traiter le **serving** et les **SLM**, deux compétences visées que l'API cloud aurait masquées.
-- **Compromis** : les modèles locaux (4–7 B) sont nettement moins bons que les modèles cloud de
-  pointe en tool calling et en text-to-SQL. Les résultats qualitatifs ne sont donc pas
-  représentatifs d'un déploiement avec un grand modèle. Il faut le dire clairement.
-- **Compétence visée** : Cost, model serving.
+- **Date**: 2026-10-02 · **Milestone**: scoping (user decision)
+- **Need**: practice LLMs, agents and RAG at no cost, without an account, and without any data
+  leaving the machine.
+- **Options**: (a) cloud API (OpenAI, Anthropic…), (b) local models, (c) mixed: local by
+  default, cloud for comparison.
+- **Choice**: (b) 100% local. Cloud cost is **estimated** in the benchmark (measured tokens ×
+  public prices), without an account.
+- **Why**: zero cost, no secrets to manage, reproducible offline. Above all, it forces us to
+  deal with **serving** and **SLMs**, two targeted skills that a cloud API would have hidden.
+- **Trade-offs**: local models (4–7B) are clearly weaker than state-of-the-art cloud models
+  at tool calling and text-to-SQL. The qualitative results are therefore not
+  representative of a deployment with a large model. This must be stated clearly.
+- **Skill demonstrated**: Cost, model serving.
 
-## D-02 — Python 3.12 + `uv` + package installable avec CLI
+## D-02 — Python 3.12 + `uv` + installable package with CLI
 
-- **Date** : 2026-10-02 · **Jalon** : J0
-- **Besoin** : un projet qui s'installe et se lance en une commande, avec une version visible
-  (convention du projet).
-- **Options** : scripts isolés + `requirements.txt` ; Poetry ; `uv` + `pyproject.toml`.
-- **Choix** : `uv` + `pyproject.toml` (layout `src/`), entrée CLI `hello-support`, version unique
-  dans `hello_support/__init__.py` (`__version__`) et lue dynamiquement par le build.
-- **Pourquoi** : `uv` est déjà installé, très rapide, et gère le lockfile et le venv. Le layout
-  `src/` évite d'importer le code sans l'avoir installé. Une seule source de vérité pour la version.
-- **Compromis** : torch avec CUDA doit venir de l'index PyTorch (`cu124`), pas de PyPI, d'où
-  une config d'index dans `pyproject.toml`. Ajouté à J1, quand torch devient nécessaire.
-- **Compétence visée** : Python, software architecture.
+- **Date**: 2026-10-02 · **Milestone**: J0
+- **Need**: a project that installs and runs with one command, with a visible version
+  (project convention).
+- **Options**: standalone scripts + `requirements.txt`; Poetry; `uv` + `pyproject.toml`.
+- **Choice**: `uv` + `pyproject.toml` (`src/` layout), CLI entry point `hello-support`, single version
+  in `hello_support/__init__.py` (`__version__`), read dynamically by the build.
+- **Why**: `uv` is already installed, very fast, and manages the lockfile and the venv. The
+  `src/` layout prevents importing the code without installing it. A single source of truth for the version.
+- **Trade-offs**: torch with CUDA must come from the PyTorch index (`cu124`), not from PyPI, hence
+  an index configuration in `pyproject.toml`. Added at J1, when torch became necessary.
+- **Skill demonstrated**: Python, software architecture.
 
-## D-03 — LM Studio comme plateforme de serving locale
+## D-03 — LM Studio as the local serving platform
 
-- **Date** : 2026-10-02 · **Jalon** : J0
-- **Besoin** : servir un LLM local derrière une API standard, avec le GPU, et pouvoir changer de
-  modèle sans toucher au code.
-- **Options** : (a) LM Studio (déjà installé, CLI `lms`, serveur OpenAI-compatible), (b) Ollama
-  (non installé), (c) vLLM (débit élevé, mais Linux/WSL seulement et lourd sur 8 Go),
-  (d) `transformers` en direct dans le process.
-- **Choix** : (a) LM Studio, serveur sur `http://localhost:1234/v1`.
-- **Pourquoi** : déjà en place, il gère le téléchargement (`lms get`), l'offload GPU et la
-  quantification GGUF. Il expose l'API **OpenAI-compatible** avec *tool calling*. Le code
-  applicatif ne dépend donc que d'un **contrat d'API**, pas d'un fournisseur. C'est
-  exactement la séparation « application / plateforme de serving » visée.
-- **Compromis** : outil desktop, pas un serveur de prod. Pas de batching continu ni de mesure
-  de débit sérieuse : vLLM est noté dans « pour aller plus loin ». Le serveur doit tourner
-  (`lms server start`) avant de lancer le programme.
-- **Compétence visée** : Model-serving platforms.
+- **Date**: 2026-10-02 · **Milestone**: J0
+- **Need**: serve a local LLM behind a standard API, using the GPU, and be able to switch
+  models without touching the code.
+- **Options**: (a) LM Studio (already installed, `lms` CLI, OpenAI-compatible server), (b) Ollama
+  (not installed), (c) vLLM (high throughput, but Linux/WSL only and heavy on 8 GB),
+  (d) `transformers` directly in-process.
+- **Choice**: (a) LM Studio, server at `http://localhost:1234/v1`.
+- **Why**: already in place, it handles downloading (`lms get`), GPU offload and
+  GGUF quantization. It exposes the **OpenAI-compatible** API with *tool calling*. The application
+  code therefore depends only on an **API contract**, not on a vendor. This is
+  exactly the targeted "application / serving platform" separation.
+- **Trade-offs**: a desktop tool, not a production server. No continuous batching and no serious
+  throughput measurement: vLLM is noted under "going further". The server must be running
+  (`lms server start`) before launching the program.
+- **Skill demonstrated**: Model-serving platforms.
 
-## D-04 — Choix des modèles
+## D-04 — Model choice
 
-- **Date** : 2026-10-02 · **Jalon** : J0 · **Révisable à J5** (mesures)
-- **Besoin** : un **SLM** (3–4 B) capable d'appeler des outils, et un modèle plus gros (7 B) de
-  référence, les deux tenant dans **8 Go de VRAM** (RTX 2070 Super).
-- **Options SLM** : Qwen2.5-3B-Instruct ; **Qwen3-4B-Instruct-2507** ; Llama-3.2-3B-Instruct ;
-  Phi-4-mini (3,8 B) ; Gemma-3-4B (déjà présent sous la forme `translategemma`, spécialisé en
-  traduction et sans tool calling natif fiable).
-- **Options 7 B** : `qwen2.5-coder-7b-instruct` (déjà présent) ; **Qwen2.5-7B-Instruct** ;
+- **Date**: 2026-10-02 · **Milestone**: J0 · **Revisable at J5** (measurements)
+- **Need**: an **SLM** (3–4B) able to call tools, and a larger reference model (7B),
+  both fitting in **8 GB of VRAM** (RTX 2070 Super).
+- **SLM options**: Qwen2.5-3B-Instruct; **Qwen3-4B-Instruct-2507**; Llama-3.2-3B-Instruct;
+  Phi-4-mini (3.8B); Gemma-3-4B (already present as `translategemma`, specialized in
+  translation and without reliable native tool calling).
+- **7B options**: `qwen2.5-coder-7b-instruct` (already present); **Qwen2.5-7B-Instruct**;
   Llama-3.1-8B-Instruct.
-- **Choix** :
-  - SLM = **`qwen/qwen3-4b-2507` en Q4_K_M** (~2,5 Go) ;
-  - 7 B = **`qwen2.5-7b-instruct` en Q4_K_M** (~4,7 Go).
-- **Pourquoi** :
-  - Qwen3-4B-Instruct-2507 est entraîné pour le tool calling. C'est la variante « non-thinking »,
-    donc sans bloc de raisonnement à filtrer, avec des réponses plus courtes et une latence
-    plus basse. Il est multilingue (questions en français) et figure parmi les meilleurs
-    4 B publics en appel de fonctions à sa sortie.
-  - Pour le 7 B, prendre la **même famille** (Qwen) isole l'effet de la **taille** dans la
-    comparaison. La version *Instruct* est préférée à *Coder* pour du dialogue et du
-    diagnostic. C'est le modèle nommé dans la demande utilisateur.
-  - **Q4_K_M** est le compromis standard qualité/taille. Le 7 B tient entièrement en VRAM
-    (~4,7 Go + KV-cache), avec de la marge pour les modèles d'embedding et de reranking
-    (~0,5 Go). Q8 (~8 Go) ne tiendrait pas.
-- **Compromis** : la quantification 4 bits dégrade un peu la qualité, surtout sur le SQL. Deux
-  familles différentes auraient permis une comparaison plus large, mais moins lisible. Les
-  deux modèles ne sont pas chargés en même temps : LM Studio les charge à la demande
-  (JIT), et le premier appel inclut donc un temps de chargement. Il est exclu des mesures
-  (échauffement).
-- **Mise en œuvre (J0)** : `lms get "qwen/qwen3-4b-2507@q4_k_m" -y` (staff pick LM Studio).
-  Qwen2.5-7B-Instruct n'est pas un staff pick : téléchargé depuis Hugging Face avec
+- **Choice**:
+  - SLM = **`qwen/qwen3-4b-2507` in Q4_K_M** (~2.5 GB);
+  - 7B = **`qwen2.5-7b-instruct` in Q4_K_M** (~4.7 GB).
+- **Why**:
+  - Qwen3-4B-Instruct-2507 is trained for tool calling. It is the "non-thinking" variant,
+    so there is no reasoning block to filter out, answers are shorter and latency is
+    lower. It is multilingual (questions in French) and was among the best public
+    4B models at function calling when released.
+  - For the 7B, picking the **same family** (Qwen) isolates the effect of **size** in the
+    comparison. The *Instruct* version is preferred over *Coder* for dialogue and
+    diagnosis. It is the model named in the user's request.
+  - **Q4_K_M** is the standard quality/size trade-off. The 7B fits entirely in VRAM
+    (~4.7 GB + KV cache), with headroom for the embedding and reranking models
+    (~0.5 GB). Q8 (~8 GB) would not fit.
+- **Trade-offs**: 4-bit quantization slightly degrades quality, especially on SQL. Two
+  different families would have allowed a broader but less readable comparison. The
+  two models are not loaded at the same time: LM Studio loads them on demand
+  (JIT), so the first call includes a loading time. It is excluded from the measurements
+  (warm-up).
+- **Implementation (J0)**: `lms get "qwen/qwen3-4b-2507@q4_k_m" -y` (LM Studio staff pick).
+  Qwen2.5-7B-Instruct is not a staff pick: downloaded from Hugging Face with
   `lms get "https://huggingface.co/lmstudio-community/Qwen2.5-7B-Instruct-GGUF@Q4_K_M" -y`.
-- **Constat J0** (`hello-support smoke`, températures 0, après échauffement) : les deux modèles
-  émettent un appel `get_time({"timezone": "Europe/Brussels"})` valide. SLM : hello 0,10 s,
-  tool call 0,37 s (177 → 23 tokens). 7 B : 0,10 s et 0,55 s (193 → 23 tokens). Mesures
-  ponctuelles, pas encore un benchmark (J5).
-- **Compétence visée** : LLMs & SLMs, GPU.
+- **Finding J0** (`hello-support smoke`, temperature 0, after warm-up): both models
+  emit a valid `get_time({"timezone": "Europe/Brussels"})` call. SLM: hello 0.10 s,
+  tool call 0.37 s (177 → 23 tokens). 7B: 0.10 s and 0.55 s (193 → 23 tokens). One-off
+  measurements, not yet a benchmark (J5).
+- **Skill demonstrated**: LLMs & SLMs, GPU.
 
-## D-05 — Client LLM : SDK `openai` + wrapper maison minimal
+## D-05 — LLM client: `openai` SDK + minimal in-house wrapper
 
-- **Date** : 2026-10-02 · **Jalon** : J0
-- **Besoin** : appeler le modèle avec ou sans outils, et récupérer contenu, appels d'outils,
-  tokens et latence.
-- **Options** : (a) SDK `openai` pointé sur `localhost:1234`, (b) `langchain-openai`
-  (`ChatOpenAI`), (c) `httpx` brut.
-- **Choix** : (a). Un module `llm.py` de quelques dizaines de lignes renvoie un résultat
-  normalisé (`content`, `tool_calls`, `prompt_tokens`, `completion_tokens`, `latency_s`, `model`).
-- **Pourquoi** : on voit exactement ce qui part et revient sur le fil, ce qui est pédagogique et
-  utile pour mesurer. Le SDK est stable et typé. LangGraph n'impose pas LangChain pour les
-  nœuds : un nœud est une fonction Python. Ça limite les couches d'abstraction.
-- **Compromis** : on réimplémente un peu de plomberie que `ChatOpenAI` + `bind_tools` offrent.
-  Si J3 montre que c'est trop coûteux, on basculera sur `langchain-openai`, en ajoutant une
-  entrée qui remplace celle-ci.
-- **Compétence visée** : Model integration, latency/cost.
+- **Date**: 2026-10-02 · **Milestone**: J0
+- **Need**: call the model with or without tools, and retrieve content, tool calls,
+  tokens and latency.
+- **Options**: (a) `openai` SDK pointed at `localhost:1234`, (b) `langchain-openai`
+  (`ChatOpenAI`), (c) raw `httpx`.
+- **Choice**: (a). An `llm.py` module of a few dozen lines returns a normalized
+  result (`content`, `tool_calls`, `prompt_tokens`, `completion_tokens`, `latency_s`, `model`).
+- **Why**: we see exactly what goes over the wire and comes back, which is educational and
+  useful for measuring. The SDK is stable and typed. LangGraph does not require LangChain for the
+  nodes: a node is a Python function. This limits the layers of abstraction.
+- **Trade-offs**: we reimplement a bit of plumbing that `ChatOpenAI` + `bind_tools` provide.
+  If J3 shows this is too costly, we will switch to `langchain-openai`, adding an
+  entry that supersedes this one.
+- **Skill demonstrated**: Model integration, latency/cost.
 
-## D-06 — Découpage des fiches par section
+## D-06 — Chunking knowledge-base sheets by section
 
-- **Date** : 2026-10-02 · **Jalon** : J1
-- **Besoin** : retrouver un passage précis et le **citer** (« postgres_connection.md, section
-  Service status »), comme l'exige la réponse attendue.
-- **Options** : (a) un document entier par vecteur, (b) découpe à taille fixe (N tokens avec
-  chevauchement), (c) découpe par structure (titres `##`).
-- **Choix** : (c). Une section = un chunk, identifié `doc_id#section`. Le texte embarqué est
-  préfixé par le titre de la fiche (« PostgreSQL: application cannot connect - Checks ») pour que
-  la section garde son contexte.
-- **Pourquoi** : les fiches sont courtes et déjà structurées (Symptoms / Checks / Service status
-  / Limits). La découpe structurelle donne des citations stables et lisibles. La découpe fixe
-  couperait au milieu d'une liste de vérifications.
-- **Compromis** : ça suppose des documents bien structurés. Sur un vrai corpus d'entreprise
-  (PDF, wikis), il faudrait une découpe hybride (structure + taille maximale + chevauchement).
-- **Compétence visée** : RAG, semantic retrieval.
+- **Date**: 2026-10-02 · **Milestone**: J1
+- **Need**: retrieve a precise passage and **cite** it ("postgres_connection.md, section
+  Service status"), as the expected answer requires.
+- **Options**: (a) one whole document per vector, (b) fixed-size chunking (N tokens with
+  overlap), (c) structure-based chunking (`##` headings).
+- **Choice**: (c). One section = one chunk, identified as `doc_id#section`. The embedded text is
+  prefixed with the sheet's title ("PostgreSQL: application cannot connect - Checks") so that
+  the section keeps its context.
+- **Why**: the sheets are short and already structured (Symptoms / Checks / Service status
+  / Limits). Structural chunking gives stable, readable citations. Fixed-size chunking
+  would cut in the middle of a checklist.
+- **Trade-offs**: this assumes well-structured documents. On a real enterprise corpus
+  (PDFs, wikis), hybrid chunking would be needed (structure + maximum size + overlap).
+- **Skill demonstrated**: RAG, semantic retrieval.
 
-## D-07 — Modèle d'embeddings
+## D-07 — Embedding model
 
-- **Date** : 2026-10-02 · **Jalon** : J1
-- **Besoin** : encoder des questions **en français ou en anglais** et des fiches en anglais
-  dans un même espace vectoriel, localement, sur 8 Go de VRAM partagés avec le LLM.
-- **Options** : `all-MiniLM-L6-v2` (anglais seulement) ;
-  **`paraphrase-multilingual-MiniLM-L12-v2`** (50+ langues, 118 M paramètres, dim 384) ;
-  `multilingual-e5-base` / `bge-m3` (meilleurs, mais 2 à 5 fois plus gros) ;
-  `nomic-embed-text` servi par LM Studio (déjà présent).
-- **Choix** : `paraphrase-multilingual-MiniLM-L12-v2` via Sentence Transformers (Hugging Face Hub,
-  sans compte). Vecteurs normalisés, similarité cosinus.
-- **Pourquoi** : c'est le candidat proposé par le document initial. Il est multilingue (la
-  requête FR « connexion refusée » retrouve bien la fiche EN), léger (~0,5 Go en VRAM) et
-  rapide. Le passer par Sentence Transformers plutôt que par LM Studio fait pratiquer
-  **PyTorch / Hugging Face** directement.
-- **Compromis** : la qualité est modeste. Le cosinus brut sépare mal (0,46 à 0,52 pour des
-  sections utiles comme pour des sections nginx hors sujet, cf. BENCH J1). C'est précisément ce
-  qui justifie le reranker (D-09). Un modèle e5/bge serait l'amélioration naturelle.
-- **Compétence visée** : Embeddings, Hugging Face.
+- **Date**: 2026-10-02 · **Milestone**: J1
+- **Need**: encode questions **in French or English** and English knowledge-base sheets
+  into the same vector space, locally, on 8 GB of VRAM shared with the LLM.
+- **Options**: `all-MiniLM-L6-v2` (English only);
+  **`paraphrase-multilingual-MiniLM-L12-v2`** (50+ languages, 118M parameters, dim 384);
+  `multilingual-e5-base` / `bge-m3` (better, but 2 to 5 times larger);
+  `nomic-embed-text` served by LM Studio (already present).
+- **Choice**: `paraphrase-multilingual-MiniLM-L12-v2` via Sentence Transformers (Hugging Face Hub,
+  no account). Normalized vectors, cosine similarity.
+- **Why**: it is the candidate proposed by the initial document. It is multilingual (the
+  French query "connexion refusée" (connection refused) does retrieve the English sheet), lightweight (~0.5 GB of VRAM) and
+  fast. Running it through Sentence Transformers rather than LM Studio means practicing
+  **PyTorch / Hugging Face** directly.
+- **Trade-offs**: quality is modest. Raw cosine separates poorly (0.46 to 0.52 for useful
+  sections as well as off-topic nginx sections, see BENCH J1). This is precisely what
+  justifies the reranker (D-09). An e5/bge model would be the natural improvement.
+- **Skill demonstrated**: Embeddings, Hugging Face.
 
-## D-08 — Store vectoriel : Chroma embarqué
+## D-08 — Vector store: embedded Chroma
 
-- **Date** : 2026-10-02 · **Jalon** : J1
-- **Besoin** : stocker et interroger les vecteurs (top-k par similarité) sans serveur à
-  administrer.
-- **Options** : (a) NumPy en mémoire (proposition initiale : cosinus brute-force),
-  (b) **Chroma** embarqué (`PersistentClient`, index HNSW), (c) `sqlite-vec` (extension SQLite),
+- **Date**: 2026-10-02 · **Milestone**: J1
+- **Need**: store and query vectors (top-k by similarity) without a server to
+  administer.
+- **Options**: (a) in-memory NumPy (initial proposal: brute-force cosine),
+  (b) embedded **Chroma** (`PersistentClient`, HNSW index), (c) `sqlite-vec` (SQLite extension),
   (d) PostgreSQL + pgvector (WSL/Docker), (e) FAISS.
-- **Choix** : (b) Chroma 1.5, collection `kb_sections` en espace **cosinus**, persistée dans
-  `.chroma/` (gitignoré). Les embeddings sont calculés par notre code et passés à Chroma, qui
-  ne choisit pas le modèle. L'index n'est reconstruit que si l'**empreinte**
-  (hash du modèle + du contenu des sections) change.
-- **Pourquoi** : c'est une vraie base vectorielle (index ANN, métadonnées, persistance), installée
-  par `pip`, sans Docker. Elle couvre la compétence « base vectorielle » à moindre coût. Fournir
-  nos propres vecteurs garde la maîtrise du modèle (D-07) et permet de le changer sans dépendre
-  des fonctions d'embedding intégrées de Chroma. Avec l'empreinte, on évite un recalcul à chaque
-  démarrage tout en garantissant que l'index n'est jamais périmé.
-- **Compromis** : à 12 vecteurs, un index ANN n'apporte **aucun** gain : le brute-force NumPy
-  serait aussi rapide. Le choix est pédagogique, et il faut le dire. Chroma ajoute beaucoup de
-  dépendances. pgvector serait plus proche d'un contexte « IA + base de données » : il est placé en
-  « pour aller plus loin ». Repli prévu : cosinus NumPy si Chroma posait problème (ça n'a pas
-  été le cas).
-- **Compétence visée** : Vector search, vector databases.
+- **Choice**: (b) Chroma 1.5, `kb_sections` collection in **cosine** space, persisted in
+  `.chroma/` (gitignored). Embeddings are computed by our code and passed to Chroma, which
+  does not choose the model. The index is rebuilt only if the **fingerprint**
+  (hash of the model + section contents) changes.
+- **Why**: it is a real vector database (ANN index, metadata, persistence), installed
+  with `pip`, without Docker. It covers the "vector database" skill at low cost. Supplying
+  our own vectors keeps control of the model (D-07) and allows changing it without depending on
+  Chroma's built-in embedding functions. With the fingerprint, we avoid recomputing at every
+  startup while guaranteeing the index is never stale.
+- **Trade-offs**: with 12 vectors, an ANN index brings **no** gain: NumPy brute force
+  would be just as fast. The choice is educational, and this must be said. Chroma adds many
+  dependencies. pgvector would be closer to an "AI + database" context: it is placed under
+  "going further". Planned fallback: NumPy cosine if Chroma caused problems (it did not).
+- **Skill demonstrated**: Vector search, vector databases.
 
-## D-09 — Reranking par cross-encoder
+## D-09 — Cross-encoder reranking
 
-- **Date** : 2026-10-02 · **Jalon** : J1
-- **Besoin** : améliorer l'ordre des passages renvoyés à l'agent (seulement 2, donc le
-  classement compte), et détecter qu'**aucun** passage ne correspond.
-- **Options** : (a) pas de reranking, (b) **cross-encoder** Sentence Transformers,
-  (c) reranker LLM (demander au modèle de classer), (d) `bge-reranker-v2-m3` (plus précis, ~570 M
-  paramètres).
-- **Choix** : (b) `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` (multilingue, léger). Recherche
-  vectorielle top-5, rerank des 5 paires (question, passage), top-2 conservé. Chaque hit garde son
-  rang vectoriel d'origine pour montrer l'effet du reranking. Seuil `RELEVANCE_THRESHOLD = -5`
-  sur le score du cross-encoder : en dessous, le passage est marqué « hors sujet ».
-- **Pourquoi** : c'est le schéma classique *retrieve & rerank*. Le bi-encoder est rapide mais
-  grossier, le cross-encoder lit la question et le passage ensemble et classe mieux. Mesuré
-  (BENCH J1) : sur « connexion refusée postgres », la section *Symptoms* passe de la 5ᵉ à la
-  2ᵉ place devant deux sections nginx. Sur une question hors base (Kafka), tous les scores
-  tombent ≤ -9,2 alors que les passages utiles sont ≥ -4,3. Ce signal est bien plus
-  discriminant que le cosinus (0,12–0,21). Un reranker LLM aurait coûté un appel au modèle
-  par requête.
-- **Compromis** : environ 0,1–0,3 s de plus par requête. Le seuil est **empirique** et calibré
-  sur 4 requêtes : c'est un filtre grossier, pas une garantie de précision. Il faudrait
-  l'étalonner sur un jeu de questions (voir « pour aller plus loin » : évaluation RAG).
-- **Révision (J3)** : `search_docs` renvoie le **top-3** (au lieu du top-2). Avec 2 passages,
-  le reranker plaçait « Limits » en tête et la section « Service status » disparaissait du contexte.
-- **Compétence visée** : Reranking.
+- **Date**: 2026-10-02 · **Milestone**: J1
+- **Need**: improve the order of the passages returned to the agent (only 2, so the
+  ranking matters), and detect that **no** passage matches.
+- **Options**: (a) no reranking, (b) Sentence Transformers **cross-encoder**,
+  (c) LLM reranker (ask the model to rank), (d) `bge-reranker-v2-m3` (more accurate, ~570M
+  parameters).
+- **Choice**: (b) `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` (multilingual, lightweight). Vector
+  search top-5, rerank of the 5 (question, passage) pairs, top-2 kept. Each hit keeps its
+  original vector rank to show the effect of reranking. Threshold `RELEVANCE_THRESHOLD = -5`
+  on the cross-encoder score: below it, the passage is marked "off-topic".
+- **Why**: this is the classic *retrieve & rerank* pattern. The bi-encoder is fast but
+  coarse; the cross-encoder reads the question and the passage together and ranks better. Measured
+  (BENCH J1): on "connexion refusée postgres", the *Symptoms* section moves from 5th to
+  2nd place, ahead of two nginx sections. On a question outside the knowledge base (Kafka), all scores
+  drop to ≤ -9.2 while useful passages are ≥ -4.3. This signal is far more
+  discriminating than cosine (0.12–0.21). An LLM reranker would have cost one model call
+  per query.
+- **Trade-offs**: about 0.1–0.3 s more per query. The threshold is **empirical** and calibrated
+  on 4 queries: it is a coarse filter, not a guarantee of precision. It should be
+  calibrated on a question set (see "going further": RAG evaluation).
+- **Revision (J3)**: `search_docs` returns the **top-3** (instead of top-2). With 2 passages,
+  the reranker put "Limits" first and the "Service status" section disappeared from the context.
+- **Skill demonstrated**: Reranking.
 
-## D-10 — Inférence sur GPU et échauffement
+## D-10 — GPU inference and warm-up
 
-- **Date** : 2026-10-02 · **Jalon** : J1
-- **Besoin** : utiliser le GPU disponible et mesurer une latence de requête représentative.
-- **Options** : CPU seulement ; GPU via torch CUDA ; embeddings servis par LM Studio.
-- **Choix** : torch **2.6.0+cu124** tiré de l'index PyTorch (configuré dans
-  `pyproject.toml`, car PyPI ne fournit que la version CPU sous Windows). Device choisi
-  automatiquement (`cuda` sinon `cpu`) et affiché. Une requête d'**échauffement** est faite au
-  chargement du `Retriever`.
-- **Pourquoi** : le GPU est là (RTX 2070 Super). Les deux petits modèles y tiennent (~1 Go) à côté
-  du LLM servi par LM Studio. Mesuré : la première requête coûte ~2,9 s (initialisation des
-  kernels CUDA) contre ~0,5 s ensuite. L'échauffement sort ce coût unique de la latence par
-  question.
-- **Compromis** : téléchargement de torch CUDA lourd (~2,5 Go), import de `sentence_transformers`
-  lent (~15 s à froid sous Windows), chargement total ~27 s. Acceptable parce que payé une fois
-  par session du serveur d'outils (J2). Sur CPU, le projet fonctionne aussi, simplement plus
-  lentement.
-- **Compétence visée** : GPU, PyTorch, latency.
+- **Date**: 2026-10-02 · **Milestone**: J1
+- **Need**: use the available GPU and measure a representative query latency.
+- **Options**: CPU only; GPU via torch CUDA; embeddings served by LM Studio.
+- **Choice**: torch **2.6.0+cu124** pulled from the PyTorch index (configured in
+  `pyproject.toml`, since PyPI only provides the CPU build on Windows). Device chosen
+  automatically (`cuda`, otherwise `cpu`) and displayed. A **warm-up** query is run when
+  the `Retriever` loads.
+- **Why**: the GPU is there (RTX 2070 Super). Both small models fit on it (~1 GB) alongside
+  the LLM served by LM Studio. Measured: the first query costs ~2.9 s (CUDA kernel
+  initialization) versus ~0.5 s afterwards. Warm-up removes this one-time cost from the per-question
+  latency.
+- **Trade-offs**: heavy torch CUDA download (~2.5 GB), slow `sentence_transformers` import
+  (~15 s cold on Windows), total load ~27 s. Acceptable because it is paid once
+  per tool-server session (J2). On CPU, the project works too, just more
+  slowly.
+- **Skill demonstrated**: GPU, PyTorch, latency.
 
-## D-11 — MCP : serveur d'outils séparé, transport stdio, SDK Python v2
+## D-11 — MCP: separate tool server, stdio transport, Python SDK v2
 
-- **Date** : 2026-10-02 · **Jalon** : J2
-- **Besoin** : exposer les outils aux agents par un **protocole standard**, pour pouvoir les
-  tester seuls, les réutiliser par un autre client (Inspector, IDE, autre agent), et les
-  déplacer sans toucher au code des agents.
-- **Options** : (a) fonctions Python appelées directement par les agents, (b) API REST maison,
-  (c) **MCP** en stdio (sous-processus local), (d) MCP en *streamable HTTP* (serveur réseau).
-- **Choix** : (c) avec le SDK officiel `mcp` **2.2** (`MCPServer`, nouveau nom de FastMCP dans
-  la v2). Point d'entrée `hello-support-mcp`. L'hôte lancera le serveur comme sous-processus
-  (J3). Les tests utilisent le même serveur **en mémoire** via `mcp.Client(server)`.
-- **Pourquoi** : MCP est l'une des compétences visées (intégration d'outils d'entreprise
-  pour des agents). Le stdio n'a besoin d'aucun port ni d'aucune auth et suffit en local. Le
-  schéma JSON des entrées est généré depuis les annotations Python. Vérifié avec **MCP
+- **Date**: 2026-10-02 · **Milestone**: J2
+- **Need**: expose the tools to the agents through a **standard protocol**, so they can be
+  tested on their own, reused by another client (Inspector, IDE, another agent), and
+  moved without touching the agents' code.
+- **Options**: (a) Python functions called directly by the agents, (b) in-house REST API,
+  (c) **MCP** over stdio (local subprocess), (d) MCP over *streamable HTTP* (network server).
+- **Choice**: (c) with the official `mcp` SDK **2.2** (`MCPServer`, the new name of FastMCP in
+  v2). Entry point `hello-support-mcp`. The host will launch the server as a subprocess
+  (J3). Tests use the same server **in memory** via `mcp.Client(server)`.
+- **Why**: MCP is one of the targeted skills (integrating enterprise tools
+  for agents). stdio needs no port and no auth and is sufficient locally. The
+  input JSON schema is generated from Python annotations. Verified with **MCP
   Inspector** (`npx @modelcontextprotocol/inspector --cli hello-support-mcp --method tools/list`
-  puis `tools/call` pour chacun des 3 outils).
-- **Compromis** : un sous-processus par session et un protocole de plus à déboguer. Le SDK v2
-  est récent : les exemples en ligne (FastMCP, `inputSchema` en camelCase) ne s'appliquent plus
-  tels quels. L'Inspector en mode CLI passe mal les arguments `-m module`, d'où le point
-  d'entrée dédié. Le transport HTTP (premier pas « distribué ») est laissé à « pour aller plus loin ».
-- **Compétence visée** : MCP, tool integration.
+  then `tools/call` for each of the 3 tools).
+- **Trade-offs**: one subprocess per session and one more protocol to debug. SDK v2
+  is recent: online examples (FastMCP, camelCase `inputSchema`) no longer apply
+  as is. The Inspector in CLI mode handles `-m module` arguments poorly, hence the dedicated entry
+  point. The HTTP transport (a first "distributed" step) is left to "going further".
+- **Skill demonstrated**: MCP, tool integration.
 
-## D-12 — Contrats d'outils : types stricts, erreurs explicites
+## D-12 — Tool contracts: strict types, explicit errors
 
-- **Date** : 2026-10-02 · **Jalon** : J2
-- **Besoin** : le modèle **propose** des appels qui peuvent être faux (service inconnu, SQL
-  invalide, requête vide). Ces erreurs doivent être refusées proprement et rester exploitables
-  par le modèle.
-- **Options** : validation dans chaque agent ; validation côté serveur d'outils ; les deux.
-- **Choix** : validation **côté serveur**, par les types : `service_name: Literal["postgres",
-  "nginx", "redis"]` produit un `enum` dans le schéma MCP, que le modèle voit et que Pydantic
-  vérifie. Les erreurs métier lèvent `ToolError`, rendu au client en `is_error=true` avec un
-  message clair (ex. « unknown service », « SQL rejected: only SELECT queries are allowed »).
-  Les descriptions d'outils (docstrings) expliquent le format de sortie et l'usage, par exemple
+- **Date**: 2026-10-02 · **Milestone**: J2
+- **Need**: the model **proposes** calls that can be wrong (unknown service, invalid
+  SQL, empty query). These errors must be rejected cleanly and remain usable
+  by the model.
+- **Options**: validation in each agent; validation on the tool-server side; both.
+- **Choice**: **server-side** validation, through types: `service_name: Literal["postgres",
+  "nginx", "redis"]` produces an `enum` in the MCP schema, which the model sees and Pydantic
+  checks. Business errors raise `ToolError`, returned to the client as `is_error=true` with a
+  clear message (e.g. "unknown service", "SQL rejected: only SELECT queries are allowed").
+  Tool descriptions (docstrings) explain the output format and usage, for example
   `relevant=false`.
-- **Pourquoi** : un seul endroit fait foi, quel que soit le client. L'erreur renvoyée au
-  modèle lui permet de **se corriger une fois** (J3) au lieu de planter. Le schéma `enum`
-  réduit les erreurs à la source, ce qui est important pour un SLM.
-- **Compromis** : les messages de validation Pydantic sont verbeux pour un petit modèle. Le
-  serveur ne connaît pas les **limites d'appels** : c'est le rôle de l'orchestrateur (J3).
-- **Compétence visée** : Tool calling, reliability.
+- **Why**: a single place is authoritative, whatever the client. The error returned to the
+  model lets it **correct itself once** (J3) instead of crashing. The `enum` schema
+  reduces errors at the source, which matters for an SLM.
+- **Trade-offs**: Pydantic validation messages are verbose for a small model. The
+  server does not know about **call limits**: that is the orchestrator's job (J3).
+- **Skill demonstrated**: Tool calling, reliability.
 
-## D-13 — Outil SQL en lecture seule : défense en profondeur
+## D-13 — Read-only SQL tool: defense in depth
 
-- **Date** : 2026-10-02 · **Jalon** : J2
-- **Besoin** : laisser l'agent **écrire du SQL** (text-to-SQL, comme un « enterprise data
-  agent ») sans qu'il puisse modifier ou exfiltrer quoi que ce soit, ni bloquer la base.
-- **Options** : (a) outil paramétré (`get_incidents(service, days)`), sans SQL libre ;
-  (b) SQL libre avec un filtre regex ; (c) SQL libre avec **plusieurs couches indépendantes**.
-- **Choix** : (c), dans `sql_guard.py` :
-  1. contrôle statique : une seule instruction, qui commence par `SELECT`/`WITH`, sans mot-clé
-     d'écriture ou d'administration (`DELETE`, `PRAGMA`, `ATTACH`, `load_extension`…) ;
-  2. requête enveloppée : `SELECT * FROM (<sql>) LIMIT 51`, puis tronquée à 50 lignes avec un
-     drapeau `truncated` ;
-  3. connexion SQLite **`mode=ro`** : le moteur refuse toute écriture ;
-  4. **authorizer** SQLite : seules les actions `SELECT`/`READ`/`FUNCTION`/`RECURSIVE` sont permises ;
-  5. **progress handler** : la requête est abandonnée au-delà de 2 s.
+- **Date**: 2026-10-02 · **Milestone**: J2
+- **Need**: let the agent **write SQL** (text-to-SQL, like an "enterprise data
+  agent") without it being able to modify or exfiltrate anything, or lock the database.
+- **Options**: (a) parameterized tool (`get_incidents(service, days)`), no free-form SQL;
+  (b) free-form SQL with a regex filter; (c) free-form SQL with **several independent layers**.
+- **Choice**: (c), in `sql_guard.py`:
+  1. static check: a single statement, starting with `SELECT`/`WITH`, with no write
+     or admin keyword (`DELETE`, `PRAGMA`, `ATTACH`, `load_extension`…);
+  2. wrapped query: `SELECT * FROM (<sql>) LIMIT 51`, then truncated to 50 rows with a
+     `truncated` flag;
+  3. SQLite connection in **`mode=ro`**: the engine refuses any write;
+  4. SQLite **authorizer**: only `SELECT`/`READ`/`FUNCTION`/`RECURSIVE` actions are allowed;
+  5. **progress handler**: the query is aborted after 2 s.
 
-  Le schéma de la table et un exemple de filtre de date sont dans la description de l'outil.
-- **Pourquoi** : (a) serait plus sûr, mais ne pratique pas le text-to-SQL, qui est le cœur d'un
-  data agent. Une regex seule se contourne : chaque couche couvre les angles morts des autres,
-  et les couches 3–4 sont garanties par le moteur, pas par notre code. Les erreurs SQL
-  (colonne inconnue…) sont renvoyées telles quelles pour que le modèle corrige sa requête.
-  Testé : `DELETE`, `SELECT 1; DROP…`, `PRAGMA`, `ATTACH`, `load_extension` sont refusés ; la
-  limite de lignes est appliquée (`tests/test_sql_guard.py`).
-- **Compromis** : la regex peut refuser une requête légitime contenant un de ces mots dans une
-  chaîne (ex. `summary LIKE '%update%'`). C'est acceptable ici, à corriger avec un vrai parseur
-  SQL (`sqlglot`) si besoin. Rien n'empêche une requête **fausse mais valide** : la
-  justesse est évaluée en J4 (cas C4). Sur une vraie base d'entreprise, il faudrait en plus un
-  rôle SQL dédié en lecture seule et des vues restreintes.
-- **Compétence visée** : Enterprise data agents, SQL engines.
+  The table schema and a date-filter example are in the tool description.
+- **Why**: (a) would be safer, but does not practice text-to-SQL, which is the core of a
+  data agent. A regex alone can be bypassed: each layer covers the blind spots of the others,
+  and layers 3–4 are guaranteed by the engine, not by our code. SQL errors
+  (unknown column…) are returned as is so the model can fix its query.
+  Tested: `DELETE`, `SELECT 1; DROP…`, `PRAGMA`, `ATTACH`, `load_extension` are rejected; the
+  row limit is enforced (`tests/test_sql_guard.py`).
+- **Trade-offs**: the regex can reject a legitimate query containing one of these words in a
+  string (e.g. `summary LIKE '%update%'`). Acceptable here, to be fixed with a real SQL
+  parser (`sqlglot`) if needed. Nothing prevents a **wrong but valid** query: its
+  correctness is evaluated at J4 (case C4). On a real enterprise database, a dedicated read-only
+  SQL role and restricted views would also be needed.
+- **Skill demonstrated**: Enterprise data agents, SQL engines.
 
-## D-14 — Données : SQLite d'incidents générée, scénarios JSON simulés
+## D-14 — Data: generated SQLite incident database, simulated JSON scenarios
 
-- **Date** : 2026-10-02 · **Jalon** : J2
-- **Besoin** : des données structurées réalistes pour les questions d'analyse (« combien
-  d'incidents postgres ces 30 derniers jours ? ») et des états de service **simulés** et
-  contrôlables pour les cas C1/C2/C6.
-- **Options données** : PostgreSQL réel (WSL/Docker), DuckDB, **SQLite** (stdlib).
-  **Options statuts** : interroger de vrais services ; un fichier JSON de scénarios.
-- **Choix** : table `incidents` (14 lignes : service, date, sévérité, résumé, résolu) générée par
-  `seed_incidents()` avec des dates **relatives à aujourd'hui**. Le fichier `data/incidents.db`
-  est gitignoré et créé à la première utilisation. Les statuts viennent de `scenarios.json`
-  (`stopped`, `running`, `redis_down`, `tool_error`), choisis par `HS_SCENARIO` (bientôt
-  `--scenario`). Chaque réponse porte `simulated: true` et le nom du scénario.
-- **Pourquoi** : SQLite est dans la stdlib, sans serveur, et c'est un vrai moteur SQL (dates,
-  agrégats, CTE récursives, authorizer). Avec des dates relatives, « les 30 derniers jours » a
-  toujours la même réponse attendue, ce qui rend le cas C4 vérifiable. Les scénarios rendent
-  le comportement **déterministe** et permettent de simuler une panne d'outil (C6). Comme rien
-  de réel n'est touché, aucune action dangereuse n'est possible.
-- **Compromis** : SQLite n'est pas un moteur d'entreprise : pas de rôles, ni de concurrence
-  d'écriture ni de plan distribué. 14 lignes ne testent pas la performance. PostgreSQL +
-  pgvector est en « pour aller plus loin ».
-- **Compétence visée** : Database integration, data analysis.
+- **Date**: 2026-10-02 · **Milestone**: J2
+- **Need**: realistic structured data for analysis questions ("combien
+  d'incidents postgres ces 30 derniers jours ?" (how many postgres incidents in the last 30 days?)) and **simulated**,
+  controllable service states for cases C1/C2/C6.
+- **Data options**: real PostgreSQL (WSL/Docker), DuckDB, **SQLite** (stdlib).
+  **Status options**: query real services; a JSON scenarios file.
+- **Choice**: `incidents` table (14 rows: service, date, severity, summary, resolved) generated by
+  `seed_incidents()` with dates **relative to today**. The `data/incidents.db` file
+  is gitignored and created on first use. Statuses come from `scenarios.json`
+  (`stopped`, `running`, `redis_down`, `tool_error`), selected by `HS_SCENARIO` (soon
+  `--scenario`). Each response carries `simulated: true` and the scenario name.
+- **Why**: SQLite is in the stdlib, serverless, and a real SQL engine (dates,
+  aggregates, recursive CTEs, authorizer). With relative dates, "the last 30 days" always
+  has the same expected answer, which makes case C4 verifiable. Scenarios make
+  behavior **deterministic** and allow simulating a tool failure (C6). Since nothing
+  real is touched, no dangerous action is possible.
+- **Trade-offs**: SQLite is not an enterprise engine: no roles, no write
+  concurrency, no distributed plan. 14 rows do not test performance. PostgreSQL +
+  pgvector is under "going further".
+- **Skill demonstrated**: Database integration, data analysis.
 
-## D-15 — Chargement du RAG en arrière-plan dans le serveur MCP
+## D-15 — Loading the RAG in the background in the MCP server
 
-- **Date** : 2026-10-02 · **Jalon** : J2
-- **Besoin** : le `Retriever` met ~30 s à charger. Si on le charge avant de démarrer le serveur,
-  le handshake MCP dépasse le délai du client (15 s par défaut pour l'Inspector).
-- **Options** : chargement au démarrage (bloquant) ; chargement paresseux au premier appel ;
-  **chargement dans un thread au démarrage**, le premier `search_docs` attendant la fin.
-- **Choix** : le thread. Le handshake est immédiat, les outils `get_service_status` et
-  `query_incidents` sont disponibles tout de suite, et `search_docs` attend au plus 180 s.
-  Les erreurs de chargement sont renvoyées en `ToolError`.
-- **Pourquoi** : en général le documentaliste appelle `search_docs` en premier, après un appel
-  LLM : le chargement se fait pendant ce temps-là au lieu de s'ajouter à la latence.
-- **Compromis** : un peu de concurrence à gérer (un `Event`). Mesuré via l'Inspector : un appel
-  `search_docs` à froid prend ~54 s de bout en bout (démarrage `npx` + process + chargement).
-  Cela reste payé une fois par session.
-- **Compétence visée** : Latency.
+- **Date**: 2026-10-02 · **Milestone**: J2
+- **Need**: the `Retriever` takes ~30 s to load. If it is loaded before starting the server,
+  the MCP handshake exceeds the client timeout (15 s by default for the Inspector).
+- **Options**: load at startup (blocking); lazy load on first call;
+  **load in a thread at startup**, with the first `search_docs` waiting for it to finish.
+- **Choice**: the thread. The handshake is immediate, the `get_service_status` and
+  `query_incidents` tools are available right away, and `search_docs` waits at most 180 s.
+  Loading errors are returned as `ToolError`.
+- **Why**: in general the documentalist calls `search_docs` first, after one LLM
+  call: loading happens during that time instead of adding to latency.
+- **Trade-offs**: a bit of concurrency to manage (an `Event`). Measured via the Inspector: a cold
+  `search_docs` call takes ~54 s end to end (`npx` startup + process + loading).
+  This is still paid once per session.
+- **Skill demonstrated**: Latency.
 
-## D-16 — Orchestration : LangGraph `StateGraph`, nœuds = fonctions Python
+## D-16 — Orchestration: LangGraph `StateGraph`, nodes = Python functions
 
-- **Date** : 2026-10-02 · **Jalon** : J3
-- **Besoin** : enchaîner des étapes (triage → recherche → diagnostic), avec des branches
-  conditionnelles, un état partagé et un arrêt garanti.
-- **Options** : (a) une boucle Python « à la main », (b) **LangGraph** (graphe d'états),
-  (c) un agent ReAct unique (`create_react_agent`) qui décide de tout, (d) CrewAI / AutoGen
-  (multi-agent conversationnel).
-- **Choix** : (b) LangGraph 1.2, graphe `START → triage → documentalist → technician → END`, avec
-  une **arête conditionnelle** : les questions d'historique (`history`) vont directement au
-  technicien, sans recherche documentaire. Une autre fait sortir vers `END` si le documentaliste
-  échoue. Les nœuds sont de simples fonctions `async` : LangChain n'est pas nécessaire (D-05).
-  `recursion_limit=10` sert de filet de sécurité.
-- **Pourquoi** : c'est le framework d'agents visé. Il sépare clairement le **workflow défini
-  par le code** (structure, branches, politique d'outils) des **décisions du modèle** (arguments
-  d'outils, SQL, rédaction), ce que le document initial recommandait déjà. Un agent ReAct unique
-  laisse tout au modèle, ce qui s'est révélé peu fiable avec des modèles 4–7 B (D-17).
-- **Compromis** : pour 3 nœuds linéaires, LangGraph est presque surdimensionné. Sa valeur
-  apparaît avec les branches, les checkpoints et le human-in-the-loop (« pour aller plus
-  loin »). Le chargement de LangGraph ajoute des dépendances.
-- **Compétence visée** : Orchestration, LangGraph.
+- **Date**: 2026-10-02 · **Milestone**: J3
+- **Need**: chain steps (triage → search → diagnosis), with conditional branches, shared state
+  and guaranteed termination.
+- **Options**: (a) a hand-written Python loop, (b) **LangGraph** (state graph),
+  (c) a single ReAct agent (`create_react_agent`) that decides everything, (d) CrewAI / AutoGen
+  (conversational multi-agent).
+- **Choice**: (b) LangGraph 1.2, graph `START → triage → documentalist → technician → END`, with
+  a **conditional edge**: history questions (`history`) go straight to the technician, with no
+  document search. Another one exits to `END` if the documentalist fails. Nodes are plain
+  `async` functions: LangChain is not needed (D-05). `recursion_limit=10` serves as a safety net.
+- **Why**: it is the target agent framework. It clearly separates the **code-defined workflow**
+  (structure, branches, tool policy) from the **model's decisions** (tool arguments, SQL,
+  writing), which the initial document already recommended. A single ReAct agent leaves
+  everything to the model, which proved unreliable with 4–7B models (D-17).
+- **Trade-offs**: for 3 linear nodes, LangGraph is almost oversized. Its value shows up with
+  branches, checkpoints and human-in-the-loop ("going further"). Loading LangGraph adds
+  dependencies.
+- **Skill demonstrated**: Orchestration, LangGraph.
 
-- **Révision (v1.10.0, D-30)** : l'arête conditionnelle envoie aussi `out_of_scope` et `vague`
-  directement au technicien ; seules `malfunction` et `documentation` passent par le documentaliste.
+- **Revision (v1.10.0, D-30)**: the conditional edge also sends `out_of_scope` and `vague`
+  straight to the technician; only `malfunction` and `documentation` go through the documentalist.
 
-## D-17 — Triage par sortie structurée + politique d'outils appliquée par le code
+## D-17 — Triage via structured output + tool policy enforced by code
 
-- **Date** : 2026-10-02 · **Jalon** : J3 · **Décision issue d'un échec mesuré**
-- **Besoin** : le technicien doit **observer** (appeler `get_service_status`) quand une panne est
-  signalée, et ne pas le faire pour une question documentaire.
-- **Constat** : la première version laissait ce choix au modèle (`tool_choice="auto"`, règles dans
-  le prompt). Mesuré sur l'entrée réelle du technicien : **0/3** appels pour Qwen2.5-7B **et**
-  pour Qwen3-4B, quelle que soit la mise en page (rappel en fin de message, sans brief, question
-  en dernier). Les deux modèles répondaient au conditionnel (« si le service est arrêté… »)
-  puisque la fiche décrit les deux cas. Le 7 B allait jusqu'à dire à l'utilisateur d'appeler
-  `get_service_status` lui-même.
-- **Options** : (a) prompt engineering supplémentaire ; (b) appel d'outil systématique ;
-  (c) **routeur** : un appel LLM court qui classe l'intention en JSON contraint, puis une
-  politique d'outils décidée par le code ; (d) un modèle plus gros.
-- **Choix** : (c). Nœud `triage` : `response_format` JSON Schema strict →
-  `{intent: malfunction|history|documentation|out_of_scope|vague, service}`. Le code applique
-  `TECHNICIAN_POLICY` :
-  - `malfunction` → seul `get_service_status` est proposé, un appel est **exigé** ;
-  - `history` → `query_incidents` est **exigé**, le modèle écrit le SQL ;
-  - `documentation` → aucun outil ;
-  - `out_of_scope` / `vague` → aucun outil et une consigne explicite (dire la limite / poser
-    une question).
+- **Date**: 2026-10-02 · **Milestone**: J3 · **Decision driven by a measured failure**
+- **Need**: the technician must **observe** (call `get_service_status`) when an outage is
+  reported, and must not do so for a documentation question.
+- **Finding**: the first version left this choice to the model (`tool_choice="auto"`, rules in
+  the prompt). Measured on the technician's actual input: **0/3** calls for Qwen2.5-7B **and**
+  for Qwen3-4B, whatever the layout (reminder at the end of the message, no brief, question
+  last). Both models answered conditionally ("si le service est arrêté…" — "if the service is
+  stopped…") since the sheet describes both cases. The 7B went as far as telling the user to call
+  `get_service_status` themselves.
+- **Options**: (a) more prompt engineering; (b) systematic tool call;
+  (c) **router**: a short LLM call that classifies the intent into constrained JSON, followed by
+  a tool policy decided by the code; (d) a bigger model.
+- **Choice**: (c). `triage` node: strict JSON Schema `response_format` →
+  `{intent: malfunction|history|documentation|out_of_scope|vague, service}`. The code applies
+  `TECHNICIAN_POLICY`:
+  - `malfunction` → only `get_service_status` is offered, and one call is **required**;
+  - `history` → `query_incidents` is **required**, the model writes the SQL;
+  - `documentation` → no tool;
+  - `out_of_scope` / `vague` → no tool and an explicit instruction (state the limit / ask
+    a question).
 
-  Une panne sans service connu est requalifiée en `vague`.
-- **Pourquoi** : mesuré sur 6 questions types, le triage coûte ~0,3 s (après chargement) et
-  classe correctement les cas clés. Qwen2.5-7B : 4/6, les deux « erreurs » (Kafka → `vague`,
-  « ça marche pas » → panne sans service) aboutissant quand même au bon comportement.
-  Qwen3-4B : 4/6, mais il a confondu « panne + que vérifier ? » avec `documentation`, corrigé
-  par une précision dans le prompt. Le modèle décide toujours, mais **sur une tâche étroite et
-  contrainte**, et le code garantit les conséquences. C'est un schéma *router + policy* courant
-  en production.
-- **Compromis** : un appel LLM de plus par requête. La classification peut se tromper, et
-  l'erreur se propage (pas de retour arrière). Les 5 intentions sont figées dans le code.
-- **Compétence visée** : AI agents, intelligent workflows.
+  An outage with no known service is reclassified as `vague`.
+- **Why**: measured on 6 typical questions, triage costs ~0.3 s (after loading) and correctly
+  classifies the key cases. Qwen2.5-7B: 4/6, with both "errors" (Kafka → `vague`,
+  "ça marche pas" ("it doesn't work") → outage with no service) still leading to the right behavior.
+  Qwen3-4B: 4/6, but it confused "outage + what should I check?" with `documentation`, fixed
+  by a clarification in the prompt. The model still decides, but **on a narrow, constrained
+  task**, and the code guarantees the consequences. This is a common *router + policy* pattern
+  in production.
+- **Trade-offs**: one more LLM call per request. The classification can be wrong, and the error
+  propagates (no going back). The 5 intents are hard-coded.
+- **Skill demonstrated**: AI agents, intelligent workflows.
 
-## D-18 — Boucle d'agent bornée et garde-fous mesurés
+## D-18 — Bounded agent loop and measured guardrails
 
-- **Date** : 2026-10-02 · **Jalon** : J3
-- **Besoin** : aucune boucle infinie, un coût borné, des erreurs d'outil qui ne font pas planter
-  le programme, et pas d'observation inventée.
-- **Choix** (`agents.run_agent`, partagé par les deux agents) :
-  - 3 appels LLM au maximum par agent. Le **dernier appel est fait sans outils**, ce qui force
-    une réponse texte ;
-  - budgets par outil : `search_docs` ≤ 2, `get_service_status` ≤ 1, `query_incidents` ≤ 2.
-    Un dépassement renvoie au modèle un message d'erreur, pas une exception ;
-  - **déduplication** des appels identiques et **3 appels au plus par étape**. Raison mesurée :
-    le 7 B, forcé d'appeler un outil qui échoue (scénario `tool_error`), a émis
-    **46 appels identiques** en 1 024 tokens (18 s) ;
-  - `max_tokens` = 300 pour une étape avec outils, 700 pour une réponse finale ;
-  - **`tool_choice="required"` vérifié par le code** : LM Studio ne l'impose pas strictement.
-    Une fois, le 7 B a répondu en texte et **inventé** un statut « en cours d'exécution » sans
-    appeler l'outil. Une réponse sans l'observation exigée est donc rejetée et le modèle relancé
-    une fois ;
-  - arguments JSON invalides et outils non autorisés : refusés avec un message ;
-  - timeout HTTP des appels LLM (120 s) et des appels d'outils (240 s).
-- **Pourquoi** : on ne fait pas confiance au modèle pour s'arrêter ou pour respecter une
-  contrainte d'API. Chaque garde-fou ci-dessus vient d'un comportement **observé** pendant J3.
-- **Compromis** : les limites sont des choix de périmètre, pas des optimums. Une réponse
-  rejetée coûte un appel LLM. La qualité du raisonnement n'est pas garantie : au cas C4, le 7 B
-  a calculé `MAX(resolved)` et en a pourtant conclu « le dernier n'est pas résolu ». C'est exact
-  par hasard, mais pas déduit du résultat (évaluation J4).
-- **Compétence visée** : Reliability, workflow execution.
+- **Date**: 2026-10-02 · **Milestone**: J3
+- **Need**: no infinite loop, a bounded cost, tool errors that do not crash the program, and no
+  invented observation.
+- **Choice** (`agents.run_agent`, shared by both agents):
+  - at most 3 LLM calls per agent. The **last call is made without tools**, which forces
+    a text answer;
+  - per-tool budgets: `search_docs` ≤ 2, `get_service_status` ≤ 1, `query_incidents` ≤ 2.
+    Exceeding one returns an error message to the model, not an exception;
+  - **deduplication** of identical calls and **at most 3 calls per step**. Measured reason:
+    the 7B, forced to call a failing tool (`tool_error` scenario), emitted
+    **46 identical calls** in 1,024 tokens (18 s);
+  - `max_tokens` = 300 for a step with tools, 700 for a final answer;
+  - **`tool_choice="required"` checked by the code**: LM Studio does not strictly enforce it.
+    Once, the 7B answered in text and **invented** a "en cours d'exécution" ("running") status
+    without calling the tool. An answer without the required observation is therefore rejected
+    and the model retried once;
+  - invalid JSON arguments and unauthorized tools: refused with a message;
+  - HTTP timeout for LLM calls (120 s) and tool calls (240 s).
+- **Why**: the model is not trusted to stop or to respect an API constraint. Each guardrail
+  above comes from a behavior **observed** during J3.
+- **Trade-offs**: the limits are scope choices, not optima. A rejected answer costs one LLM
+  call. Reasoning quality is not guaranteed: in case C4, the 7B computed `MAX(resolved)` and
+  still concluded "le dernier n'est pas résolu" ("the last one is not resolved"). This is correct
+  by chance, but not deduced from the result (J4 evaluation).
+- **Skill demonstrated**: Reliability, workflow execution.
 
-## D-19 — État partagé explicite et trace JSON
+## D-19 — Explicit shared state and JSON trace
 
-- **Date** : 2026-10-02 · **Jalon** : J3
-- **Besoin** : savoir à tout moment ce que chaque étape a vu et décidé, rejouer et mesurer une
-  exécution.
-- **Choix** : `State` (`TypedDict`) : `question` (jamais modifiée), `model`, `scenario`, `route`,
-  `evidence` (passages pertinents uniquement, dédupliqués), `brief`, `observations`,
-  `counters`, `status`, `errors` et `trace` (ces deux derniers avec un reducer `operator.add` : les
-  nœuds **ajoutent**, n'écrasent pas), `answer`. Chaque événement (`llm`, `tool_call`,
-  `tool_result`, `limit`, `error`) est horodaté, affiché en direct et écrit dans
-  `runs/<horodatage>.json` avec les métriques (durée totale, appels et temps LLM, tokens
-  in/out, temps des outils). Le dossier `runs/` est gitignoré.
-- **Pourquoi** : les mises à jour passent explicitement par les retours des nœuds, ce qui est
-  le modèle de LangGraph. Afficher les **décisions observables** (outil, arguments, résultat)
-  plutôt qu'un « raisonnement » interne suit la recommandation du document initial. La trace
-  a servi à diagnostiquer chacun des problèmes de D-17/D-18.
-- **Compromis** : l'état vit en mémoire le temps d'une requête. Il n'y a pas de reprise après
-  crash (checkpointer LangGraph = « pour aller plus loin »). La trace contient les textes
-  complets, ce qui pourrait poser problème avec des données sensibles en contexte réel.
-- **Compétence visée** : State management, latency/cost.
+- **Date**: 2026-10-02 · **Milestone**: J3
+- **Need**: know at any time what each step saw and decided, replay and measure a
+  run.
+- **Choice**: `State` (`TypedDict`): `question` (never modified), `model`, `scenario`, `route`,
+  `evidence` (relevant passages only, deduplicated), `brief`, `observations`,
+  `counters`, `status`, `errors` and `trace` (the last two with an `operator.add` reducer: nodes
+  **append**, they do not overwrite), `answer`. Each event (`llm`, `tool_call`,
+  `tool_result`, `limit`, `error`) is timestamped, displayed live and written to
+  `runs/<timestamp>.json` with the metrics (total duration, LLM calls and time, tokens
+  in/out, tool time). The `runs/` folder is gitignored.
+- **Why**: updates go explicitly through node return values, which is LangGraph's model.
+  Displaying the **observable decisions** (tool, arguments, result) rather than an internal
+  "reasoning" follows the initial document's recommendation. The trace was used to diagnose
+  each of the problems in D-17/D-18.
+- **Trade-offs**: the state lives in memory for the duration of a request. There is no recovery
+  after a crash (LangGraph checkpointer = "going further"). The trace contains the full texts,
+  which could be a problem with sensitive data in a real-world context.
+- **Skill demonstrated**: State management, latency/cost.
 
-## D-20 — Client MCP côté hôte : SDK `mcp` direct plutôt que `langchain-mcp-adapters`
+## D-20 — Host-side MCP client: the `mcp` SDK directly rather than `langchain-mcp-adapters`
 
-- **Date** : 2026-10-02 · **Jalon** : J3
-- **Besoin** : lancer le serveur d'outils, lister ses outils au format attendu par le LLM et les
-  appeler.
-- **Options** : `langchain-mcp-adapters` (convertit en outils LangChain) ; le **`mcp.Client`** du SDK.
-- **Choix** : `ToolBox` (≈ 80 lignes) : `mcp.Client(StdioServerParameters(...))` lance
-  `python -m hello_support.mcp_server` avec `HS_SCENARIO`, convertit `list_tools()` au format
-  OpenAI `tools` (le schéma JSON MCP est repris tel quel) et décode les résultats. Une
-  liste est renvoyée en `structured_content = {"result": [...]}` ou en un bloc texte par élément.
-  Le même `ToolBox` accepte un serveur **en mémoire** pour les tests.
-- **Pourquoi** : sans LangChain dans la boucle (D-05), l'adaptateur n'apporte rien. Le SDK
-  direct montre ce que fait réellement un hôte MCP : *spawn*, *handshake*, *list*, *call*.
-- **Compromis** : il faut gérer soi-même le décodage des résultats. Un premier bug (liste
-  renvoyée en plusieurs blocs) a été trouvé à la première exécution réelle.
-- **Compétence visée** : MCP, tool integration.
+- **Date**: 2026-10-02 · **Milestone**: J3
+- **Need**: start the tool server, list its tools in the format the LLM expects, and call
+  them.
+- **Options**: `langchain-mcp-adapters` (converts to LangChain tools); the SDK's **`mcp.Client`**.
+- **Choice**: `ToolBox` (≈ 80 lines): `mcp.Client(StdioServerParameters(...))` starts
+  `python -m hello_support.mcp_server` with `HS_SCENARIO`, converts `list_tools()` to the OpenAI
+  `tools` format (the MCP JSON schema is reused as is) and decodes the results. A list is
+  returned as `structured_content = {"result": [...]}` or as one text block per item.
+  The same `ToolBox` accepts an **in-memory** server for tests.
+- **Why**: without LangChain in the loop (D-05), the adapter adds nothing. The direct SDK
+  shows what an MCP host actually does: *spawn*, *handshake*, *list*, *call*.
+- **Trade-offs**: result decoding has to be handled by hand. A first bug (list returned in
+  several blocks) was found on the first real run.
+- **Skill demonstrated**: MCP, tool integration.
 
-## D-21 — Validation : 6 cas exécutables avec vérifications automatiques
+## D-21 — Validation: 6 executable cases with automatic checks
 
-- **Date** : 2026-10-02 · **Jalon** : J4
-- **Besoin** : savoir si le système « marche » sur les cas de la spec, le revérifier après chaque
-  changement de prompt ou de modèle, et comparer deux modèles sur la même base.
-- **Options** : (a) relire les réponses à la main ; (b) **LLM-as-a-judge** (un modèle note les
-  réponses) ; (c) **vérifications déterministes** sur l'état final (route, outils appelés,
-  résultats, mots-clés et citations de la réponse) ; (d) un framework d'évaluation (Ragas,
+- **Date**: 2026-10-02 · **Milestone**: J4
+- **Need**: know whether the system "works" on the spec's cases, re-check it after every
+  prompt or model change, and compare two models on the same basis.
+- **Options**: (a) read the answers by hand; (b) **LLM-as-a-judge** (a model grades the
+  answers); (c) **deterministic checks** on the final state (route, tools called, results,
+  keywords and citations in the answer); (d) an evaluation framework (Ragas,
   DeepEval…).
-- **Choix** : (c), dans `cases.py` : 6 cas, de 5 à 7 vérifications nommées chacun (ex. « statut
-  observé = stopped », « aucun appel de statut », « dernier incident lu (ORDER BY…) »,
-  « citations exactes », « en français »). Commande `hello-support bench` : N exécutions × modèles,
-  rapport Markdown (`docs/bench/`) avec **toutes les réponses**, et JSON brut (`runs/`).
-  Les tests unitaires (`pytest`) vérifient le code avec un LLM **scripté** ; le bench vérifie le
-  système avec les **vrais** modèles.
-- **Pourquoi** : c'est reproductible, gratuit et explicable. Une vérification qui échoue désigne
-  un défaut précis. Le bench a immédiatement révélé deux défauts invisibles en démo (D-22,
-  D-23). Un juge LLM local (4–7 B) serait moins fiable que les réponses qu'il note, et un
-  framework ajouterait des dépendances pour 6 cas.
-- **Compromis** : les vérifications par mots-clés sont **grossières**. Une bonne réponse peut
-  échouer (formulation imprévue), une mauvaise peut passer. Elles ne mesurent pas la qualité du
-  conseil. D'où la conservation des réponses complètes pour relecture humaine. 6 cas ne font pas
-  une évaluation statistique.
-- **Compétence visée** : Prototype → production, evaluation.
+- **Choice**: (c), in `cases.py`: 6 cases, each with 5 to 7 named checks (e.g. "observed
+  status = stopped", "no status call", "last incident read (ORDER BY…)",
+  "exact citations", "in French"). The `hello-support bench` command: N runs × models,
+  a Markdown report (`docs/bench/`) with **all the answers**, and raw JSON (`runs/`).
+  Unit tests (`pytest`) check the code with a **scripted** LLM; the benchmark checks the
+  system with the **real** models.
+- **Why**: it is reproducible, free and explainable. A failing check points to a specific
+  defect. The benchmark immediately revealed two defects that were invisible in demos (D-22,
+  D-23). A local LLM judge (4–7B) would be less reliable than the answers it grades, and a
+  framework would add dependencies for 6 cases.
+- **Trade-offs**: keyword checks are **coarse**. A good answer can fail (unexpected wording),
+  a bad one can pass. They do not measure the quality of the advice. Hence full answers are
+  kept for human review. 6 cases do not make a statistical evaluation.
+- **Skill demonstrated**: Prototype → production, evaluation.
 
-## D-22 — Post-traitement déterministe : citations normalisées + mention de simulation
+## D-22 — Deterministic post-processing: normalized citations + simulation notice
 
-- **Date** : 2026-10-02 · **Jalon** : J4 · **Décision issue d'un échec mesuré**
-- **Constat** (bench J4, 7 B) : malgré la consigne « copier les étiquettes exactement », le modèle
-  écrit `postgres_connection.md#Service_status` (underscore). Il omet aussi la mention « simulé »
-  exigée par C1.
-- **Options** : renforcer encore le prompt ; changer le format des identifiants ;
-  **post-traiter la réponse dans le code**.
-- **Choix** : `postprocess.py` :
-  - `normalize_citations` ramène chaque citation `doc.md#Section` à l'identifiant canonique de
-    la base (insensible à la casse et aux `_`) et signale les citations inconnues dans la trace,
-    sans les supprimer ;
-  - `simulation_footer` ajoute en fin de réponse une ligne construite **à partir des résultats
-    d'outils** : « Statut observé en simulation (scénario « stopped ») : postgres = stopped.
-    Aucune action corrective n'a été exécutée. » La phrase est en français si la question l'est.
-- **Pourquoi** : c'est le même principe que D-17. Ce que le code **sait** (le statut vient d'une
-  simulation, rien n'a été exécuté, la liste des sections existantes), le code le dit, au lieu
-  d'espérer que le modèle le dise. Ça rend la réponse vérifiable et conforme à la réponse
-  attendue du document initial.
-- **Compromis** : la vérification « dit simulé » de C1 est désormais satisfaite **par
-  construction**. Elle teste le système, pas le modèle, et il faut le dire. La détection de
-  langue est une heuristique (mots-outils français).
-- **Compétence visée** : Reliability.
+- **Date**: 2026-10-02 · **Milestone**: J4 · **Decision driven by a measured failure**
+- **Finding** (J4 benchmark, 7B): despite the "copy the labels exactly" instruction, the model
+  writes `postgres_connection.md#Service_status` (underscore). It also omits the "simulated"
+  notice required by C1.
+- **Options**: strengthen the prompt even more; change the identifier format;
+  **post-process the answer in code**.
+- **Choice**: `postprocess.py`:
+  - `normalize_citations` maps each `doc.md#Section` citation back to the knowledge base's
+    canonical identifier (case- and `_`-insensitive) and flags unknown citations in the trace,
+    without removing them;
+  - `simulation_footer` appends at the end of the answer a line built **from the tool
+    results**: "Statut observé en simulation (scénario « stopped ») : postgres = stopped.
+    Aucune action corrective n'a été exécutée." ("Status observed in simulation ("stopped"
+    scenario): postgres = stopped. No corrective action was executed.") The sentence is in French
+    if the question is.
+- **Why**: it is the same principle as D-17. What the code **knows** (the status comes from a
+  simulation, nothing was executed, the list of existing sections), the code says, instead of
+  hoping the model will say it. This makes the answer verifiable and consistent with the
+  expected answer in the initial document.
+- **Trade-offs**: C1's "says simulated" check is now satisfied **by construction**. It tests the
+  system, not the model, and that must be stated. Language detection is a heuristic (French
+  function words).
+- **Skill demonstrated**: Reliability.
 
-## D-23 — Questions de données : toutes les requêtes dans la même étape
+## D-23 — Data questions: all queries in the same step
 
-- **Date** : 2026-10-02 · **Jalon** : J4 · **Décision issue d'un échec mesuré**
-- **Constat** : au cas C4 (« combien… et le dernier est-il résolu ? »), le 7 B a exécuté un
-  `COUNT(*)`, puis il a **écrit** « Now let's check the status of the last incident » et
-  **inventé** la réponse au lieu d'appeler l'outil une 2ᵉ fois. Une version antérieure
-  concluait à partir d'un `MAX(resolved)` qui ne permet pas de répondre.
-- **Choix** : la consigne `history` demande **toutes les requêtes dans la même étape** (appels
-  d'outils parallèles), une requête par partie de la question, avec l'exemple
-  `ORDER BY started_at DESC LIMIT 1`. Elle interdit aussi de décrire une requête non exécutée. La
-  vérification C4 contrôle qu'une requête lisant le dernier incident a bien été **exécutée**.
-- **Pourquoi** : le modèle hallucine quand il « raconte » l'étape suivante au lieu de la faire.
-  Faire planifier les requêtes d'un coup supprime cette étape intermédiaire. Résultat mesuré :
-  2 requêtes émises en parallèle, conclusion « 3 incidents, le dernier non résolu » **déduite des
-  lignes renvoyées**.
-- **Compromis** : ça repose sur l'aptitude du modèle aux appels parallèles. Une question
-  nécessitant une requête dépendant du résultat d'une autre (vraie analyse en plusieurs temps)
-  ne serait pas couverte : il faudrait alors un plan explicite ou un budget d'étapes plus grand.
-- **Compétence visée** : Enterprise data agents.
+- **Date**: 2026-10-02 · **Milestone**: J4 · **Decision driven by a measured failure**
+- **Finding**: in case C4 ("combien… et le dernier est-il résolu ?" — "how many… and is the
+  last one resolved?"), the 7B ran a `COUNT(*)`, then **wrote** "Now let's check the status of
+  the last incident" and **invented** the answer instead of calling the tool a 2nd time. An
+  earlier version drew its conclusion from a `MAX(resolved)` that cannot answer the question.
+- **Choice**: the `history` instruction asks for **all queries in the same step** (parallel tool
+  calls), one query per part of the question, with the example
+  `ORDER BY started_at DESC LIMIT 1`. It also forbids describing a query that was not run. The
+  C4 check verifies that a query reading the last incident was actually **executed**.
+- **Why**: the model hallucinates when it "narrates" the next step instead of doing it.
+  Having it plan the queries all at once removes that intermediate step. Measured result:
+  2 queries issued in parallel, conclusion "3 incidents, the last one unresolved" **deduced from
+  the returned rows**.
+- **Trade-offs**: this relies on the model's ability to make parallel calls. A question
+  requiring a query that depends on the result of another (true multi-step analysis)
+  would not be covered: it would then need an explicit plan or a larger step budget.
+- **Skill demonstrated**: Enterprise data agents.
 
-## D-24 — Triage : règles explicites + exemples, mesurés sur des paraphrases tenues à l'écart
+## D-24 — Triage: explicit rules + examples, measured on held-out paraphrases
 
-- **Date** : 2026-10-02 · **Jalon** : J4 · **Décision issue d'un échec mesuré**
-- **Constat** (bench J4 n° 1) : le SLM classait « Mon application ne parvient plus à se connecter
-  à PostgreSQL. Que dois-je vérifier ? » en `documentation` **3 fois sur 3**. Il n'observait donc
-  jamais le statut, d'où C1/C2 = 0/3. Ajouter seulement des exemples (*few-shot*) a corrigé le
-  SLM sur les paraphrases, mais **dégradé le 7 B** : « Mon Kafka est lent » → `malfunction/nginx`,
-  « My MongoDB replica set is down » → `malfunction/redis`. C'est dangereux, puisqu'il observerait
-  un service sans rapport avec la question.
-- **Choix** : prompt de triage = définitions + **2 règles explicites** (un autre produit cité →
-  `out_of_scope`, jamais mappé sur un service connu ; une panne vécue maintenant → `malfunction`,
-  même si la phrase finit par « que vérifier ? ») + **6 exemples** formulés différemment des
-  questions du bench.
-- **Mesure** : 12 questions = les 6 du bench + **6 paraphrases tenues à l'écart** (jamais vues
-  pendant le réglage) : **12/12 pour les deux modèles**, contre 11/12 (SLM) et 10/12 (7 B) avec
-  les seuls exemples.
-- **Pourquoi** : un exemple sans règle peut être sur-généralisé (le 7 B a appris « produit
-  inconnu ⇒ choisir un service connu »). La règle fixe la limite, les exemples montrent le
-  format. Tester sur des paraphrases non vues évite de régler le prompt pour les seules
-  questions du bench (sur-ajustement).
-- **Compromis** : 12 questions restent un petit échantillon. Chaque modification de prompt doit
-  être re-mesurée, car un gain sur un modèle peut être une perte sur l'autre (cas observé ici).
-- **Compétence visée** : Evaluate AI tech, SLMs.
+- **Date**: 2026-10-02 · **Milestone**: J4 · **Decision driven by a measured failure**
+- **Finding** (J4 benchmark #1): the SLM classified "Mon application ne parvient plus à se
+  connecter à PostgreSQL. Que dois-je vérifier ?" ("My application can no longer connect to
+  PostgreSQL. What should I check?") as `documentation` **3 times out of 3**. It therefore never
+  observed the status, hence C1/C2 = 0/3. Adding examples alone (*few-shot*) fixed the
+  SLM on the paraphrases, but **degraded the 7B**: "Mon Kafka est lent" ("My Kafka is slow") →
+  `malfunction/nginx`, "My MongoDB replica set is down" → `malfunction/redis`. This is dangerous,
+  since it would observe a service unrelated to the question.
+- **Choice**: triage prompt = definitions + **2 explicit rules** (another product mentioned →
+  `out_of_scope`, never mapped to a known service; an outage happening now → `malfunction`,
+  even if the sentence ends with "what should I check?") + **6 examples** worded differently
+  from the benchmark questions.
+- **Measurements**: 12 questions = the 6 benchmark ones + **6 held-out paraphrases** (never seen
+  during tuning): **12/12 for both models**, versus 11/12 (SLM) and 10/12 (7B) with
+  examples alone.
+- **Why**: an example without a rule can be over-generalized (the 7B learned "unknown
+  product ⇒ pick a known service"). The rule sets the boundary, the examples show the
+  format. Testing on unseen paraphrases avoids tuning the prompt for the benchmark questions
+  only (overfitting).
+- **Trade-offs**: 12 questions is still a small sample. Every prompt change must be
+  re-measured, since a gain on one model can be a loss on the other (as observed here).
+- **Skill demonstrated**: Evaluate AI tech, SLMs.
 
-## D-25 — ADR : modèle par défaut = Qwen2.5-7B-Instruct ; le SLM reste une option mesurée
+## D-25 — ADR: default model = Qwen2.5-7B-Instruct; the SLM remains a measured option
 
-- **Date** : 2026-10-02 · **Jalon** : J5 · **Statut** : Acceptée. Elle confirme D-04 avec des mesures.
-- **Contexte** : deux modèles servis localement par LM Studio, mêmes prompts, même code, 6 cas ×
-  3 exécutions (BENCH J4), plus une mesure de débit du serving (BENCH J5).
-- **Options** : (a) SLM Qwen3-4B-Instruct-2507 par défaut ; (b) **7 B par défaut** ;
-  (c) hybride : SLM pour le triage (tâche étroite, sortie contrainte), 7 B pour la réponse.
-- **Données** :
+- **Date**: 2026-10-02 · **Milestone**: J5 · **Status**: Accepted. It confirms D-04 with measurements.
+- **Context**: two models served locally by LM Studio, same prompts, same code, 6 cases ×
+  3 runs (BENCH J4), plus a serving throughput measurement (BENCH J5).
+- **Options**: (a) SLM Qwen3-4B-Instruct-2507 by default; (b) **7B by default**;
+  (c) hybrid: SLM for triage (narrow task, constrained output), 7B for the answer.
+- **Data**:
 
-  | Critère | SLM 4 B | 7 B |
+  | Criterion | SLM 4B | 7B |
   |---|---|---|
-  | Cas réussis (6 × 3) | 15/18 | **18/18** |
-  | Défaut grave observé | invente des identifiants de source quand un outil échoue (C6, 3/3) | présente parfois les symptômes de la fiche comme des « logs observés » (non détecté par les vérifications) |
-  | Triage (12 questions dont 6 tenues à l'écart) | 12/12 | 12/12 |
-  | Latence p50 par requête (à chaud) | **6,0 s** | 9,0 s |
-  | Débit de génération, 1 requête à la fois | **107 tokens/s** | 71 tokens/s |
-  | Débit agrégé, 4 requêtes concurrentes | **173 tokens/s** | 128 tokens/s |
-  | VRAM (Q4_K_M) | ~2,5 Go | ~4,7 Go |
-  | Coût estimé si API (gpt-4o-mini / Haiku 4.5), /1000 req. | ~0,62 $ / ~4,5 $ | ~0,62 $ / ~4,6 $ |
+  | Cases passed (6 × 3) | 15/18 | **18/18** |
+  | Serious defect observed | invents source identifiers when a tool fails (C6, 3/3) | sometimes presents the sheet's symptoms as "observed logs" (not detected by the checks) |
+  | Triage (12 questions incl. 6 held out) | 12/12 | 12/12 |
+  | p50 latency per request (warm) | **6.0 s** | 9.0 s |
+  | Generation throughput, 1 request at a time | **107 tokens/s** | 71 tokens/s |
+  | Aggregate throughput, 4 concurrent requests | **173 tokens/s** | 128 tokens/s |
+  | VRAM (Q4_K_M) | ~2.5 GB | ~4.7 GB |
+  | Estimated cost if API (gpt-4o-mini / Haiku 4.5), /1000 req. | ~$0.62 / ~$4.5 | ~$0.62 / ~$4.6 |
 
-- **Décision** : (b) 7 B par défaut (`HS_MODEL_DEFAULT=large`). Le SLM reste sélectionnable
-  (`--model slm`) et c'est le meilleur candidat pour le triage si la latence devient prioritaire.
-- **Pourquoi** : sur un assistant de support, une **source inventée** est plus grave qu'une
-  réponse plus lente de 3 s. Le SLM est plus rapide sur tous les indicateurs (~1,5×) et aussi bon
-  au triage. Il ne perd que sur la robustesse en cas d'erreur d'outil, mais c'est le cas qui
-  compte en production. Le coût **local** est nul dans les deux cas, et le coût cloud estimé est
-  identique, car les tokens sont surtout en entrée (contexte du RAG) et les volumes sont proches.
-  La taille du modèle ne change donc pas la facture : c'est la longueur du contexte qui compte.
-- **Conséquences / suite** : (c) est la prochaine expérience logique : triage par le SLM, réponse
-  par le 7 B. Il faudrait la mesurer avec le même bench avant de l'adopter. Avec un modèle
-  plus grand (cloud), la plupart des garde-fous resteraient utiles : ils protègent contre
-  des classes d'erreurs, pas contre un modèle précis.
-- **Compétence visée** : LLMs & SLMs, latency/cost, evaluate → plan.
+- **Decision**: (b) 7B by default (`HS_MODEL_DEFAULT=large`). The SLM remains selectable
+  (`--model slm`) and is the best candidate for triage if latency becomes the priority.
+- **Why**: for a support assistant, an **invented source** is more serious than an answer that
+  is 3 s slower. The SLM is faster on every metric (~1.5×) and just as good at triage. It only
+  loses on robustness when a tool fails, but that is the case that matters in production. The
+  **local** cost is zero in both cases, and the estimated cloud cost is identical, because tokens
+  are mostly input (RAG context) and the volumes are similar. Model size therefore does not
+  change the bill: context length is what matters.
+- **Consequences / next steps**: (c) is the next logical experiment: triage by the SLM, answer
+  by the 7B. It would need to be measured with the same benchmark before adoption. With a larger
+  (cloud) model, most guardrails would remain useful: they protect against classes of errors,
+  not against a specific model.
+- **Skill demonstrated**: LLMs & SLMs, latency/cost, evaluate → plan.
 
-## D-26 — Méthode de mesure : latence, débit, coût
+## D-26 — Measurement method: latency, throughput, cost
 
-- **Date** : 2026-10-02 · **Jalon** : J5
-- **Besoin** : parler de latence, de débit et de coût avec des **chiffres mesurés** et une méthode
-  qu'on peut expliquer.
-- **Choix** :
-  - **latence** : par requête et à chaud (session MCP et modèle déjà chargés), p50/max sur
-    18 requêtes par modèle. Le **démarrage à froid** (20–26 s : torch, modèles d'embedding,
-    Chroma, chargement LM Studio) est mesuré à part, parce qu'il se paie une fois par session ;
-  - **décomposition** par la trace : temps LLM, temps des outils, nombre d'appels ;
-  - **débit** : (1) débit de génération dans le bench (tokens produits / temps LLM, prompt compris) ;
-    (2) `hello-support throughput` : la même requête répétée 8 fois à concurrence 1 puis 4,
-    pour mesurer le débit agrégé (tokens/s, requêtes/min) et la latence individuelle ;
-  - **coût** : local = 0 € (électricité non comptée). Cloud = **estimation** : tokens in/out
-    moyens mesurés × prix publics indicatifs, sans compte ni appel, avec des prix à revérifier
-    avant de les citer.
-- **Résultats marquants** :
-  - ~2 600–2 800 tokens en entrée pour ~350–390 en sortie par requête : le **contexte** (prompts,
-    passages du RAG, résultats d'outils) domine le coût, donc c'est là qu'il faut optimiser ;
-  - la concurrence 4 multiplie le débit agrégé par 1,6–1,8, mais double la latence individuelle :
-    c'est le compromis débit / latence classique du serving ;
-  - le chargement du RAG (~14–27 s) est le premier poste de la latence à froid.
-- **Compromis** : une seule machine, peu d'exécutions, température 0 : pas de vraie
-  distribution statistique. Le débit est mesuré sur LM Studio, pas sur un serveur de production
-  (vLLM, batching continu : « pour aller plus loin »). Les prix évoluent.
-- **Compétence visée** : Latency, throughput, cost.
+- **Date**: 2026-10-02 · **Milestone**: J5
+- **Need**: discuss latency, throughput and cost with **measured figures** and a method that
+  can be explained.
+- **Choice**:
+  - **latency**: per request and warm (MCP session and model already loaded), p50/max over
+    18 requests per model. **Cold start** (20–26 s: torch, embedding models, Chroma, LM Studio
+    loading) is measured separately, because it is paid once per session;
+  - **breakdown** via the trace: LLM time, tool time, number of calls;
+  - **throughput**: (1) generation throughput in the benchmark (tokens produced / LLM time,
+    prompt included); (2) `hello-support throughput`: the same request repeated 8 times at
+    concurrency 1 then 4, to measure aggregate throughput (tokens/s, requests/min) and individual
+    latency;
+  - **cost**: local = €0 (electricity not counted). Cloud = **estimate**: measured average
+    tokens in/out × indicative public prices, with no account and no call, and prices to be
+    re-checked before quoting them.
+- **Key results**:
+  - ~2,600–2,800 input tokens for ~350–390 output tokens per request: the **context** (prompts,
+    RAG passages, tool results) dominates the cost, so that is where to optimize;
+  - concurrency 4 multiplies aggregate throughput by 1.6–1.8, but doubles individual latency:
+    this is the classic throughput / latency trade-off of serving;
+  - loading the RAG (~14–27 s) is the largest item in cold latency.
+- **Trade-offs**: a single machine, few runs, temperature 0: no real statistical
+  distribution. Throughput is measured on LM Studio, not on a production server
+  (vLLM, continuous batching: "going further"). Prices change.
+- **Skill demonstrated**: Latency, throughput, cost.
 
-## D-27 — Structure du code
+## D-27 — Code structure
 
-- **Date** : 2026-10-02 · **Jalon** : J5 (bilan)
-- **Choix** : un package `src/hello_support/` en modules à responsabilité unique :
+- **Date**: 2026-10-02 · **Milestone**: J5 (review)
+- **Choice**: a `src/hello_support/` package of single-responsibility modules:
 
-  | Module | Rôle | Dépend de |
+  | Module | Role | Depends on |
   |---|---|---|
-  | `cli.py` | commandes `smoke`, `search`, `ask`, `bench`, `throughput`, affichage | tout le reste (imports tardifs) |
-  | `workflow.py` | graphe LangGraph, état, export des traces | `agents`, `toolbox`, `postprocess` |
-  | `agents.py` | triage, prompts, politique d'outils, boucle bornée | `llm`, `toolbox` |
-  | `llm.py` | client OpenAI-compatible, mesures | `openai` |
-  | `toolbox.py` | hôte MCP (spawn, list, call) | `mcp` |
-  | `mcp_server.py` | serveur MCP, 3 outils | `retrieval`, `data_store`, `sql_guard` |
-  | `retrieval.py` | découpage, embeddings, Chroma, reranking | torch, sentence-transformers, chromadb |
-  | `sql_guard.py` / `data_store.py` | SQL lecture seule ; données simulées et SQLite | stdlib |
-  | `postprocess.py` | citations, mention de simulation | `retrieval` (liste des sections) |
-  | `cases.py` / `benchmark.py` | cas de validation, mesures, rapports | `workflow` |
-  | `config.py` | variables d'environnement | `python-dotenv` |
+  | `cli.py` | `smoke`, `search`, `ask`, `bench`, `throughput` commands, display | everything else (lazy imports) |
+  | `workflow.py` | LangGraph graph, state, trace export | `agents`, `toolbox`, `postprocess` |
+  | `agents.py` | triage, prompts, tool policy, bounded loop | `llm`, `toolbox` |
+  | `llm.py` | OpenAI-compatible client, measurements | `openai` |
+  | `toolbox.py` | MCP host (spawn, list, call) | `mcp` |
+  | `mcp_server.py` | MCP server, 3 tools | `retrieval`, `data_store`, `sql_guard` |
+  | `retrieval.py` | chunking, embeddings, Chroma, reranking | torch, sentence-transformers, chromadb |
+  | `sql_guard.py` / `data_store.py` | read-only SQL; simulated data and SQLite | stdlib |
+  | `postprocess.py` | citations, simulation notice | `retrieval` (list of sections) |
+  | `cases.py` / `benchmark.py` | validation cases, measurements, reports | `workflow` |
+  | `config.py` | environment variables | `python-dotenv` |
 
-- **Pourquoi** : la frontière **MCP** sépare physiquement les agents (processus hôte) des outils
-  et des données (sous-processus) : les agents ne savent pas comment un outil est fait. Les
-  dépendances lourdes (torch, Chroma) ne sont chargées que par le serveur d'outils et la commande
-  `search`. Les tests et la CLI restent rapides. Code, prompts et commentaires sont en anglais,
-  la documentation en français.
-- **Compromis** : ~1 600 lignes de code (+ ~400 de tests) pour un « hello world », dont une bonne part de garde-fous et de
-  mesure. Les prompts sont des constantes Python, pas des fichiers versionnés à part.
-- **Compétence visée** : Software architecture, Python.
+- **Why**: the **MCP** boundary physically separates the agents (host process) from the tools
+  and data (subprocess): the agents do not know how a tool is built. Heavy dependencies
+  (torch, Chroma) are loaded only by the tool server and the `search` command. Tests and the
+  CLI stay fast. Code, prompts and comments are in English, the documentation in French.
+- **Trade-offs**: ~1,600 lines of code (+ ~400 of tests) for a "hello world", a good part of which is guardrails and
+  measurement. Prompts are Python constants, not separately versioned files.
+- **Skill demonstrated**: Software architecture, Python.
 
-## D-28 — Stratégie de tests
+## D-28 — Testing strategy
 
-- **Date** : 2026-10-02 · **Jalon** : J5 (bilan)
-- **Choix** : trois niveaux.
-  1. **Unitaires, hors ligne, < 3 s** (`uv run pytest`, 40 tests) : découpage des fiches, garde-fous
-     SQL (refus de `DELETE` / `DROP` / `PRAGMA` / `ATTACH` / `load_extension`, limite de lignes),
-     contrats MCP via un **client MCP réel connecté en mémoire**, boucle d'agent et graphe complet
-     avec un **LLM scripté** (budgets, déduplication, dernier appel sans outils, relance quand un
-     outil exigé est ignoré, erreur d'outil), post-traitement, vérifications des cas.
-  2. **Intégration avec modèles** (`pytest -m models`) : RAG de bout en bout sur GPU.
-  3. **Système avec les vrais LLM** (`hello-support bench`) : 6 cas × N × modèles, vérifications
-     automatiques et réponses archivées.
-- **Pourquoi** : ce qui est déterministe (garde-fous, contrats, orchestration) est testé de façon
-  déterministe. Ce qui dépend du modèle est **mesuré**, pas « testé vert ». Le LLM scripté permet
-  de reproduire exactement les comportements fautifs observés (réponse sans l'outil exigé,
-  46 appels dupliqués) et de verrouiller les correctifs.
-- **Compromis** : pas de CI (hors périmètre). Le bench n'est pas lancé automatiquement : il
-  faut LM Studio et ~6 min. Les vérifications par mots-clés restent grossières (D-21).
-- **Compétence visée** : Production-grade, reliability.
+- **Date**: 2026-10-02 · **Milestone**: J5 (review)
+- **Choice**: three levels.
+  1. **Unit, offline, < 3 s** (`uv run pytest`, 40 tests): sheet chunking, SQL guardrails
+     (rejection of `DELETE` / `DROP` / `PRAGMA` / `ATTACH` / `load_extension`, row limit),
+     MCP contracts via a **real MCP client connected in memory**, agent loop and full graph
+     with a **scripted LLM** (budgets, deduplication, last call without tools, retry when a
+     required tool is ignored, tool error), post-processing, case checks.
+  2. **Integration with models** (`pytest -m models`): end-to-end RAG on GPU.
+  3. **System with the real LLMs** (`hello-support bench`): 6 cases × N × models, automatic
+     checks and archived answers.
+- **Why**: what is deterministic (guardrails, contracts, orchestration) is tested
+  deterministically. What depends on the model is **measured**, not "tested green". The scripted
+  LLM makes it possible to reproduce exactly the faulty behaviors observed (answer without the
+  required tool, 46 duplicated calls) and to lock in the fixes.
+- **Trade-offs**: no CI (out of scope). The benchmark is not run automatically: it needs
+  LM Studio and ~6 min. Keyword checks remain coarse (D-21).
+- **Skill demonstrated**: Production-grade, reliability.
 
-## D-29 — Agents, routeur et code : qui décide quoi, et pourquoi aucune boucle entre agents
+## D-29 — Agents, router and code: who decides what, and why there is no loop between agents
 
-- **Date** : 2026-10-04 · **Jalon** : documentation (aucun changement de comportement)
-- **Besoin** : rendre la nature de chaque bloc lisible. Un lecteur du schéma demandait : « s'il y
-  a des agents, où sont les boucles ? », « le triage est-il un agent ? ».
-- **Constat (code)** :
-  - **Agents** = Documentaliste et Technicien. `run_agent` fait boucler le LLM sur les outils :
-    le modèle choisit l'outil et ses arguments, le code l'exécute et renvoie le résultat. La boucle
-    fait ≤ 3 appels LLM (`MAX_LLM_CALLS`), le dernier sans outils, ≤ 3 appels d'outil par étape.
-    Un outil exigé est relancé une fois si le modèle l'a ignoré, et la boucle s'arrête dès une
-    réponse texte.
-  - **Triage = routeur** : 1 appel LLM en `response_format` JSON Schema (`intent`, `service`),
-    sans outil ni boucle. Le code en tire la branche du graphe et la politique d'outils (D-17).
-  - **Code déterministe** : contrôles de la boucle (D-18), post-traitement (D-22), reclassement
-    d'une panne sans service connu en `vague`.
-- **Options** : (a) un graphe multi-agents avec retours (le technicien peut renvoyer au
-  documentaliste, ou un superviseur ré-arbitre) ; (b) **un graphe linéaire, les boucles
-  restant à l'intérieur des agents**.
-- **Choix** : (b). Chaque nœud LangGraph s'exécute au plus une fois par question.
-- **Pourquoi** : le besoin est séquentiel : trouver les sources, puis diagnostiquer. Un retour
-  entre agents ajouterait des appels LLM (latence, tokens), un risque de ping-pong, et un
-  comportement plus difficile à tester et à borner, sans gain mesuré sur les 6 cas. Les
-  boucles internes suffisent pour corriger une requête ou un appel d'outil raté. Les limites
-  (3 appels LLM, budgets d'outils, `recursion_limit=10`) garantissent l'arrêt.
-- **Compromis** : si les passages trouvés sont mauvais, le technicien ne peut pas demander une
-  nouvelle recherche. Il le signale dans sa réponse. Une boucle documentaliste ↔ technicien, ou
-  un superviseur, serait l'évolution naturelle, à mesurer avec le même bench.
-- **Représentation** : schémas avec légende (agent 🟦, routeur 🟧, code ⬜, outil MCP 🟩,
-  modèle 🟪) et zoom sur la boucle d'un agent (README, synthèse ci-dessus, SPEC §4).
-- **Compétence visée** : AI agents, agent orchestration, workflow execution.
+- **Date**: 2026-10-04 · **Milestone**: documentation (no behavior change)
+- **Need**: make the nature of each block readable. A reader of the diagram asked: "if there
+  are agents, where are the loops?", "is triage an agent?".
+- **Finding (code)**:
+  - **Agents** = Documentalist and Technician. `run_agent` loops the LLM over the tools:
+    the model chooses the tool and its arguments, the code executes it and returns the result.
+    The loop makes ≤ 3 LLM calls (`MAX_LLM_CALLS`), the last one without tools, ≤ 3 tool calls
+    per step. A required tool is retried once if the model ignored it, and the loop stops as soon
+    as there is a text answer.
+  - **Triage = router**: 1 LLM call with a JSON Schema `response_format` (`intent`, `service`),
+    with no tool and no loop. The code derives the graph branch and the tool policy from it (D-17).
+  - **Deterministic code**: loop controls (D-18), post-processing (D-22), reclassification
+    of an outage with no known service as `vague`.
+- **Options**: (a) a multi-agent graph with back-edges (the technician can send back to the
+  documentalist, or a supervisor re-arbitrates); (b) **a linear graph, with loops
+  kept inside the agents**.
+- **Choice**: (b). Each LangGraph node runs at most once per question.
+- **Why**: the need is sequential: find the sources, then diagnose. A back-edge between agents
+  would add LLM calls (latency, tokens), a risk of ping-pong, and behavior that is harder to
+  test and bound, with no measured gain on the 6 cases. The internal loops are enough to fix a
+  failed query or tool call. The limits (3 LLM calls, tool budgets, `recursion_limit=10`)
+  guarantee termination.
+- **Trade-offs**: if the passages found are poor, the technician cannot request a new search.
+  It flags this in its answer. A documentalist ↔ technician loop, or a supervisor, would be the
+  natural evolution, to be measured with the same benchmark.
+- **Representation**: diagrams with a legend (agent 🟦, router 🟧, code ⬜, MCP tool 🟩,
+  model 🟪) and a zoom on an agent's loop (README, summary above, SPEC §4).
+- **Skill demonstrated**: AI agents, agent orchestration, workflow execution.
 
-## D-30 — `out_of_scope` et `vague` sautent le documentaliste
+## D-30 — `out_of_scope` and `vague` skip the documentalist
 
-- **Date** : 2026-10-04 · **Jalon** : v1.10.0 · **Décision de l'utilisateur, mesurée avant/après**
-- **Besoin** : ne pas payer une recherche documentaire pour des demandes qui n'en ont pas
-  besoin. Pour `out_of_scope` (autre produit) et `vague` (service indéterminé), le technicien
-  n'a **aucun outil** (D-17) et ne doit rien affirmer. Les passages trouvés par le documentaliste
-  étaient au mieux inutiles, au pire trompeurs : des voisins vectoriels sans rapport.
-- **Options** : (a) rester sur le chemin commun (documentaliste puis technicien) ; (b) **arête
-  conditionnelle triage → technicien sans outil** ; (c) réponse **fixe** générée par le code,
-  sans LLM (« Je ne couvre que PostgreSQL, nginx et Redis… », « Quel service ? »).
-- **Choix** : (b). `after_triage` envoie au documentaliste les seules catégories qui utilisent la
-  base (`NEEDS_RETRIEVAL = {malfunction, documentation}`). `history`, `out_of_scope` et `vague` vont
-  directement au technicien. Une panne sans service connu, reclassée `vague` par le code, prend
-  aussi ce raccourci.
-- **Pourquoi (b) plutôt que (c)** : (c) serait encore plus rapide (0 appel LLM), mais un texte fixe
-  ne s'adapte ni à la langue de la question, ni à son contenu. Le technicien nomme le produit
-  hors périmètre (« je n'ai pas d'informations sur Kafka ») et formule une question de précision
-  adaptée (« quel service, quel symptôme ? »). (b) ne change qu'une arête du graphe, garde le
-  post-traitement commun et les mêmes vérifications. C'est le changement le plus simple qui
-  reste juste.
-- **Mesures** (mêmes conditions avant/après, 5 exécutions par cas et par modèle, à chaud ;
-  `docs/BENCH.md` § v1.10.0) :
+- **Date**: 2026-10-04 · **Milestone**: v1.10.0 · **User decision, measured before/after**
+- **Need**: avoid paying for a document search on requests that do not need one. For
+  `out_of_scope` (another product) and `vague` (undetermined service), the technician has
+  **no tool** (D-17) and must not assert anything. The passages found by the documentalist
+  were useless at best and misleading at worst: unrelated vector neighbors.
+- **Options**: (a) stay on the common path (documentalist then technician); (b) **conditional
+  edge triage → technician without tools**; (c) a **fixed** answer generated by the code,
+  without an LLM ("Je ne couvre que PostgreSQL, nginx et Redis…" — "I only cover PostgreSQL,
+  nginx and Redis…", "Quel service ?" — "Which service?").
+- **Choice**: (b). `after_triage` sends to the documentalist only the categories that use the
+  knowledge base (`NEEDS_RETRIEVAL = {malfunction, documentation}`). `history`, `out_of_scope` and
+  `vague` go straight to the technician. An outage with no known service, reclassified as `vague`
+  by the code, also takes this shortcut.
+- **Why (b) rather than (c)**: (c) would be even faster (0 LLM calls), but a fixed text adapts
+  neither to the language of the question nor to its content. The technician names the
+  out-of-scope product ("je n'ai pas d'informations sur Kafka" — "I have no information about
+  Kafka") and asks a suitable clarifying question ("quel service, quel symptôme ?" — "which
+  service, which symptom?"). (b) changes only one graph edge and keeps the shared
+  post-processing and the same checks. It is the simplest change that remains correct.
+- **Measurements** (same conditions before/after, 5 runs per case and per model, warm;
+  `docs/BENCH.md` § v1.10.0):
 
-  | Modèle | Catégorie | Réussite | Latence p50 | Appels LLM | Tokens in |
+  | Model | Category | Pass rate | p50 latency | LLM calls | Tokens in |
   |---|---|---|---|---|---|
-  | Qwen3-4B | out_of_scope (Kafka) | 5/5 → 5/5 | 1,26 → 0,82 s (−35 %) | 3 → 2 | 1 139 → 724 |
-  | Qwen3-4B | vague (« ça marche pas ») | 5/5 → 5/5 | 3,07 → 0,44 s (−86 %) | 4 → 2 | 2 150 → 710 |
-  | Qwen2.5-7B | out_of_scope (Kafka) | 5/5 → 5/5 | 1,96 → 2,02 s (+3 %) | 3 → 2 | 1 136 → 724 |
-  | Qwen2.5-7B | vague (« ça marche pas ») | 5/5 → 5/5 | 3,87 → 1,74 s (−55 %) | 4 → 2 | 1 968 → 710 |
+  | Qwen3-4B | out_of_scope (Kafka) | 5/5 → 5/5 | 1.26 → 0.82 s (−35%) | 3 → 2 | 1,139 → 724 |
+  | Qwen3-4B | vague ("ça marche pas") | 5/5 → 5/5 | 3.07 → 0.44 s (−86%) | 4 → 2 | 2,150 → 710 |
+  | Qwen2.5-7B | out_of_scope (Kafka) | 5/5 → 5/5 | 1.96 → 2.02 s (+3%) | 3 → 2 | 1,136 → 724 |
+  | Qwen2.5-7B | vague ("ça marche pas") | 5/5 → 5/5 | 3.87 → 1.74 s (−55%) | 4 → 2 | 1,968 → 710 |
 
-  Bench complet (6 cas × 3, chaque modèle) : 4B 15/18 → 15/18, 7B 18/18 → 17/18. L'écart du 7B
-  vient de C6 (chemin `malfunction`, **inchangé**). Sur 10 exécutions supplémentaires, ancien et
-  nouveau code font tous deux 8/10 : c'est une instabilité préexistante (formulation « statut
-  indéterminé » non reconnue par une vérification par mots-clés), pas une régression. Idem pour
-  C3 avec le 4B (ancien 5/8, nouveau 7/8).
-- **Compromis / constats** :
-  - Pour `out_of_scope` avec le 7B, **aucun gain de latence**. L'ancien documentaliste ne
-    cherchait déjà pas (1 appel LLM court), et c'est la réponse du technicien (~100 tokens) qui
-    domine. Le gain se limite alors aux tokens d'entrée (−36 %).
-  - Le technicien ne voit plus de « brief » pour ces catégories. Il n'en avait pas besoin : il
-    reçoit la question, la catégorie et une consigne explicite.
-  - Un triage qui classe à tort une vraie panne en `vague` perd désormais aussi la recherche. Le
-    risque existait déjà (pas d'outil de statut) et le triage fait 12/12 sur le jeu de contrôle
+  Full benchmark (6 cases × 3, each model): 4B 15/18 → 15/18, 7B 18/18 → 17/18. The 7B gap
+  comes from C6 (`malfunction` path, **unchanged**). Over 10 additional runs, old and new
+  code both score 8/10: this is pre-existing instability (the wording "statut indéterminé"
+  ("undetermined status") is not recognized by a keyword check), not a regression. Same for
+  C3 with the 4B (old 5/8, new 7/8).
+- **Trade-offs / findings**:
+  - For `out_of_scope` with the 7B, **no latency gain**. The old documentalist already did not
+    search (1 short LLM call), and the technician's answer (~100 tokens) dominates. The gain is
+    then limited to input tokens (−36%).
+  - The technician no longer sees a "brief" for these categories. It did not need one: it
+    receives the question, the category and an explicit instruction.
+  - A triage that wrongly classifies a real outage as `vague` now also loses the search. The
+    risk already existed (no status tool), and triage scores 12/12 on the control set
     (D-24).
-- **Retour arrière** : tag `pre-1.10.0` (v1.9.3) ; le changement tient dans `after_triage`.
-- **Compétence visée** : orchestration, latency/cost, evaluate → engineering plan.
+- **Rollback**: tag `pre-1.10.0` (v1.9.3); the change is contained in `after_triage`.
+- **Skill demonstrated**: orchestration, latency/cost, evaluate → engineering plan.
 
-## D-31 — Démo web : le vrai pipeline, une trace en direct, une question à la fois
+## D-31 — Web demo: the real pipeline, a live trace, one question at a time
 
-- **Date** : 2026-10-04 · **Jalon** : v1.11.0
-- **Besoin** : montrer le système dans un navigateur, ce qu'un terminal ne permet pas. On doit y voir
-  la catégorie du triage, le chemin dans le graphe, la boucle de chaque agent, le SQL écrit par le
-  modèle et ses lignes, les garde-fous, et tout cela **sans dupliquer la logique**.
-- **Options** : (a) FastAPI + WebSocket ; (b) **Starlette + Server-Sent Events** et une page HTML/JS
-  sans framework ; (c) Gradio ou Streamlit.
-- **Choix** : (b). `webapp.py` appelle `workflow.run_request` et relaie au navigateur, en SSE, chaque
-  événement de trace déjà émis par le graphe (`on_event`). La page (`static/`) ne fait que les
-  afficher.
-- **Pourquoi** :
-  - SSE suffit, car le flux va dans un seul sens (serveur → navigateur) ; il est natif dans le
-    navigateur (`EventSource`) et facile à tester ;
-  - Starlette et uvicorn sont déjà des dépendances de MCP : aucune nouvelle bibliothèque lourde ;
-  - Gradio ou Streamlit auraient imposé leur mise en page et caché la trace, qui est justement
-    l'intérêt de la démo.
-- **Choix de robustesse** :
-  - **une question à la fois** : un verrou `asyncio`, les suivantes attendent en file et voient leur
-    position. Un seul GPU de 8 Go et `numParallelSessions = 1` côté LM Studio rendraient de toute
-    façon la concurrence illusoire ;
-  - **un seul serveur MCP chaud**, partagé : les modèles du RAG se chargent une fois (~30 s) au
-    démarrage, pas à chaque question ;
-  - **scénario changé à chaud** via `HS_SCENARIO_FILE`, petit point d'extension de `data_store`
-    testé seul : relancer le serveur d'outils à chaque changement aurait coûté ~30 s ;
-  - **erreurs claires** (LM Studio injoignable, modèle absent), **délai maximal** par question,
-    paramètres validés (longueur, modèle et scénario sur liste blanche).
-- **Compromis** :
-  - pas d'authentification : la démo est prévue pour un réseau local, et `127.0.0.1` est l'adresse
-    par défaut ;
-  - le changement de scénario passe par un fichier partagé ; c'est correct grâce au verrou, mais ce
-    serait un état global à remplacer par un paramètre de requête dans une version multi-utilisateur.
-- **Vérification** : 7 tests (`tests/test_web.py`, LLM scripté et serveur MCP en mémoire : flux
-  SSE, lignes SQL, chemin, changement de scénario, LM Studio absent, modèle manquant, file
-  d'attente). Dans Edge, les **6 cas × 2 modèles passent** (catégorie, chemin, trace, réponse,
-  sources), en bureau et en mobile.
-- **Compétence visée** : production-grade software, observability, AI agents (montrés en direct).
+- **Date**: 2026-10-04 · **Milestone**: v1.11.0
+- **Need**: show the system in a browser, which a terminal cannot do. It must show the triage
+  category, the path through the graph, each agent's loop, the SQL written by the model and its
+  rows, the guardrails, all **without duplicating the logic**.
+- **Options**: (a) FastAPI + WebSocket; (b) **Starlette + Server-Sent Events** and a framework-free
+  HTML/JS page; (c) Gradio or Streamlit.
+- **Choice**: (b). `webapp.py` calls `workflow.run_request` and relays to the browser, over SSE, each
+  trace event already emitted by the graph (`on_event`). The page (`static/`) only displays
+  them.
+- **Why**:
+  - SSE is enough, because the stream flows in one direction only (server → browser); it is native
+    in the browser (`EventSource`) and easy to test;
+  - Starlette and uvicorn are already MCP dependencies: no new heavy library;
+  - Gradio or Streamlit would have imposed their layout and hidden the trace, which is precisely
+    the point of the demo.
+- **Robustness choices**:
+  - **one question at a time**: an `asyncio` lock; subsequent questions wait in a queue and see
+    their position. A single 8 GB GPU and `numParallelSessions = 1` on the LM Studio side would
+    make concurrency illusory anyway;
+  - **a single warm MCP server**, shared: the RAG models load once (~30 s) at
+    startup, not on every question;
+  - **scenario switched warm** via `HS_SCENARIO_FILE`, a small extension point of `data_store`
+    tested on its own: restarting the tool server on each switch would have cost ~30 s;
+  - **clear errors** (LM Studio unreachable, model missing), a **maximum time** per question,
+    validated parameters (length, model and scenario on an allowlist).
+- **Trade-offs**:
+  - no authentication: the demo is intended for a local network, and `127.0.0.1` is the default
+    address;
+  - the scenario switch goes through a shared file; this is correct thanks to the lock, but it
+    would be global state to replace with a request parameter in a multi-user version.
+- **Verification**: 7 tests (`tests/test_web.py`, scripted LLM and in-memory MCP server: SSE
+  stream, SQL rows, path, scenario switch, LM Studio absent, missing model, queue). In Edge,
+  **all 6 cases × 2 models pass** (category, path, trace, answer, sources), on desktop and
+  on mobile.
+- **Skill demonstrated**: production-grade software, observability, AI agents (shown live).

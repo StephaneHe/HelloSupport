@@ -1,38 +1,39 @@
 # TODO_LIST — HelloSupport
 
-Convention : `(+ date)` = ajout, `(✔ date)` = fait. Jalons définis dans `docs/SPEC.md` §5.
+Convention: `(+ date)` = added, `(✔ date)` = done. Milestones defined in `docs/SPEC.md` §5.
 
-## Cadrage
+## Framing
 
-- [x] Analyse d'une proposition initiale de projet minimal ; spec finale `docs/SPEC.md` (+ PDF) `(+ 2026-10-02)` `(✔ 2026-10-02)`
-- [x] Spec validée (100 % local) ; ajout du livrable `DESIGN_DECISIONS.md` `(+ 2026-10-02)` `(✔ 2026-10-02)`
-- [x] Télécharger les modèles LM Studio (SLM 3–4 B + qwen2.5-7b-instruct Q4_K_M) `(+ 2026-10-02)` `(✔ 2026-10-02)`
+- [x] Analysis of an initial minimal project proposal; final spec `docs/SPEC.md` (+ PDF) `(+ 2026-10-02)` `(✔ 2026-10-02)`
+- [x] Spec approved (100% local); added the `DESIGN_DECISIONS.md` deliverable `(+ 2026-10-02)` `(✔ 2026-10-02)`
+- [x] Download the LM Studio models (3–4B SLM + qwen2.5-7b-instruct Q4_K_M) `(+ 2026-10-02)` `(✔ 2026-10-02)`
 
-## Jalons
+## Milestones
 
-- [x] J0 — Socle (uv, version, llm.py, smoke test SLM + 7 B, tool calling factice) `(+ 2026-10-02)` `(✔ 2026-10-02)`
-- [x] J1 — RAG (fiches, ST → Chroma → reranker, commande `search`, GPU) `(+ 2026-10-02)` `(✔ 2026-10-02)`
-- [x] J2 — Données + MCP (scenarios, SQLite incidents, sql_guard, serveur MCP 3 outils) `(+ 2026-10-02)` `(✔ 2026-10-02)`
-- [x] J3 — Agents + orchestration LangGraph (état, limites, trace) `(+ 2026-10-02)` `(✔ 2026-10-02)`
-- [x] J4 — Corrections : C4 (raisonnement SQL incohérent) ; C3 (format sans « Observation ») ; sources sans altération (`Service_status`) `(+ 2026-10-02)` `(✔ 2026-10-02)`
-- [x] J4 — Validation (6 cas réels + pytest LLM factice, BENCH.md) : 7 B 18/18, SLM 15/18 `(+ 2026-10-02)` `(✔ 2026-10-02)`
-- [ ] Connu, non corrigé : le SLM invente des identifiants de source quand l'outil de statut échoue (C6) `(+ 2026-10-02)`
-- [x] J5 — Bench SLM vs 7 B, DESIGN_DECISIONS consolidé + PDF, README, release `(+ 2026-10-02)` `(✔ 2026-10-02)`
-- [x] Publication open source : README anglais, licence MIT, historique neuf sans documents personnels `(+ 2026-10-02)` `(✔ 2026-10-02)`
+- [x] J0 — Foundation (uv, version, llm.py, SLM + 7B smoke test, fake tool calling) `(+ 2026-10-02)` `(✔ 2026-10-02)`
+- [x] J1 — RAG (knowledge-base sheets, ST → Chroma → reranker, `search` command, GPU) `(+ 2026-10-02)` `(✔ 2026-10-02)`
+- [x] J2 — Data + MCP (scenarios, SQLite incidents, sql_guard, MCP server with 3 tools) `(+ 2026-10-02)` `(✔ 2026-10-02)`
+- [x] J3 — Agents + LangGraph orchestration (state, limits, trace) `(+ 2026-10-02)` `(✔ 2026-10-02)`
+- [x] J4 — Fixes: C4 (inconsistent SQL reasoning); C3 (format without "Observation"); sources kept unaltered (`Service_status`) `(+ 2026-10-02)` `(✔ 2026-10-02)`
+- [x] J4 — Validation (6 real cases + pytest with fake LLM, BENCH.md): 7B 18/18, SLM 15/18 `(+ 2026-10-02)` `(✔ 2026-10-02)`
+- [ ] Known, not fixed: the SLM invents source identifiers when the status tool fails (C6) `(+ 2026-10-02)`
+- [x] J5 — SLM vs 7B benchmark, consolidated DESIGN_DECISIONS + PDF, README, release `(+ 2026-10-02)` `(✔ 2026-10-02)`
+- [x] Open-source release: English README, MIT license, fresh history without personal documents `(+ 2026-10-02)` `(✔ 2026-10-02)`
 
-## Journal de décisions
+## Decision log
 
-- [x] Ajouter les entrées `D-xx` à chaque jalon dans `docs/DESIGN_DECISIONS.md` (28 décisions, consolidé + PDF) `(+ 2026-10-02)` `(✔ 2026-10-02)`
-- [x] D-29 et schémas avec légende : agents (boucle LLM ↔ outils) vs routeur vs code `(+ 2026-10-04)` `(✔ 2026-10-04)`
-- [x] D-30 : `out_of_scope` et `vague` sautent le documentaliste ; bench avant/après, aucune régression `(+ 2026-10-04)` `(✔ 2026-10-04)`
-- [x] Réglages LM Studio par modèle (auto-fit off, contexte 8192, parallélisme 1) : latences stabilisées `(+ 2026-10-04)` `(✔ 2026-10-04)`
-- [x] Démo web (`hello-support web`, servie en local) : trace en direct, 6 cas × 2 modèles vérifiés dans Edge `(+ 2026-10-04)` `(✔ 2026-10-04)`
-- [ ] Vérifications C6/C3 sensibles à la formulation (« statut indéterminé », citations) : envisager un contrôle sémantique `(+ 2026-10-04)`
+- [x] Add the `D-xx` entries at each milestone in `docs/DESIGN_DECISIONS.md` (28 decisions, consolidated + PDF) `(+ 2026-10-02)` `(✔ 2026-10-02)`
+- [x] D-29 and diagrams with legend: agents (LLM ↔ tools loop) vs router vs code `(+ 2026-10-04)` `(✔ 2026-10-04)`
+- [x] D-30: `out_of_scope` and `vague` skip the documentalist; before/after benchmark, no regression `(+ 2026-10-04)` `(✔ 2026-10-04)`
+- [x] Per-model LM Studio settings (auto-fit off, context 8192, parallelism 1): latencies stabilized `(+ 2026-10-04)` `(✔ 2026-10-04)`
+- [x] Web demo (`hello-support web`, served locally): live trace, 6 cases × 2 models checked in Edge `(+ 2026-10-04)` `(✔ 2026-10-04)`
+- [x] All documentation in English, locked by a language test (`docs/USER_REQUIREMENTS.md`) `(+ 2026-10-04)` `(✔ 2026-10-04)`
+- [ ] C6/C3 checks sensitive to wording ("statut indéterminé" (undetermined status), citations): consider a semantic check `(+ 2026-10-04)`
 
-## Pistes (hors hello world, cf. SPEC §10)
+## Ideas (beyond the hello world, see SPEC §10)
 
-- [ ] Mesurer l'hybride « triage par le SLM, réponse par le 7 B » avec `hello-support bench` (D-25) `(+ 2026-10-02)`
-- [ ] PostgreSQL + pgvector (incidents et vecteurs dans le même moteur) `(+ 2026-10-02)`
-- [ ] Checkpointer LangGraph (reprise, human-in-the-loop) `(+ 2026-10-02)`
-- [ ] Évaluation RAG (recall@k, MRR avant/après rerank) sur un jeu de questions `(+ 2026-10-02)`
-- [ ] MCP en streamable HTTP (serveur d'outils séparé) ; vLLM pour un vrai test de débit `(+ 2026-10-02)`
+- [ ] Measure the hybrid "triage by the SLM, answer by the 7B" with `hello-support bench` (D-25) `(+ 2026-10-02)`
+- [ ] PostgreSQL + pgvector (incidents and vectors in the same engine) `(+ 2026-10-02)`
+- [ ] LangGraph checkpointer (resume, human-in-the-loop) `(+ 2026-10-02)`
+- [ ] RAG evaluation (recall@k, MRR before/after rerank) on a question set `(+ 2026-10-02)`
+- [ ] MCP over streamable HTTP (separate tool server); vLLM for a real throughput test `(+ 2026-10-02)`

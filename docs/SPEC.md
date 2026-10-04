@@ -1,85 +1,84 @@
-# Spec — HelloSupport : assistant de dépannage « hello world » agents + RAG + MCP + données
+# Spec — HelloSupport: "hello world" troubleshooting assistant with agents + RAG + MCP + data
 
-- **Statut** : `implémentée` (v1.8.0, 2026-10-02) ; **100 % local** : aucune API cloud payante, aucun compte
-- **Résultat** : critères du §6 atteints avec le modèle par défaut (7 B : 18/18) ; SLM 15/18 — voir [`BENCH.md`](BENCH.md) et les décisions dans [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md)
-- **Date** : 2026-10-02 (amendée : livrable `DESIGN_DECISIONS.md`)
-- **Auteur** : Stéphane Hercot (avec Claude). Base : une proposition initiale de projet minimal, complétée pour couvrir l'ensemble des compétences visées
-
----
-
-## 1. Problème
-
-Objectif d'apprentissage : acquérir une **pratique concrète** des agents IA, du RAG, des
-embeddings, de la recherche vectorielle, du reranking, du tool calling, de MCP, des SLM, du
-model serving et de **l'intégration aux bases de données**. L'auteur n'avait pas encore
-manipulé ces briques ensemble, et voulait pouvoir dire « je l'ai fait, voici ce que j'ai
-appris et mesuré », sans y passer des semaines.
-
-## 2. Objectif
-
-En **~5 jours**, livrer un programme Python en terminal qui répond à une question de
-support (« PostgreSQL ne répond plus, que vérifier ? »). Pour cela, **deux agents
-orchestrés par LangGraph** utilisent **trois outils MCP** : des fiches (RAG avec base
-vectorielle et reranking), un statut de service simulé et une **base SQL d'incidents**
-interrogée en text-to-SQL. Le tout tourne sur un **LLM/SLM servi localement**. Le projet
-touche **au moins une fois, réellement et de façon démontrable**, chaque compétence
-technique visée.
-
-**Atteint quand** : les 6 cas de validation du §6 passent en démo réelle, les tests
-automatisés passent, le tableau de mesures (§5, J5) est rempli avec des chiffres
-**mesurés**, et [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md) (+ PDF) explique chaque choix.
+- **Status**: `implemented` (v1.8.0, 2026-10-02); **100% local**: no paid cloud API, no account
+- **Result**: §6 criteria met with the default model (7B: 18/18); SLM 15/18 — see [`BENCH.md`](BENCH.md) and the decisions in [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md)
+- **Date**: 2026-10-02 (amended: `DESIGN_DECISIONS.md` deliverable)
+- **Author**: Stéphane Hercot (with Claude). Basis: an initial minimal project proposal, extended to cover all the targeted skills
 
 ---
 
-## 3. Périmètre
+## 1. Problem
 
-### Dans le périmètre
+Learning goal: gain **hands-on practice** with AI agents, RAG, embeddings, vector search,
+reranking, tool calling, MCP, SLMs, model serving and **database integration**. The author
+had not yet worked with these building blocks together, and wanted to be able to say "I did
+it, here is what I learned and measured", without spending weeks on it.
 
-- CLI : `hello-support ask "<question>" [--scenario stopped|running] [--model <id>]`,
+## 2. Goal
+
+In **~5 days**, deliver a terminal Python program that answers a support question
+("PostgreSQL ne répond plus, que vérifier ?" — "PostgreSQL is not responding, what should I
+check?"). To do so, **two agents orchestrated by LangGraph** use **three MCP tools**:
+knowledge-base sheets (RAG with a vector database and reranking), a simulated service status
+and an **SQL incidents database** queried via text-to-SQL. Everything runs on a **locally
+served LLM/SLM**. The project touches **each targeted technical skill at least once, for
+real and demonstrably**.
+
+**Achieved when**: the 6 validation cases in §6 pass in a real demo, the automated tests
+pass, the measurements table (§5, J5) is filled with **measured** figures, and
+[`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md) (+ PDF) explains every choice.
+
+---
+
+## 3. Scope
+
+### In scope
+
+- CLI: `hello-support ask "<question>" [--scenario stopped|running] [--model <id>]`,
   `hello-support search "<texte>"`, `hello-support bench`, `hello-support --version`.
-- **3 fiches Markdown** (PostgreSQL connexion, nginx indisponible, Redis inaccessible),
-  sections titrées (Symptoms / Checks / Service status / Limits).
-- **RAG** : découpage par section → embeddings (`paraphrase-multilingual-MiniLM-L12-v2`)
-  → **Chroma** embarqué (top-5) → **reranking cross-encoder**
-  (`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`) → top-2 avec scores et citations.
-  Le tout sur **GPU** (`cuda`) si disponible.
-- **Serveur MCP** (SDK Python `mcp`, FastMCP, transport stdio) exposant :
+- **3 Markdown sheets** (PostgreSQL connection, nginx unavailable, Redis unreachable),
+  with titled sections (Symptoms / Checks / Service status / Limits).
+- **RAG**: split by section → embeddings (`paraphrase-multilingual-MiniLM-L12-v2`)
+  → embedded **Chroma** (top-5) → **cross-encoder reranking**
+  (`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`) → top-2 with scores and citations.
+  All on **GPU** (`cuda`) when available.
+- **MCP server** (Python `mcp` SDK, FastMCP, stdio transport) exposing:
   - `search_docs(query)` → `[{doc_id, section, text, score, rerank_score}]`
-  - `get_service_status(service_name)` (postgres | nginx | redis) → `{service, status, simulated: true}` lu dans `scenarios.json`
-  - `query_incidents(sql)` → lignes JSON. **SQLite read-only** (`file:incidents.db?mode=ro`), une seule
-    instruction `SELECT`, `LIMIT 50` forcé, schéma décrit dans la docstring de l'outil.
-- **Deux agents** (un seul helper de boucle « LLM → tool call → résultat », réutilisé) :
-  - *Documentaliste* : outil `search_docs` (max 2 appels). Produit les evidence + « ce qui manque ».
-  - *Technicien* : outils `get_service_status` (max 1) et `query_incidents` (max 2). Produit la réponse :
-    observation / explication possible / vérification suggérée / sources. Ne dit jamais avoir réparé quoi que ce soit.
-- **Orchestration LangGraph** : `StateGraph` `documentalist → technician → END`, état typé
-  (`question, evidence, observations, counters, errors, answer, trace`). Max 3 appels LLM par
-  agent, `recursion_limit` comme filet de sécurité, timeout par appel.
-- **Client MCP** côté hôte via `langchain-mcp-adapters` (ou client `mcp` direct).
-- **Model serving local** : **LM Studio** en mode serveur (API compatible OpenAI, `http://localhost:1234/v1`),
-  deux modèles interchangeables par config : un **SLM** (~3–4 B, ex. Qwen2.5-3B-Instruct / Qwen3-4B) et un
-  **7 B** (ex. Qwen2.5-7B-Instruct). **Pas d'API cloud** : l'interface OpenAI-compatible permettrait d'en brancher une, mais ce n'est pas fait.
-- **Observabilité minimale** : trace JSON par exécution (`runs/<timestamp>.json`) avec appels, arguments,
-  durées, tokens in/out. Résumé affiché en fin de réponse.
-- **Mini-benchmark** : les 6 cas × 2 modèles → tableau Markdown (latence p50/max, tokens, appels d'outils
-  corrects, verdict qualitatif) ; coût local = 0 € ; coût cloud **estimé** à partir des tokens mesurés × prix publics (sans compte).
-- **Tests pytest** : contrats des outils, garde-fous SQL, limites, graphe avec LLM factice.
-- **`docs/DESIGN_DECISIONS.md` (+ PDF)** — livrable final : pour **chaque** composant / décision de design et de dev
-  (orchestration LangGraph, état partagé, MCP et ses outils, outil SQL lecture seule, SQLite, embeddings, Chroma,
-  reranker, LM Studio et choix 3–4 B vs 7 B, GPU, mesures latence/coût, structure du code, tests…) :
-  **besoin → options envisagées → choix → pourquoi → compromis/limites → compétence visée**.
-  Tenu **au fil de chaque jalon** (journal type ADR, entrées `D-xx` datées), puis **consolidé** à J5
-  (synthèse + PDF). Remplace l'ancien « ADR-001 », qui devient l'entrée « choix du modèle par défaut ».
-- Code, prompts et commentaires en anglais ; docs projet en français.
+  - `get_service_status(service_name)` (postgres | nginx | redis) → `{service, status, simulated: true}` read from `scenarios.json`
+  - `query_incidents(sql)` → JSON rows. **Read-only SQLite** (`file:incidents.db?mode=ro`), a single
+    `SELECT` statement, forced `LIMIT 50`, schema described in the tool's docstring.
+- **Two agents** (a single, reused "LLM → tool call → result" loop helper):
+  - *Documentalist*: `search_docs` tool (max 2 calls). Produces the evidence + "what is missing".
+  - *Technician*: `get_service_status` (max 1) and `query_incidents` (max 2) tools. Produces the answer:
+    observation / possible explanation / suggested check / sources. Never claims to have fixed anything.
+- **LangGraph orchestration**: `StateGraph` `documentalist → technician → END`, typed state
+  (`question, evidence, observations, counters, errors, answer, trace`). Max 3 LLM calls per
+  agent, `recursion_limit` as a safety net, per-call timeout.
+- **MCP client** on the host side via `langchain-mcp-adapters` (or a direct `mcp` client).
+- **Local model serving**: **LM Studio** in server mode (OpenAI-compatible API, `http://localhost:1234/v1`),
+  two models swappable via config: an **SLM** (~3–4B, e.g. Qwen2.5-3B-Instruct / Qwen3-4B) and a
+  **7B** (e.g. Qwen2.5-7B-Instruct). **No cloud API**: the OpenAI-compatible interface would allow plugging one in, but this is not done.
+- **Minimal observability**: JSON trace per run (`runs/<timestamp>.json`) with calls, arguments,
+  durations, tokens in/out. Summary displayed at the end of the answer.
+- **Mini-benchmark**: the 6 cases × 2 models → Markdown table (p50/max latency, tokens, correct tool
+  calls, qualitative verdict); local cost = €0; cloud cost **estimated** from measured tokens × public prices (no account).
+- **pytest tests**: tool contracts, SQL guardrails, limits, graph with a fake LLM.
+- **`docs/DESIGN_DECISIONS.md` (+ PDF)** — final deliverable: for **each** component / design and dev decision
+  (LangGraph orchestration, shared state, MCP and its tools, read-only SQL tool, SQLite, embeddings, Chroma,
+  reranker, LM Studio and the 3–4B vs 7B choice, GPU, latency/cost measurements, code structure, tests…):
+  **need → options considered → choice → why → trade-offs/limits → skill demonstrated**.
+  Kept **at each milestone** (ADR-style log, dated `D-xx` entries), then **consolidated** at J5
+  (summary + PDF). Replaces the former "ADR-001", which becomes the "default model choice" entry.
+- Code, prompts, comments and documentation in English.
 
-### Hors-périmètre (explicitement exclu)
+### Out of scope (explicitly excluded)
 
-- API web, UI, Docker, cloud, CI, authentification, multi-utilisateur.
-- Actions correctrices réelles sur des services (tout est simulé ou en lecture seule).
-- Dialogue multi-tour : une demande de précision **clôt** la requête.
-- Fine-tuning ou entraînement de modèle.
-- Persistance / reprise d'état (checkpoints), PostgreSQL réel, pgvector, tests de charge → §10.
-- Toute prétention de « scale » ou de « production ».
+- Web API, UI, Docker, cloud, CI, authentication, multi-user.
+- Real corrective actions on services (everything is simulated or read-only).
+- Multi-turn dialogue: a request for clarification **ends** the request.
+- Fine-tuning or model training.
+- State persistence / resumption (checkpoints), real PostgreSQL, pgvector, load tests → §10.
+- Any claim of "scale" or "production".
 
 ---
 
@@ -89,30 +88,30 @@ automatisés passent, le tableau de mesures (§5, J5) est rempli avec des chiffr
 flowchart TB
     Q(["question"]) --> CLI
 
-    subgraph HOST["hello-support — processus hôte (Python) · graphe LangGraph linéaire, sans boucle entre agents"]
-        CLI["cli.py"] --> WF["workflow.py<br/>LangGraph StateGraph, état typé, limites"]
-        WF --> TRI{{"<b>ROUTEUR · triage</b> (agents.py)<br/>1 appel LLM, sortie JSON<br/>1 des 5 catégories fixes"}}
+    subgraph HOST["hello-support — host process (Python) · linear LangGraph graph, no loop between agents"]
+        CLI["cli.py"] --> WF["workflow.py<br/>LangGraph StateGraph, typed state, limits"]
+        WF --> TRI{{"<b>ROUTER · triage</b> (agents.py)<br/>1 LLM call, JSON output<br/>1 of 5 fixed categories"}}
         TRI -->|"malfunction · documentation"| DOC["<b>AGENT · documentalist</b><br/>search_docs"]
-        TRI -->|"history = historique des incidents<br/>out_of_scope · vague"| TEC
-        DOC -->|"↻ boucle LLM ↔ outils"| DOC
-        DOC --> TEC["<b>AGENT · technician</b> — outils selon la catégorie<br/>malfunction → get_service_status exigé<br/>history → query_incidents (SQL) exigé<br/>documentation · out_of_scope · vague → aucun outil"]
-        TEC -->|"↻ boucle LLM ↔ outils"| TEC
-        TEC --> PP["<b>CODE · post-traitement</b><br/>postprocess.py (sans LLM)"]
-        PP --> FIN(["END : answer + trace.json"])
-        AG["<b>CODE · agents.py</b><br/>run_agent : boucle bornée<br/>≤ 3 appels LLM · ≤ 3 outils/étape · relance"]
-        LLM["llm.py<br/>client OpenAI-compatible"]
-        MC["toolbox.py<br/>client MCP (stdio)"]
+        TRI -->|"history = incident history<br/>out_of_scope · vague"| TEC
+        DOC -->|"↻ LLM ↔ tools loop"| DOC
+        DOC --> TEC["<b>AGENT · technician</b> — tools depend on the category<br/>malfunction → get_service_status required<br/>history → query_incidents (SQL) required<br/>documentation · out_of_scope · vague → no tool"]
+        TEC -->|"↻ LLM ↔ tools loop"| TEC
+        TEC --> PP["<b>CODE · post-processing</b><br/>postprocess.py (no LLM)"]
+        PP --> FIN(["END: answer + trace.json"])
+        AG["<b>CODE · agents.py</b><br/>run_agent: bounded loop<br/>≤ 3 LLM calls · ≤ 3 tools/step · retry"]
+        LLM["llm.py<br/>OpenAI-compatible client"]
+        MC["toolbox.py<br/>MCP client (stdio)"]
         DOC & TEC -.-> AG
         AG --> LLM
         AG --> MC
     end
 
-    LLM -- "HTTP" --> LMS[("<b>MODÈLE · LM Studio</b> :1234<br/>SLM 4B | 7B, GPU")]
+    LLM -- "HTTP" --> LMS[("<b>MODEL · LM Studio</b> :1234<br/>SLM 4B | 7B, GPU")]
 
-    subgraph SRV["mcp_server.py — sous-processus (MCP)"]
-        T1[/"search_docs"/] --> R["retrieval.py : embeddings ST<br/>→ Chroma (top-5) → cross-encoder (top-3), cuda"]
+    subgraph SRV["mcp_server.py — subprocess (MCP)"]
+        T1[/"search_docs"/] --> R["retrieval.py: ST embeddings<br/>→ Chroma (top-5) → cross-encoder (top-3), cuda"]
         T2[/"get_service_status"/] --> SC[("data/scenarios.json")]
-        T3[/"query_incidents"/] --> DB[("data/incidents.db<br/>SQLite lecture seule")]
+        T3[/"query_incidents"/] --> DB[("data/incidents.db<br/>read-only SQLite")]
     end
 
     MC --> T1 & T2 & T3
@@ -129,71 +128,71 @@ flowchart TB
     class LMS model
 ```
 
-**Légende** : 🟦 **agent** (LLM qui choisit ses outils et boucle LLM ↔ outils, ≤ 3 appels LLM) ·
-🟧 **routeur** (triage : 1 appel LLM en sortie JSON, sans outil ni boucle) · ⬜ **code** déterministe ·
-🟩 **outil MCP** · 🟪 **modèle** servi par LM Studio. Le graphe LangGraph est linéaire : aucune boucle
-entre agents. Le détail de la boucle d'un agent et le choix « agent / routeur / code » sont expliqués dans
-[`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md) (synthèse et D-29).
+**Legend**: 🟦 **agent** (LLM that chooses its tools and loops LLM ↔ tools, ≤ 3 LLM calls) ·
+🟧 **router** (triage: 1 LLM call with JSON output, no tool and no loop) · ⬜ deterministic **code** ·
+🟩 **MCP tool** · 🟪 **model** served by LM Studio. The LangGraph graph is linear: no loop
+between agents. The details of an agent's loop and the "agent / router / code" choice are explained in
+[`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md) (summary and D-29).
 
-Arborescence cible :
+Target layout:
 
 ```
 hello_support/  __init__.py (__version__), cli.py, workflow.py, agents.py, llm.py,
                 mcp_server.py, retrieval.py, sql_guard.py, metrics.py
-data/           kb/*.md (3 fiches), scenarios.json, seed_incidents.py → incidents.db
+data/           kb/*.md (3 sheets), scenarios.json, seed_incidents.py → incidents.db
 tests/          test_tools.py, test_sql_guard.py, test_workflow_fake_llm.py
 docs/           SPEC.md, DESIGN_DECISIONS.md (+ .pdf), BENCH.md
-runs/           traces JSON (gitignoré)
+runs/           JSON traces (gitignored)
 ```
 
 ---
 
-## 5. Jalons
+## 5. Milestones
 
-Chaque jalon = un commit (convention du projet) **et** au moins une entrée `D-xx` ajoutée à `DESIGN_DECISIONS.md`
-pour les choix faits pendant le jalon. Durées indicatives pour une personne qui découvre les briques.
+Each milestone = one commit (project convention) **and** at least one `D-xx` entry added to `DESIGN_DECISIONS.md`
+for the choices made during the milestone. Durations are indicative for someone discovering the building blocks.
 
-| # | Jalon | Livrable | « C'est fait » quand… | Durée |
+| # | Milestone | Deliverable | "Done" when… | Duration |
 |---|---|---|---|---|
-| **J0** | Socle | Projet `uv`, `__version__`, `.gitignore`, `.env.example`, LM Studio serveur + 2 modèles téléchargés, `llm.py` | `hello-support --version` affiche `1.x.y` ; un script envoie « say hello » au SLM **et** au 7 B via `localhost:1234` et affiche latence + tokens ; un appel de **tool calling** factice (`get_time`) est correctement émis par le modèle | 0,5 j |
-| **J1** | RAG | 3 fiches, `retrieval.py` (ST → Chroma → cross-encoder), commande `search` | `hello-support search "connexion refusée postgres"` affiche top-2 `doc_id#section` avec score cosinus **et** score rerank ; le device affiché est `cuda` ; au moins un exemple où le rerank **change l'ordre** est noté dans `BENCH.md` | 0,5–1 j |
-| **J2** | Données + MCP | `scenarios.json`, `seed_incidents.py` (~15 incidents : id, service, started_at, severity, summary, resolved), `sql_guard.py`, `mcp_server.py` (3 outils) | Les 3 outils répondent dans **MCP Inspector** (`npx @modelcontextprotocol/inspector`) ; `DELETE FROM incidents` et `SELECT 1; DROP …` sont refusés avec une erreur explicite ; tests `test_tools` + `test_sql_guard` verts | 0,5 j |
-| **J3** | Agents + orchestration | `agents.py`, `workflow.py`, client MCP, limites, trace JSON | `hello-support ask "Mon app ne se connecte plus à PostgreSQL" --scenario stopped` affiche agent actif → outil → arguments → résultat → réponse citant `stopped` + `postgres_connection.md#Service status` ; `runs/*.json` contient toute la trace | 1–1,5 j |
-| **J4** | Validation | 6 cas (§6) en démo réelle + `test_workflow_fake_llm.py` | `pytest` vert ; les 6 cas sont exécutés avec le 7 B, la sortie est capturée dans `docs/BENCH.md` (y compris les échecs, notés tels quels) | 1 j |
-| **J5** | Mesure + évaluation + doc | `hello-support bench`, `docs/BENCH.md`, `docs/DESIGN_DECISIONS.md` consolidé + `.pdf`, README | Tableau SLM vs 7 B rempli (latence p50/max, tokens, appels d'outils corrects / 6, coût cloud estimé, remarques) ; `DESIGN_DECISIONS` consolidé (synthèse, une entrée par composant, décision « modèle par défaut » fondée sur les mesures) et exporté en PDF ; README : lancement, exemple réussi, cas d'échec, limites ; release `minor` + CHANGELOG | 0,5–1 j |
+| **J0** | Foundation | `uv` project, `__version__`, `.gitignore`, `.env.example`, LM Studio server + 2 downloaded models, `llm.py` | `hello-support --version` prints `1.x.y`; a script sends "say hello" to the SLM **and** to the 7B via `localhost:1234` and prints latency + tokens; a dummy **tool calling** call (`get_time`) is correctly emitted by the model | 0.5 d |
+| **J1** | RAG | 3 sheets, `retrieval.py` (ST → Chroma → cross-encoder), `search` command | `hello-support search "connexion refusée postgres"` prints top-2 `doc_id#section` with cosine score **and** rerank score; the displayed device is `cuda`; at least one example where reranking **changes the order** is recorded in `BENCH.md` | 0.5–1 d |
+| **J2** | Data + MCP | `scenarios.json`, `seed_incidents.py` (~15 incidents: id, service, started_at, severity, summary, resolved), `sql_guard.py`, `mcp_server.py` (3 tools) | The 3 tools respond in **MCP Inspector** (`npx @modelcontextprotocol/inspector`); `DELETE FROM incidents` and `SELECT 1; DROP …` are rejected with an explicit error; `test_tools` + `test_sql_guard` tests green | 0.5 d |
+| **J3** | Agents + orchestration | `agents.py`, `workflow.py`, MCP client, limits, JSON trace | `hello-support ask "Mon app ne se connecte plus à PostgreSQL" --scenario stopped` displays active agent → tool → arguments → result → answer citing `stopped` + `postgres_connection.md#Service status`; `runs/*.json` contains the full trace | 1–1.5 d |
+| **J4** | Validation | 6 cases (§6) in a real demo + `test_workflow_fake_llm.py` | `pytest` green; the 6 cases are run with the 7B, the output is captured in `docs/BENCH.md` (including failures, recorded as is) | 1 d |
+| **J5** | Measurement + evaluation + docs | `hello-support bench`, `docs/BENCH.md`, consolidated `docs/DESIGN_DECISIONS.md` + `.pdf`, README | SLM vs 7B table filled (p50/max latency, tokens, correct tool calls / 6, estimated cloud cost, remarks); `DESIGN_DECISIONS` consolidated (summary, one entry per component, "default model" decision based on measurements) and exported to PDF; README: how to run, successful example, failure cases, limits; `minor` release + CHANGELOG | 0.5–1 d |
 
-**Total : ~4 à 5,5 jours.** Si le temps manque, l'ordre de sacrifice est : bench à 2 modèles
-(garder 1 modèle) → Chroma (repli cosinus NumPy). **Ne pas sacrifier** le SQL, le reranking ni `DESIGN_DECISIONS.md`
-(exigé par l'utilisateur) : ce sont les éléments différenciants.
-
----
-
-## 6. Critères d'acceptation (cas de validation)
-
-- [x] **C1 PostgreSQL arrêté** (`--scenario stopped`) : `get_service_status("postgres")` est appelé ; la réponse
-      cite `stopped`, précise que c'est **simulé** et cite la fiche + section.
-- [x] **C2 PostgreSQL actif** (`--scenario running`, même question) : la conclusion change ; aucune panne inventée ;
-      l'observation est séparée de l'hypothèse (adresse, identifiants…).
-- [x] **C3 Question documentaire** (« Quelles vérifications pour un Redis inaccessible ? ») : réponse sourcée
-      **sans** appel à `get_service_status`.
-- [x] **C4 Question data** (« Combien d'incidents postgres ces 30 derniers jours, et le dernier est-il résolu ? ») :
-      `query_incidents` est appelé avec un `SELECT` valide ; la réponse reprend les chiffres retournés.
-- [x] **C5 Inconnu ou vague** (« Mon Kafka est lent » / « ça marche pas ») : l'assistant dit qu'aucune fiche ne
-      couvre la demande ou demande une précision ; aucune fiche ni observation fabriquée.
-- [x] **C6 Erreur et limite** : un service inconnu, une SQL refusée ou une limite d'appels atteinte produisent une sortie
-      contrôlée avec trace lisible, sans boucle infinie.
-- [x] `pytest` vert ; `hello-support --version` OK ; aucun secret dans git ; `BENCH.md` contient des chiffres mesurés.
-- [x] `DESIGN_DECISIONS.md` + `.pdf` : chaque composant listé au §3 a son entrée (besoin, options, choix, pourquoi, compromis, compétence visée).
+**Total: ~4 to 5.5 days.** If time runs short, the sacrifice order is: 2-model benchmark
+(keep 1 model) → Chroma (NumPy cosine fallback). **Do not sacrifice** SQL, reranking or `DESIGN_DECISIONS.md`
+(required by the user): these are the differentiating elements.
 
 ---
 
-## 7. Ce que le projet doit permettre d'expliquer (1 phrase par compétence)
+## 6. Acceptance criteria (validation cases)
 
-> Phrases de cadrage écrites **avant** l'implémentation, en anglais, au registre « prototype
-> personnel » (ne pas les gonfler). Les résultats réellement mesurés sont dans [`BENCH.md`](BENCH.md)
-> et la synthèse de [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md).
+- [x] **C1 PostgreSQL stopped** (`--scenario stopped`): `get_service_status("postgres")` is called; the answer
+      cites `stopped`, states that it is **simulated** and cites the sheet + section.
+- [x] **C2 PostgreSQL running** (`--scenario running`, same question): the conclusion changes; no invented outage;
+      the observation is separated from the hypothesis (address, credentials…).
+- [x] **C3 Documentation question** ("Quelles vérifications pour un Redis inaccessible ?" — "What checks for an unreachable Redis?"): sourced answer
+      **without** a call to `get_service_status`.
+- [x] **C4 Data question** ("Combien d'incidents postgres ces 30 derniers jours, et le dernier est-il résolu ?" — "How many postgres incidents in the last 30 days, and is the latest one resolved?"):
+      `query_incidents` is called with a valid `SELECT`; the answer reports the returned figures.
+- [x] **C5 Unknown or vague** ("Mon Kafka est lent" — "My Kafka is slow" / "ça marche pas" — "it doesn't work"): the assistant says that no sheet
+      covers the request or asks for clarification; no fabricated sheet or observation.
+- [x] **C6 Error and limit**: an unknown service, a rejected SQL query or a reached call limit produce a controlled
+      output with a readable trace, without an infinite loop.
+- [x] `pytest` green; `hello-support --version` OK; no secret in git; `BENCH.md` contains measured figures.
+- [x] `DESIGN_DECISIONS.md` + `.pdf`: each component listed in §3 has its entry (need, options, choice, why, trade-offs, skill demonstrated).
 
-| Compétence | Phrase |
+---
+
+## 7. What the project should make it possible to explain (1 sentence per skill)
+
+> Framing sentences written **before** implementation, in English, in a "personal prototype"
+> register (do not inflate them). The actually measured results are in [`BENCH.md`](BENCH.md)
+> and the summary of [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md).
+
+| Skill | Sentence |
 |---|---|
 | AI agents | "I built two tool-using agents, a retriever and a troubleshooter, that decide which tool to call and must separate observations from hypotheses." |
 | Agentic / multi-step workflows | "The request flows through retrieve → diagnose → answer, and each step can call tools several times within hard limits." |
@@ -214,54 +213,54 @@ pour les choix faits pendant le jalon. Durées indicatives pour une personne qui
 | LangGraph | "I used LangGraph for the code-defined workflow and kept tool choice to the model: deterministic structure, autonomous steps." |
 | Database systems & SQL engines | "The data side is deliberately simple, SQLite, but the read-only and guard pattern is what I'd carry over to Postgres or an enterprise engine." |
 
-**Non couverts, assumés** : systèmes distribués, scale réel, leadership d'équipe, C/C++/Java,
-recherche.
+**Not covered, by choice**: distributed systems, real scale, team leadership, C/C++/Java,
+research.
 
 ---
 
-## 8. Prérequis et outils (tous gratuits)
+## 8. Prerequisites and tools (all free)
 
-| Outil | Rôle | État machine |
+| Tool | Role | Machine status |
 |---|---|---|
-| Python 3.12 + `uv` | runtime, venv, dépendances | ✅ installés |
-| PyTorch CUDA + GPU NVIDIA 8 Go | embeddings / reranker sur GPU | ✅ (torch 2.6 cu124) |
-| LM Studio (`lms`) | serveur de modèles local OpenAI-compatible | ✅ installé ; modèles téléchargés par `lms get` (voir `DESIGN_DECISIONS.md`) |
-| `langgraph`, `langchain-openai`, `langchain-mcp-adapters`, `mcp` | orchestration, client LLM, MCP | pip (uv) |
-| `sentence-transformers`, `chromadb` | embeddings, reranker, vector DB embarquée | pip (uv), modèles HF Hub sans compte |
-| `sqlite3` (stdlib), `pydantic`, `pytest` | base d'incidents, validation, tests | stdlib / pip |
-| Node.js (`npx`) | MCP Inspector pour tester le serveur | ✅ installé |
+| Python 3.12 + `uv` | runtime, venv, dependencies | ✅ installed |
+| PyTorch CUDA + 8 GB NVIDIA GPU | embeddings / reranker on GPU | ✅ (torch 2.6 cu124) |
+| LM Studio (`lms`) | local OpenAI-compatible model server | ✅ installed; models downloaded with `lms get` (see `DESIGN_DECISIONS.md`) |
+| `langgraph`, `langchain-openai`, `langchain-mcp-adapters`, `mcp` | orchestration, LLM client, MCP | pip (uv) |
+| `sentence-transformers`, `chromadb` | embeddings, reranker, embedded vector DB | pip (uv), HF Hub models without an account |
+| `sqlite3` (stdlib), `pydantic`, `pytest` | incidents database, validation, tests | stdlib / pip |
+| Node.js (`npx`) | MCP Inspector to test the server | ✅ installed |
 
-Aucun compte payant requis. Coût par défaut : **0 €**. Docker et WSL ne sont pas nécessaires.
+No paid account required. Default cost: **€0**. Docker and WSL are not needed.
 
-## 9. Risques
+## 9. Risks
 
-| Risque | Proba. | Impact | Mitigation |
+| Risk | Prob. | Impact | Mitigation |
 |---|---|---|---|
-| Le SLM appelle mal les outils | Moyenne | Moyen | Validation Pydantic + 1 retour d'erreur ; 7 B par défaut ; le documenter dans BENCH (c'est un apprentissage) |
-| SQL générée fausse ou dangereuse | Moyenne | Faible | read-only, `SELECT` unique, `LIMIT`, schéma dans la description de l'outil, test dédié |
-| Installation Chroma / torch sous Windows | Faible | Moyen | torch déjà présent ; repli cosinus NumPy (documenté dans `DESIGN_DECISIONS.md`) |
-| Dérive de périmètre | Élevée | Élevé | §3 hors-périmètre ; tout le reste va en §10 |
-| Surpromesse sur ce que démontre le prototype | Moyenne | Élevé | §7 formulé « prototype » ; chiffres mesurés uniquement |
+| The SLM calls tools incorrectly | Medium | Medium | Pydantic validation + 1 error feedback; 7B by default; document it in BENCH (it is a learning point) |
+| Generated SQL is wrong or dangerous | Medium | Low | read-only, single `SELECT`, `LIMIT`, schema in the tool description, dedicated test |
+| Chroma / torch installation on Windows | Low | Medium | torch already present; NumPy cosine fallback (documented in `DESIGN_DECISIONS.md`) |
+| Scope creep | High | High | §3 out of scope; everything else goes to §10 |
+| Overpromising on what the prototype demonstrates | Medium | High | §7 phrased as "prototype"; measured figures only |
 
-Décisions prises (2026-10-02) :
+Decisions made (2026-10-02):
 
-- Dépôt local d'abord ; publié en open source (licence MIT) en v1.9.0, après accord explicite de l'auteur.
-- **100 % local** : pas d'API cloud payante ; les coûts cloud sont **estimés** à partir des prix publics.
+- Local repository first; published as open source (MIT license) in v1.9.0, after the author's explicit approval.
+- **100% local**: no paid cloud API; cloud costs are **estimated** from public prices.
 
 ---
 
-## 10. Pour aller plus loin (hors hello world, à ne faire qu'après J5)
+## 10. Going further (beyond hello world, only after J5)
 
-Classés par valeur ajoutée :
+Ranked by added value:
 
-1. **PostgreSQL + pgvector** (dans WSL ou Docker) : une seule base pour les incidents ET les vecteurs.
-   C'est le pont le plus direct entre IA et bases de données (moteurs SQL à recherche vectorielle intégrée).
-2. **Persistance LangGraph** (checkpointer SQLite/Postgres) : reprise d'une exécution et human-in-the-loop
-   avant une action « sensible ».
-3. **Évaluation RAG** : petit jeu de questions → métriques retrieval (recall@k, MRR avant/après rerank).
-4. **Serving haute performance** : vLLM (WSL/Linux) et mesure du débit (tokens/s) sous requêtes concurrentes
-   → vrai point « throughput ».
-5. **Transport MCP HTTP** (streamable HTTP) + serveur d'outils séparé → premier pas « distribué » (deux processus, réseau).
-6. **Observabilité** : traces OpenTelemetry / Langfuse local.
-7. **Agent data analysis** : génération d'un graphique ou d'un résumé statistique sur les incidents.
-8. ~~**Publication open source** du dépôt~~ : fait en v1.9.0 (licence MIT).
+1. **PostgreSQL + pgvector** (in WSL or Docker): a single database for both incidents AND vectors.
+   This is the most direct bridge between AI and databases (SQL engines with built-in vector search).
+2. **LangGraph persistence** (SQLite/Postgres checkpointer): resuming a run and human-in-the-loop
+   before a "sensitive" action.
+3. **RAG evaluation**: small question set → retrieval metrics (recall@k, MRR before/after rerank).
+4. **High-performance serving**: vLLM (WSL/Linux) and throughput measurement (tokens/s) under concurrent requests
+   → a real "throughput" point.
+5. **MCP HTTP transport** (streamable HTTP) + separate tool server → a first "distributed" step (two processes, network).
+6. **Observability**: OpenTelemetry traces / local Langfuse.
+7. **Data analysis agent**: generating a chart or a statistical summary of the incidents.
+8. ~~**Open-source publication** of the repository~~: done in v1.9.0 (MIT license).

@@ -112,35 +112,35 @@ def summarize(rows: list[dict]) -> dict:
 def to_markdown(report: dict) -> str:
     s = report["summary"]
     models = list(s)
-    lines = [f"Date : {report['date']} · {report['runs']} exécution(s) par cas · mesures **à chaud** "
-             "(session MCP et modèle chargés).", "",
-             "| Indicateur | " + " | ".join(f"`{m}`" for m in models) + " |",
+    lines = [f"Date: {report['date']} · {report['runs']} run(s) per case · **warm** measurements "
+             "(MCP session and model loaded).", "",
+             "| Metric | " + " | ".join(f"`{m}`" for m in models) + " |",
              "|---|" + "---|" * len(models)]
 
     def row(label, fn):
         lines.append(f"| {label} | " + " | ".join(fn(s[m]) for m in models) + " |")
 
-    row("Cas réussis (toutes vérifications)", lambda x: f"{x['cases_passed']}/{x['requests']}")
-    row("Vérifications réussies", lambda x: f"{x['checks_passed']}/{x['checks_total']}")
-    row("Latence p50 / max par requête", lambda x: f"{x['latency_p50_s']} s / {x['latency_max_s']} s")
-    row("Appels LLM par requête (moy.)", lambda x: str(x["llm_calls_mean"]))
-    row("Tokens in / out par requête (moy.)", lambda x: f"{x['tokens_in_mean']} / {x['tokens_out_mean']}")
-    row("Débit de génération (tokens out / s LLM)", lambda x: str(x["output_tokens_per_s"]))
-    row("Requêtes / min (séquentiel)", lambda x: str(x["requests_per_min"]))
-    row("Coût local", lambda x: "0 € (électricité non comptée)")
+    row("Cases passed (all checks)", lambda x: f"{x['cases_passed']}/{x['requests']}")
+    row("Checks passed", lambda x: f"{x['checks_passed']}/{x['checks_total']}")
+    row("Latency p50 / max per request", lambda x: f"{x['latency_p50_s']} s / {x['latency_max_s']} s")
+    row("LLM calls per request (mean)", lambda x: str(x["llm_calls_mean"]))
+    row("Tokens in / out per request (mean)", lambda x: f"{x['tokens_in_mean']} / {x['tokens_out_mean']}")
+    row("Generation throughput (output tokens / LLM s)", lambda x: str(x["output_tokens_per_s"]))
+    row("Requests / min (sequential)", lambda x: str(x["requests_per_min"]))
+    row("Local cost", lambda x: "€0 (electricity not counted)")
     for name in REFERENCE_PRICES_USD_PER_MTOK:
-        row(f"Coût estimé si API {name}, /1000 req.",
+        row(f"Estimated cost with API {name}, /1000 req.",
             lambda x, n=name: f"~{x['est_cost_usd_per_1000_requests'][n]} $")
-    lines += ["", "Par cas (réussites / exécutions, latence p50) :", "",
-              "| Cas | " + " | ".join(f"`{m}`" for m in models) + " |", "|---|" + "---|" * len(models)]
+    lines += ["", "Per case (passed / runs, latency p50):", "",
+              "| Case | " + " | ".join(f"`{m}`" for m in models) + " |", "|---|" + "---|" * len(models)]
     for c in CASES:
         lines.append(f"| {c.id} {c.title} | " + " | ".join(
             f"{s[m]['per_case'][c.id]['passed']}/{s[m]['per_case'][c.id]['runs']} · "
             f"{s[m]['per_case'][c.id]['latency_p50_s']} s" if c.id in s[m]["per_case"] else "—" for m in models) + " |")
-    lines += ["", "Vérifications échouées :", ""]
+    lines += ["", "Failed checks:", ""]
     fails = [(r["model"], r["case"], r["run"], k) for r in report["rows"] for k, v in r["checks"].items() if not v]
-    lines += [f"- `{m}` {c} (run {n}) : {k}" for m, c, n, k in fails] or ["- aucune"]
-    lines += ["", "Démarrage à froid d'une session (RAG + modèle) : " + ", ".join(
+    lines += [f"- `{m}` {c} (run {n}): {k}" for m, c, n, k in fails] or ["- none"]
+    lines += ["", "Cold start of a session (RAG + model): " + ", ".join(
         f"{w['model']}/{w['scenario']} {w['cold_start_s']} s" for w in report["warmups"]), ""]
     return "\n".join(lines)
 
@@ -179,7 +179,7 @@ async def measure_throughput(models: list[str], concurrencies: list[int], reques
 
 
 def throughput_markdown(rows: list[dict]) -> str:
-    lines = ["| Modèle | Concurrence | Requêtes | Durée | Tokens out/s (agrégé) | Req/min | Latence p50 / max |",
+    lines = ["| Model | Concurrency | Requests | Duration | Output tokens/s (aggregate) | Req/min | Latency p50 / max |",
              "|---|---|---|---|---|---|---|"]
     lines += [f"| `{r['model']}` | {r['concurrency']} | {r['requests']} | {r['wall_s']} s | {r['tokens_per_s']} | "
               f"{r['requests_per_min']} | {r['latency_p50_s']} s / {r['latency_max_s']} s |" for r in rows]
@@ -194,8 +194,8 @@ def save_report(report: dict, runs_dir: Path = RUNS_DIR) -> tuple[Path, Path]:
     md_dir = PROJECT_ROOT / "docs" / "bench"
     md_dir.mkdir(exist_ok=True)
     md = md_dir / f"bench-{stamp}.md"
-    md.write_text(to_markdown(report) + "\n\n## Réponses\n\n" + "\n\n".join(
+    md.write_text(to_markdown(report) + "\n\n## Answers\n\n" + "\n\n".join(
         f"### {r['model']} — {r['case']} run {r['run']} ({'PASS' if r['passed'] else 'FAIL'})\n\n"
-        f"route `{r['route']}` · outils `{r['tools']}`\n\n{r['answer']}" for r in report["rows"]) + "\n",
+        f"route `{r['route']}` · tools `{r['tools']}`\n\n{r['answer']}" for r in report["rows"]) + "\n",
         encoding="utf-8")
     return j, md

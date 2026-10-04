@@ -1,27 +1,27 @@
-# Démo de bout en bout (enregistrée le 2026-10-02)
+# End-to-end demo (recorded on 2026-10-02)
 
-Transcription brute de deux exécutions **à froid**, chacune avec un nouveau serveur MCP : modèle par
-défaut `qwen2.5-7b-instruct`, LM Studio local, GPU RTX 2070 Super. Pour la rejouer, voir
-[`../README.md`](../README.md) (section *Demo*). Le numéro de version affiché est celui du moment de
-l'enregistrement.
+Raw transcript of two **cold** runs, each with a fresh MCP server: default model
+`qwen2.5-7b-instruct`, local LM Studio, RTX 2070 Super GPU. To replay it, see
+[`../README.md`](../README.md) (*Demo* section). The version number shown is the one at the time of
+recording.
 
-À observer dans la 1ʳᵉ exécution :
-1. **Triage** → `malfunction / postgres` (sortie JSON contrainte, D-17).
-2. **Documentaliste** → `search_docs` : 3 sections reclassées par le reranker (D-09). Les ~14 s
-   comprennent la fin du chargement du RAG dans le serveur MCP (D-15).
-3. **Garde-fou en action** : le technicien répond d'abord **sans** appeler l'outil exigé. La
-   réponse est **rejetée** (`answer discarded, retrying`), puis le modèle appelle
+What to observe in the 1st run:
+1. **Triage** → `malfunction / postgres` (constrained JSON output, D-17).
+2. **Documentalist** → `search_docs`: 3 sections reordered by the reranker (D-09). The ~14 s
+   include the end of the RAG loading in the MCP server (D-15).
+3. **Guardrail in action**: the technician first answers **without** calling the required tool. The
+   answer is **rejected** (`answer discarded, retrying`), then the model calls
    `get_service_status` (D-18).
-4. Le diagnostic s'appuie sur l'observation `stopped`, cite `postgres_connection.md#Service status`,
-   et se termine par la mention construite par le code : « statut observé en simulation… aucune
-   action corrective n'a été exécutée » (D-22).
+4. The diagnosis relies on the `stopped` observation, cites `postgres_connection.md#Service status`,
+   and ends with the notice built by the code: "statut observé en simulation… aucune
+   action corrective n'a été exécutée" (status observed in simulation… no corrective action was executed) (D-22).
 
-À observer dans la 2ᵉ exécution (question de données) :
-1. **Triage** → `history` : la branche conditionnelle saute le documentaliste (D-16).
-2. Le modèle propose 5 requêtes. Le code en écarte 3 (doublons / plafond), puis en exécute 2 en
-   lecture seule (D-13, D-18, D-23).
-3. La réponse « 3 incidents, le dernier non résolu » est **déduite des lignes renvoyées**
-   (`[[3]]`, `[[0]]`).
+What to observe in the 2nd run (data question):
+1. **Triage** → `history`: the conditional branch skips the documentalist (D-16).
+2. The model proposes 5 queries. The code drops 3 of them (duplicates / cap), then runs 2 in
+   read-only mode (D-13, D-18, D-23).
+3. The answer "3 incidents, le dernier non résolu" (3 incidents, the latest one unresolved) is
+   **derived from the returned rows** (`[[3]]`, `[[0]]`).
 
 ```text
 $ hello-support --version
