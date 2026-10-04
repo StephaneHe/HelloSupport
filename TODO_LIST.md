@@ -28,6 +28,7 @@ Convention: `(+ date)` = added, `(✔ date)` = done. Milestones defined in `docs
 - [x] Per-model LM Studio settings (auto-fit off, context 8192, parallelism 1): latencies stabilized `(+ 2026-10-04)` `(✔ 2026-10-04)`
 - [x] Web demo (`hello-support web`, served locally): live trace, 6 cases × 2 models checked in Edge `(+ 2026-10-04)` `(✔ 2026-10-04)`
 - [x] All documentation in English, locked by a language test (`docs/USER_REQUIREMENTS.md`) `(+ 2026-10-04)` `(✔ 2026-10-04)`
+- [x] Doc-to-code review (31 findings) resolved or accepted; C6 status-claim check fixed; daily re-seed of the incidents database `(+ 2026-10-04)` `(✔ 2026-10-04)`
 - [ ] C6/C3 checks sensitive to wording ("statut indéterminé" (undetermined status), citations): consider a semantic check `(+ 2026-10-04)`
 
 ## Ideas (beyond the hello world, see SPEC §10)

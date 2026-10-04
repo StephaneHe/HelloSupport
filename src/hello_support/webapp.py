@@ -172,11 +172,13 @@ def summarize(result: dict, wall_s: float) -> dict:
     if any(o["tool"] == "query_incidents" and o["ok"] for o in observations):
         sources.append("incidents database (SQL)")
     agents = [e["agent"] for e in result.get("trace", []) if e.get("type") == "start"]
+    # Post-processing only runs when the technician produced an answer (status "done").
+    post = ["post-processing"] if "technician" in agents and result.get("status") == "done" else []
     return {
         "answer": result.get("answer", ""),
         "sources": sources,
         "route": result.get("route"),
-        "path": ["triage", *agents, "post-processing"],
+        "path": ["triage", *agents, *post],
         "status": result.get("status"),
         "errors": result.get("errors", []),
         "evidence": [{k: e.get(k) for k in ("doc_id", "section", "rerank_score")} for e in result.get("evidence", [])],

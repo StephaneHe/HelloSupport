@@ -218,7 +218,12 @@ function onResult(r) {
     tile(`${m.prompt_tokens} / ${m.completion_tokens}`, "tokens in / out"), tile(m.tool_calls, "tool calls"),
     tile(r.route ? r.route.intent : "—", "category"), tile(`<code>${esc(r.model)}</code>`, "model"),
   ].join("");
-  addEv("code", "", `<span class="who">post-processing</span> <span class="tag">CODE</span> citations normalised, simulation note added · status <b>${esc(r.status)}</b>${r.errors.length ? `<div class="small">${r.errors.map(esc).join("<br>")}</div>` : ""}`);
+  const errs = r.errors.length ? `<div class="small">${r.errors.map(esc).join("<br>")}</div>` : "";
+  if (r.path.includes("post-processing")) {
+    addEv("code", "", `<span class="who">post-processing</span> <span class="tag">CODE</span> citations normalised, simulation note added · status <b>${esc(r.status)}</b>${errs}`);
+  } else {
+    addEv("error", "", `no post-processing (no answer from the technician) · status <b>${esc(r.status)}</b>${errs}`);
+  }
   setStatus(r.status === "done" ? `done · ${m.total_s} s` : r.status, r.status === "done" ? "ok" : "err");
 }
 

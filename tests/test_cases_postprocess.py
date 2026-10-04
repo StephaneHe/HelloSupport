@@ -44,3 +44,14 @@ def test_status_assertion_ignores_conditionals():
     from hello_support.cases import asserts_status
     assert not asserts_status({"answer": "Si le serveur Redis est arrêté, les connexions sont refusées."})
     assert asserts_status({"answer": "Observation : le service est arrêté."})
+
+
+def test_status_assertion_ignores_suggested_checks_and_catches_hedged_claims():
+    # Review F-3: the 7B's "assurez-vous que le service est en cours d'exécution" (a suggested check) was
+    # counted as a claim, while "il semble que le serveur Redis soit en cours d'exécution" was missed.
+    from hello_support.cases import asserts_status
+    assert not asserts_status({"answer": "Si cela échoue, assurez-vous que le service est en cours d'exécution."})
+    assert not asserts_status({"answer": "1. Vérifiez que le service Redis est en cours d'exécution."})
+    assert not asserts_status({"answer": "Make sure the service is running."})
+    assert asserts_status({"answer": "Il semble que le serveur Redis soit en cours d'exécution mais refuse."})
+    assert asserts_status({"answer": "The redis service appears to be running."})

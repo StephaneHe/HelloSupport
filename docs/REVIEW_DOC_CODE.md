@@ -6,6 +6,7 @@
 - **Checks actually run**: `uv run pytest` → 91 passed, 1 deselected, 15.5 s; one in-process MCP call to read two real error messages; `uv.lock` for the pinned versions; `git tag`.
 - **Not done**: no LLM benchmark was re-run (it needs LM Studio and the GPU). Every benchmark figure was compared with the archived raw reports only. The two PDFs were not opened; they were committed together with their Markdown sources.
 - **Rule of this review**: no code and no existing file was changed. Each row proposes a fix; none is applied.
+- **Follow-up (v1.11.2, 2026-10-04)**: every row was then handled and is marked **resolved** or **accepted** in section 7, *Resolution*. The tables below are the review as written.
 - **Side effect of this file**: the language test is parametrized per published Markdown file, so adding this report raises the suite from 91 to **92** tests (all pass). The README badge and text (`README.md:9,289`) still say 91.
 
 There is no `webdemo/README` in the repository: the web demo is documented in the README section *Web demo* and in D-31, and its code is `src/hello_support/webapp.py` and `static/`. A local, untracked launcher for the demo was also read; it is consistent with the code (port 5179, `HS_DOCS_URL`).
@@ -128,3 +129,49 @@ The gaps are concentrated in three places:
 4. **O-1, O-8, O-9, O-10**: one amendment pass on `SPEC.md` §3, §4 (layout) and §8.
 5. **O-2, O-5, O-6, O-7, F-2, F-4, O-4**: one-line edits in `README.md` and `DESIGN_DECISIONS.md`.
 6. The remaining rows as time allows.
+
+## 7. Resolution (v1.11.2, 2026-10-04)
+
+Rule applied: the tested and measured behaviour wins. Where the doc was wrong it was fixed; where the
+code was wrong it was fixed with a test (`tests/test_guardrails.py`, UR-007). One change touches what
+the assistant does at run time: I-1 adds a trace entry (the answer itself is unchanged). Verification:
+full offline suite green, full 6 × 3 benchmark on both models plus a 7B C6 × 10 control on v1.11.2
+(`docs/BENCH.md`, section v1.11.2).
+
+**Counts**: 29 resolved, 2 accepted.
+
+| ID | Status | What was done |
+|---|---|---|
+| F-1 | resolved (code + doc) | Real bug. The seed day is stored in `PRAGMA user_version`; `ensure_incidents_db` re-seeds when the day changes or the file predates v1.11.2 (`data_store.py`). Also found: `with sqlite3.connect()` does not close the handle, which blocked the re-seed on Windows; connections are now closed explicitly. Tests: `test_database_is_reseeded_when_the_day_changes`, `test_database_without_a_seed_day_is_reseeded`. D-14 and README updated. |
+| F-2 | resolved (doc) | README *Demo*: CLI timings per category (each `ask` starts its own tool server); warm figures attributed to the web demo and the benchmark. |
+| F-3 | resolved (code + doc) | Confirmed and refined. Re-reading the answers showed that the check itself was wrong both ways: it flagged a suggested check ("vérifiez que / assurez-vous que le service est en cours d'exécution") and missed the hedged claim ("il semble que le serveur Redis soit en cours d'exécution"). `cases.asserts_status` fixed; test `test_status_assertion_ignores_suggested_checks_and_catches_hedged_claims`. Re-scoring all archived runs changes two rows (both false positives in the v1.11.2 7B run). BENCH, D-25, D-30 and README *Known limitations* now say the 7B invented a status once in 10 runs on v1.10.0, 0 in 13 runs on v1.11.2. |
+| F-4 | resolved (tests) | The seven missing tests were added (`tests/test_guardrails.py`); README lists the tested guardrails. |
+| O-1 | resolved (doc) | SPEC status line, dated §3 amendment (web demo, `smoke`, `throughput`, `web`), "Web API, UI" exclusion marked superseded. |
+| O-2 | resolved (doc) | D-27: everything in English (UR-006). |
+| O-3 | resolved (measured) | Full 6 × 3 benchmark re-run for both models on v1.11.2 with pinned settings; README table replaced and dated, v1.7.0 table kept in BENCH; SPEC result line updated. |
+| O-4 | resolved (doc) | README footnote: the concurrency figures were measured with 4 slots, before pinning, and are not reproduced with the recommended settings. |
+| O-5 | resolved (doc) | D-28: test count, duration, and the web, user-requirement and guardrail test files. |
+| O-6 | resolved (doc) | D-27 module table (`webapp.py`, `static/`), `web` command, sizes, "terminal and browser"; README layout. |
+| O-7 | resolved (doc) | D-09 index line and SPEC: top-3; CLI `search` default of 2 mentioned. |
+| O-8 | resolved (doc) | SPEC §3: real graph, full state, `MCPServer` (SDK v2). |
+| O-9 | resolved (doc) | SPEC: target layout replaced by a pointer to the README layout; LangChain packages struck with a reference to D-05 and D-20. |
+| O-10 | resolved (doc) | D-14 and SPEC: `--scenario` exists; order file → `--scenario`/`HS_SCENARIO` → default. |
+| I-1 | resolved (code + doc) | Decision: keep accepting the second text answer (failing the request would change measured behaviour), but trace it: `limit` event + error "a tool call was required but never made; answer accepted without observation" (`agents.py`). Test `test_required_tool_never_called_is_traced`. Diagrams and D-17 state the fall-through. |
+| I-2 | resolved (doc) | Diagrams (README, SPEC, D-29 summary): post-processing drawn inside the technician node; dashed documentalist → end edge on failure. |
+| I-3 | accepted (doc caveat) | The raw outputs of the targeted gain table, the throughput table, the triage 12/12 and 4/6 and the "0/3" were never archived and cannot be recreated as they were. Each figure is now labelled "ad hoc, raw output not archived" (README, BENCH, D-17, D-24, D-30). Adding the `vague` question and the triage paraphrases as replayable data is left for later (TODO). |
+| I-4 | resolved (doc) | SPEC §6 matches `cases.py`; the other situations point to their unit tests. |
+| I-5 | resolved (doc) | SPEC §7: arguments validated by the tool server; D-12 example replaced by the real Pydantic message. |
+| I-6 | resolved (doc) | SPEC: `vector_rank`, `relevant`, `scenario` added to the tool descriptions. |
+| I-7 | resolved (doc) | README usage: real defaults (`--runs 1`, `--top-k 5`, `--top-n 2`) and the command line behind the results table. |
+| I-8 | resolved (doc) | D-19: `start` event and the `route` field. |
+| I-9 | resolved (reports) | Labels aligned in the archived reports (`(run n): check`, `no status asserted`); figures and answers untouched. |
+| U-1 | resolved (doc) | Triage fallback documented (D-17); exit codes of `ask` and `smoke` in the README usage table. |
+| U-2 | resolved (doc) | README table and `.env.example` list every variable. |
+| U-3 | resolved (doc) | HTTP API summarised in the README *Web demo* section and detailed in D-31. |
+| U-4 | resolved (doc) | README states the expected MkDocs-style layout and that the repository does not build such a site. |
+| U-5 | resolved (doc + test) | D-13 trade-offs; test `test_semicolon_inside_a_string_literal_is_rejected` locks the known false positive. |
+| U-6 | resolved (code) | `webapp.summarize` lists `post-processing` only when the technician answered; the page logs "no post-processing" otherwise. Test `test_web_path_lists_post_processing_only_when_it_ran`. |
+| U-7 | resolved (doc) | README *Web demo* and D-31: stop the demo before a benchmark. |
+| U-8 | resolved | `config.py` in the README layout; unused `live` marker removed from `pyproject.toml`; `tools/md2pdf.py` writes `lang="en"`. |
+| Side effect (test count) | accepted | The badge and the README text are updated at each release; the count changes whenever a report is added to `docs/bench/` (one language test per file). |
+

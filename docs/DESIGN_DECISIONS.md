@@ -7,15 +7,17 @@
 >   when the decision is made (with what was known at the time).
 > - **At the end (J5)**: consolidation. Summary at the top, entries reviewed in light of the
 >   measurements ([`BENCH.md`](BENCH.md)), PDF export ([`DESIGN_DECISIONS.pdf`](DESIGN_DECISIONS.pdf)).
->   **Status: consolidated on 2026-10-02 (v1.8.0), 28 decisions; D-29 to D-31 added on 2026-10-04.**
+>   **Status: consolidated on 2026-10-02 (v1.8.0), 28 decisions; D-29 to D-31 added on 2026-10-04;
+>   aligned with the code of v1.11.2 on 2026-10-04 after the documentation-to-code review
+>   ([`REVIEW_DOC_CODE.md`](REVIEW_DOC_CODE.md)).**
 >
 > Entry format: **Need → Options → Choice → Why → Trade-offs /
 > limits → Skill demonstrated**. A revised decision is not deleted: it is marked
 > `Superseded by D-yy`.
 
-## Summary (consolidated on 2026-10-02, version 1.8.0)
+## Summary (consolidated on 2026-10-02 for v1.8.0, last updated on 2026-10-04 for v1.11.2)
 
-**What was built.** A troubleshooting assistant in the terminal, 100% local. A question in
+**What was built.** A troubleshooting assistant in the terminal and in the browser, 100% local. A question in
 French or English goes through **triage** (LLM, constrained JSON output), a **documentalist**
 (semantic search: embeddings → Chroma → reranking) and a **technician**. Depending on the
 intent, the technician observes a **simulated** service status, queries a read-only **SQL
@@ -28,18 +30,21 @@ on GPU.
 flowchart TB
     Q(["Question"]) --> T
 
-    subgraph G["LangGraph graph — linear: each step runs once, no loop between agents"]
+    subgraph G["LangGraph graph — 3 nodes (triage, documentalist, technician), each runs at most once, no loop between agents"]
         T{{"<b>ROUTER · Triage</b><br/>1 LLM call, constrained JSON output<br/>no tool · no loop"}}
         T -->|"malfunction = failure on postgres/nginx/redis<br/>documentation = 'what should I check?'"| D
         T -->|"history = incident history → SQL<br/>out_of_scope = other product<br/>vague = undetermined service<br/>(skip the search)"| TE
         D["<b>AGENT · Documentalist</b><br/>tool: search_docs (≤ 2 calls)"]
         D -->|"↻ LLM ↔ tools loop<br/>≤ 3 LLM calls"| D
         D --> TE
-        TE["<b>AGENT · Technician</b><br/>tools depending on the category:<br/>malfunction → get_service_status REQUIRED<br/>history → query_incidents (SQL) REQUIRED<br/>documentation · out_of_scope · vague → none"]
-        TE -->|"↻ LLM ↔ tools loop<br/>≤ 3 LLM calls"| TE
-        TE --> P["<b>CODE · Post-processing</b> (no LLM)<br/>exact citations, simulation notice"]
+        subgraph TN["technician node (agent + post-processing, same node)"]
+            TE["<b>AGENT · Technician</b><br/>tools depending on the category:<br/>malfunction → get_service_status REQUIRED<br/>history → query_incidents (SQL) REQUIRED<br/>(1 retry, then the answer is accepted and flagged)<br/>documentation · out_of_scope · vague → none"]
+            TE -->|"↻ LLM ↔ tools loop<br/>≤ 3 LLM calls"| TE
+            TE --> P["<b>CODE · Post-processing</b> (no LLM)<br/>exact citations, simulation notice"]
+        end
     end
     P --> A(["Answer + JSON trace"])
+    D -.->|"documentalist failed<br/>(no LLM answer)"| F(["Fixed fallback answer<br/>status failed → END"])
 
     subgraph MCP["MCP tool server (stdio)"]
         S1[/"search_docs<br/>embeddings → Chroma → reranking"/]
@@ -60,7 +65,7 @@ flowchart TB
     classDef model fill:#ede9fe,stroke:#6d28d9,color:#2e1065
     class D,TE agent
     class T router
-    class P code
+    class P,F code
     class S1,S2,S3 tool
     class LLM model
 ```
@@ -100,19 +105,21 @@ flowchart TB
     Q1 -->|"no: text answer"| Q2{"REQUIRED tool<br/>not yet called?"}
     Q2 -->|"yes, 1st time"| REJ["<b>CODE</b> · rejected answer → retry<br/>'call the tool now'"]
     REJ -->|"↻"| L
+    Q2 -->|"yes, 2nd time"| ACC["<b>CODE</b> · answer accepted without observation<br/>error + limit event in the trace"]
+    ACC --> OUT
     Q2 -->|"no"| OUT(["Exit: final answer"])
 
     classDef agent fill:#dbeafe,stroke:#1d4ed8,stroke-width:3px,color:#0b2a6b
     classDef code fill:#f3f4f6,stroke:#6b7280,stroke-width:1px,stroke-dasharray:5 3,color:#111827
     classDef tool fill:#dcfce7,stroke:#15803d,color:#0f3d1f
     class L agent
-    class F,R,REJ,Q1,Q2 code
+    class F,R,REJ,ACC,Q1,Q2 code
     class X tool
 ```
 
 - **At most 3 LLM calls** (`MAX_LLM_CALLS`). The last one is made without tools: the agent always ends up answering in text.
 - **At most 3 tool calls per step**, after deduplication. Each tool also has its own budget (`search_docs` ≤ 2, `get_service_status` ≤ 1, `query_incidents` ≤ 2).
-- **Required tool**: for `malfunction` and `history`, a tool call is required. If the model answers without making one, the code rejects that answer and retries once.
+- **Required tool**: for `malfunction` and `history`, a tool call is required. If the model answers without making one, the code rejects that answer and retries once. If it answers in text a second time, that answer is **accepted** (status stays `done`), but the code records the error "a tool call was required but never made; answer accepted without observation" and emits a `limit` event with the same text (D-17).
 - **Exit**: the loop stops as soon as the model answers in text without requesting a tool.
 
 **Mapping table component → decision → skill demonstrated**
@@ -159,7 +166,8 @@ measured failure"):
 
 **Accepted limits**: 3 knowledge-base sheets, 14 incidents, 6 cases, one machine, temperature 0. No
 measurement is statistically sound. SQLite is not an enterprise engine. LM Studio is not
-a production server. The SLM still invents sources when a tool fails. Out of
+a production server. When a tool fails, the SLM can still invent sources, and the 7B asserted an
+unobserved status once in a 10-run control (D-25, D-30). Out of
 scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7 and §10).
 
 ## Index
@@ -174,7 +182,7 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
 | D-06 | Chunking knowledge-base sheets by `##` section, `doc_id#section` citation | J1 | Accepted | RAG, semantic retrieval |
 | D-07 | Embeddings: `paraphrase-multilingual-MiniLM-L12-v2` (Sentence Transformers) | J1 | Accepted | Embeddings, Hugging Face |
 | D-08 | Vector store: persistent embedded Chroma, index rebuilt on fingerprint change | J1 | Accepted | Vector search, vector databases |
-| D-09 | Reranking: cross-encoder `mmarco-mMiniLMv2-L12-H384-v1`, top-5 → top-2, off-topic threshold | J1 | Accepted | Reranking |
+| D-09 | Reranking: cross-encoder `mmarco-mMiniLMv2-L12-H384-v1`, top-5 → top-3, off-topic threshold | J1 | Accepted | Reranking |
 | D-10 | Embedding/reranker inference on GPU (torch CUDA), warm-up at load time | J1 | Accepted | GPU, PyTorch, latency |
 | D-11 | MCP: separate tool server, stdio, `mcp` SDK v2, verified with MCP Inspector | J2 | Accepted | MCP, tool integration |
 | D-12 | Typed tool contracts (`Literal` → `enum`), explicit `ToolError` | J2 | Accepted | Tool calling, reliability |
@@ -387,6 +395,7 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
   calibrated on a question set (see "going further": RAG evaluation).
 - **Revision (J3)**: `search_docs` returns the **top-3** (instead of top-2). With 2 passages,
   the reranker put "Limits" first and the "Service status" section disappeared from the context.
+  Only the diagnostic command `hello-support search` keeps a default of `--top-n 2`.
 - **Skill demonstrated**: Reranking.
 
 ## D-10 — GPU inference and warm-up
@@ -440,7 +449,11 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
 - **Choice**: **server-side** validation, through types: `service_name: Literal["postgres",
   "nginx", "redis"]` produces an `enum` in the MCP schema, which the model sees and Pydantic
   checks. Business errors raise `ToolError`, returned to the client as `is_error=true` with a
-  clear message (e.g. "unknown service", "SQL rejected: only SELECT queries are allowed").
+  clear message (e.g. "SQL rejected: only SELECT queries are allowed"). The host only checks that
+  the arguments are valid JSON; types and enums are validated by the MCP server. For an unknown
+  service, the model therefore receives the Pydantic literal error ("Input should be 'postgres',
+  'nginx' or 'redis'"): the "unknown service" message of `data_store.service_status` is a
+  safety net for direct Python callers and is not reachable through MCP.
   Tool descriptions (docstrings) explain the output format and usage, for example
   `relevant=false`.
 - **Why**: a single place is authoritative, whatever the client. The error returned to the
@@ -474,8 +487,10 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
   Tested: `DELETE`, `SELECT 1; DROP…`, `PRAGMA`, `ATTACH`, `load_extension` are rejected; the
   row limit is enforced (`tests/test_sql_guard.py`).
 - **Trade-offs**: the regex can reject a legitimate query containing one of these words in a
-  string (e.g. `summary LIKE '%update%'`). Acceptable here, to be fixed with a real SQL
-  parser (`sqlglot`) if needed. Nothing prevents a **wrong but valid** query: its
+  string (e.g. `summary LIKE '%update%'`). For the same reason, a `;` inside a string literal
+  (e.g. `summary LIKE '%a;b%'`) is rejected as a second statement
+  (`tests/test_guardrails.py::test_semicolon_inside_a_string_literal_is_rejected`). Acceptable
+  here, to be fixed with a real SQL parser (`sqlglot`) if needed. Nothing prevents a **wrong but valid** query: its
   correctness is evaluated at J4 (case C4). On a real enterprise database, a dedicated read-only
   SQL role and restricted views would also be needed.
 - **Skill demonstrated**: Enterprise data agents, SQL engines.
@@ -489,13 +504,25 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
 - **Data options**: real PostgreSQL (WSL/Docker), DuckDB, **SQLite** (stdlib).
   **Status options**: query real services; a JSON scenarios file.
 - **Choice**: `incidents` table (14 rows: service, date, severity, summary, resolved) generated by
-  `seed_incidents()` with dates **relative to today**. The `data/incidents.db` file
-  is gitignored and created on first use. Statuses come from `scenarios.json`
-  (`stopped`, `running`, `redis_down`, `tool_error`), selected by `HS_SCENARIO` (soon
-  `--scenario`). Each response carries `simulated: true` and the scenario name.
+  `seed_incidents()` with dates **relative to the seed day**. The `data/incidents.db` file
+  is gitignored. Statuses come from `scenarios.json`
+  (`stopped`, `running`, `redis_down`, `tool_error`). The scenario is chosen in this order:
+  the content of the file named by `HS_SCENARIO_FILE` (used by the web demo, D-31), then
+  `--scenario` / `HS_SCENARIO`, then the default `stopped`. Each response carries
+  `simulated: true` and the scenario name.
+- **Revision (v1.11.2)**: the database was first seeded **once**, so its dates stayed relative
+  to the day of the first run. About 12 days later, "the last 30 days" would have dropped from 3
+  to 2 postgres incidents and the C4 check would have failed for a correct answer (review F-1).
+  The seed day is now stored in `PRAGMA user_version` (`YYYYMMDD`, invisible to the model's
+  queries), and `ensure_incidents_db` re-seeds the database when that day differs from today or
+  is missing (file created before v1.11.2). If another process holds the file open, the
+  existing data is kept for that query. Tests:
+  `tests/test_guardrails.py::test_database_is_reseeded_when_the_day_changes` and
+  `::test_database_without_a_seed_day_is_reseeded`.
 - **Why**: SQLite is in the stdlib, serverless, and a real SQL engine (dates,
-  aggregates, recursive CTEs, authorizer). With relative dates, "the last 30 days" always
-  has the same expected answer, which makes case C4 verifiable. Scenarios make
+  aggregates, recursive CTEs, authorizer). With dates relative to a seed day that is refreshed
+  daily, "the last 30 days" always has the same expected answer (3 postgres incidents), which
+  makes case C4 verifiable. Scenarios make
   behavior **deterministic** and allow simulating a tool failure (C6). Since nothing
   real is touched, no dangerous action is possible.
 - **Trade-offs**: SQLite is not an enterprise engine: no roles, no write
@@ -568,13 +595,29 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
     a question).
 
   An outage with no known service is reclassified as `vague`.
+
+  **What "required" means exactly**: the call with tools is forced (`tool_choice="required"`)
+  and, if the model still answers in text, that answer is discarded and the model is retried
+  once (D-18). If it answers in text a second time, the answer is **accepted** and the status
+  stays `done`; since v1.11.2 the code appends the error "technician: a tool call was required
+  but never made; answer accepted without observation" and emits a `limit` event with the same
+  text, so the missing observation is visible in the trace and in the answer's errors
+  (`tests/test_guardrails.py::test_required_tool_never_called_is_traced`). The code therefore
+  guarantees the attempt and its traceability, not the observation itself.
+
+  **Triage failure**: if the triage call fails or returns invalid JSON, the route falls back to
+  `documentation` with no service, and an `error` event is emitted. When LM Studio is down,
+  the documentalist then fails too: the answer is the fixed `FALLBACK_ANSWER`, the status is
+  `failed`, and `hello-support ask` exits with code 1 (0 when the status is `done`).
 - **Why**: measured on 6 typical questions, triage costs ~0.3 s (after loading) and correctly
   classifies the key cases. Qwen2.5-7B: 4/6, with both "errors" (Kafka → `vague`,
   "ça marche pas" ("it doesn't work") → outage with no service) still leading to the right behavior.
   Qwen3-4B: 4/6, but it confused "outage + what should I check?" with `documentation`, fixed
-  by a clarification in the prompt. The model still decides, but **on a narrow, constrained
-  task**, and the code guarantees the consequences. This is a common *router + policy* pattern
-  in production.
+  by a clarification in the prompt. These 4/6 figures (and the 0/3 of the finding above) were
+  measured ad hoc during development; the raw output is not archived in the repository. The
+  model still decides, but **on a narrow, constrained task**, and the code enforces the tool
+  policy that follows from it (with the fall-through above). This is a common *router + policy*
+  pattern in production.
 - **Trade-offs**: one more LLM call per request. The classification can be wrong, and the error
   propagates (no going back). The 5 intents are hard-coded.
 - **Skill demonstrated**: AI agents, intelligent workflows.
@@ -596,7 +639,8 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
   - **`tool_choice="required"` checked by the code**: LM Studio does not strictly enforce it.
     Once, the 7B answered in text and **invented** a "en cours d'exécution" ("running") status
     without calling the tool. An answer without the required observation is therefore rejected
-    and the model retried once;
+    and the model retried once. A second text answer is accepted but flagged as unobserved
+    (error and `limit` event, D-17);
   - invalid JSON arguments and unauthorized tools: refused with a message;
   - HTTP timeout for LLM calls (120 s) and tool calls (240 s).
 - **Why**: the model is not trusted to stop or to respect an API constraint. Each guardrail
@@ -615,8 +659,9 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
 - **Choice**: `State` (`TypedDict`): `question` (never modified), `model`, `scenario`, `route`,
   `evidence` (relevant passages only, deduplicated), `brief`, `observations`,
   `counters`, `status`, `errors` and `trace` (the last two with an `operator.add` reducer: nodes
-  **append**, they do not overwrite), `answer`. Each event (`llm`, `tool_call`,
-  `tool_result`, `limit`, `error`) is timestamped, displayed live and written to
+  **append**, they do not overwrite), `answer`. Each event (`start` when an agent's step
+  begins, `llm`, `tool_call`, `tool_result`, `limit`, `error`; the triage `llm` event also
+  carries the `route`) is timestamped, displayed live and written to
   `runs/<timestamp>.json` with the metrics (total duration, LLM calls and time, tokens
   in/out, tool time). The `runs/` folder is gitignored.
 - **Why**: updates go explicitly through node return values, which is LangGraph's model.
@@ -731,7 +776,8 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
   from the benchmark questions.
 - **Measurements**: 12 questions = the 6 benchmark ones + **6 held-out paraphrases** (never seen
   during tuning): **12/12 for both models**, versus 11/12 (SLM) and 10/12 (7B) with
-  examples alone.
+  examples alone. These figures were measured ad hoc; the question set and the raw output are
+  not archived in the repository, so they cannot be replayed with a shipped command.
 - **Why**: an example without a rule can be over-generalized (the 7B learned "unknown
   product ⇒ pick a known service"). The rule sets the boundary, the examples show the
   format. Testing on unseen paraphrases avoids tuning the prompt for the benchmark questions
@@ -752,7 +798,7 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
   | Criterion | SLM 4B | 7B |
   |---|---|---|
   | Cases passed (6 × 3) | 15/18 | **18/18** |
-  | Serious defect observed | invents source identifiers when a tool fails (C6, 3/3) | sometimes presents the sheet's symptoms as "observed logs" (not detected by the checks) |
+  | Serious defect observed | invents source identifiers when a tool fails (C6, 3/3) | sometimes presents the sheet's symptoms as "observed logs" (not detected by the checks); asserted an unobserved Redis status once when the status tool failed (C6, 1 of 10 runs in the v1.10.0 control, see D-30) |
   | Triage (12 questions incl. 6 held out) | 12/12 | 12/12 |
   | p50 latency per request (warm) | **6.0 s** | 9.0 s |
   | Generation throughput, 1 request at a time | **107 tokens/s** | 71 tokens/s |
@@ -760,6 +806,20 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
   | VRAM (Q4_K_M) | ~2.5 GB | ~4.7 GB |
   | Estimated cost if API (gpt-4o-mini / Haiku 4.5), /1000 req. | ~$0.62 / ~$4.5 | ~$0.62 / ~$4.6 |
 
+  The table above is the J4/J5 measurement (v1.7.0 code). **Update (v1.11.2, 2026-10-04)**: full
+  benchmark 6 cases × 3 with the pinned LM Studio settings:
+
+  | Criterion | SLM 4B | 7B |
+  |---|---|---|
+  | Cases passed (6 × 3) | 16/18 | 16/18 raw, **18/18** re-scored with the fixed status check (D-30) |
+  | Checks passed | 105/108 | 106/108 raw, 108/108 re-scored |
+  | C6 (tool failure) | 1/3 (2× "says the check failed", 1× "exact citations") | 3/3 re-scored; control 10/10 |
+  | p50 / max latency per request (warm) | **4.4 s** / 7.23 s | 8.47 s / 15.8 s |
+  | LLM calls per request | 4.28 | 4.0 |
+  | Tokens in / out per request | 2,658 / 351 | 2,462 / 460 |
+
+  Raw reports: `docs/bench/bench-20261004-185627.md` (4B), `bench-20261004-190049.md` (7B) and
+  `bench-20261004-190503.md` (7B C6 control, 10 runs).
 - **Decision**: (b) 7B by default (`HS_MODEL_DEFAULT=large`). The SLM remains selectable
   (`--model slm`) and is the best candidate for triage if latency becomes the priority.
 - **Why**: for a support assistant, an **invented source** is more serious than an answer that
@@ -809,7 +869,9 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
 
   | Module | Role | Depends on |
   |---|---|---|
-  | `cli.py` | `smoke`, `search`, `ask`, `bench`, `throughput` commands, display | everything else (lazy imports) |
+  | `cli.py` | `smoke`, `search`, `ask`, `bench`, `throughput`, `web` commands, display | everything else (lazy imports) |
+  | `webapp.py` | web demo: Starlette app, Server-Sent Events, single-question queue (D-31) | `workflow`, `toolbox`, `starlette` |
+  | `static/` | the demo page (HTML, CSS, JS, no framework) | — |
   | `workflow.py` | LangGraph graph, state, trace export | `agents`, `toolbox`, `postprocess` |
   | `agents.py` | triage, prompts, tool policy, bounded loop | `llm`, `toolbox` |
   | `llm.py` | OpenAI-compatible client, measurements | `openai` |
@@ -824,20 +886,27 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
 - **Why**: the **MCP** boundary physically separates the agents (host process) from the tools
   and data (subprocess): the agents do not know how a tool is built. Heavy dependencies
   (torch, Chroma) are loaded only by the tool server and the `search` command. Tests and the
-  CLI stay fast. Code, prompts and comments are in English, the documentation in French.
-- **Trade-offs**: ~1,600 lines of code (+ ~400 of tests) for a "hello world", a good part of which is guardrails and
-  measurement. Prompts are Python constants, not separately versioned files.
+  CLI stay fast. Everything (code, prompts, comments and documentation) is in English (UR-006);
+  only the validation questions are French test data.
+- **Trade-offs**: about 1,950 lines of Python and 420 of HTML/CSS/JS in `src/` (+ about 850 lines
+  of tests) for a "hello world", a good part of which is guardrails and measurement. Prompts are Python constants, not separately versioned files.
 - **Skill demonstrated**: Software architecture, Python.
 
 ## D-28 — Testing strategy
 
 - **Date**: 2026-10-02 · **Milestone**: J5 (review)
 - **Choice**: three levels.
-  1. **Unit, offline, < 3 s** (`uv run pytest`, 40 tests): sheet chunking, SQL guardrails
+  1. **Unit, offline** (`uv run pytest`, 108 tests in ~16 s at v1.11.2): sheet chunking, SQL guardrails
      (rejection of `DELETE` / `DROP` / `PRAGMA` / `ATTACH` / `load_extension`, row limit),
      MCP contracts via a **real MCP client connected in memory**, agent loop and full graph
      with a **scripted LLM** (budgets, deduplication, last call without tools, retry when a
-     required tool is ignored, tool error), post-processing, case checks.
+     required tool is ignored, tool error), post-processing, case checks; the web demo
+     (`tests/test_web.py`); the user requirements, including the language and diagram checks
+     of the documentation (`tests/test_user_requirements.py`); and `tests/test_guardrails.py`,
+     added after the review for the guardrails that had no test: per-step call cap, invalid
+     JSON arguments, tool not offered, `max_tokens` caps, tool timeout, SQLite authorizer, SQL
+     timeout (plus the v1.11.2 fixes: required tool never called, `;` in a literal, daily
+     re-seed, web path).
   2. **Integration with models** (`pytest -m models`): end-to-end RAG on GPU.
   3. **System with the real LLMs** (`hello-support bench`): 6 cases × N × models, automatic
      checks and archived answers.
@@ -858,8 +927,8 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
   - **Agents** = Documentalist and Technician. `run_agent` loops the LLM over the tools:
     the model chooses the tool and its arguments, the code executes it and returns the result.
     The loop makes ≤ 3 LLM calls (`MAX_LLM_CALLS`), the last one without tools, ≤ 3 tool calls
-    per step. A required tool is retried once if the model ignored it, and the loop stops as soon
-    as there is a text answer.
+    per step. A required tool is retried once if the model ignored it (a second text answer is
+    accepted but flagged, D-17), and the loop stops as soon as there is a text answer.
   - **Triage = router**: 1 LLM call with a JSON Schema `response_format` (`intent`, `service`),
     with no tool and no loop. The code derives the graph branch and the tool policy from it (D-17).
   - **Deterministic code**: loop controls (D-18), post-processing (D-22), reclassification
@@ -913,9 +982,32 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
 
   Full benchmark (6 cases × 3, each model): 4B 15/18 → 15/18, 7B 18/18 → 17/18. The 7B gap
   comes from C6 (`malfunction` path, **unchanged**). Over 10 additional runs, old and new
-  code both score 8/10: this is pre-existing instability (the wording "statut indéterminé"
-  ("undetermined status") is not recognized by a keyword check), not a regression. Same for
-  C3 with the 4B (old 5/8, new 7/8).
+  code both score 8/10, so the gap is not a regression of the routing change. Same for C3 with
+  the 4B (old 5/8, new 7/8).
+
+  **Correction (v1.11.2, review F-3)**: this account first attributed both 7B failures on C6 to
+  wording only. In the 10-run control on the new code (`docs/bench/bench-20261004-124927.md`)
+  the two failures are different:
+  - run 1, check "says the check failed": the wording "statut indéterminé… limitation de
+    l'outil" ("undetermined status… tool limitation") was not recognized by the keyword check;
+  - run 3, check "no status asserted": the 7B wrote "il semble que le serveur Redis soit en
+    cours d'exécution mais refuse les connexions" ("the Redis server seems to be running but
+    refuses connections"), an **invented observation** after a tool failure.
+
+  The old check flagged run 3 for the wrong sentence (a suggested check, "vérifiez que le
+  service Redis est en cours d'exécution") and would have missed the real, hedged claim
+  ("soit"). v1.11.2 fixes `asserts_status` in `cases.py`: suggested checks ("vérifiez que",
+  "assurez-vous que", "make sure", "check that", "ensure", "verify that") are no longer counted as
+  claims, and hedged claims ("soit", "semble être", "seems to be", "appears to be") are
+  (`tests/test_cases_postprocess.py::test_status_assertion_ignores_suggested_checks_and_catches_hedged_claims`).
+  Re-scoring every archived run with the fixed check changes only 2 rows: the two 7B C6
+  failures of the full v1.11.2 run (`bench-20261004-190049.md`), both "assurez-vous que le
+  service est en cours d'exécution", i.e. false positives; the 7B moves from 16/18 raw to 18/18
+  re-scored. A new 10-run 7B C6 control on v1.11.2 with the fixed check
+  (`bench-20261004-190503.md`) scores 10/10. In short: the 7B did invent a status once in the
+  v1.10.0 control (1/10), and did not in the 13 v1.11.2 runs. The 4B scores 1/3 on C6 in the
+  full v1.11.2 run (`bench-20261004-185627.md`: 2× "says the check failed", 1× "exact
+  citations").
 - **Trade-offs / findings**:
   - For `out_of_scope` with the 7B, **no latency gain**. The old documentalist already did not
     search (1 short LLM call), and the technician's answer (~100 tokens) dominates. The gain is
@@ -924,7 +1016,7 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
     receives the question, the category and an explicit instruction.
   - A triage that wrongly classifies a real outage as `vague` now also loses the search. The
     risk already existed (no status tool), and triage scores 12/12 on the control set
-    (D-24).
+    (D-24, measured ad hoc, raw output not archived).
 - **Rollback**: tag `pre-1.10.0` (v1.9.3); the change is contained in `after_triage`.
 - **Skill demonstrated**: orchestration, latency/cost, evaluate → engineering plan.
 
@@ -955,11 +1047,28 @@ scope: distributed systems, real scale, leadership (see [`SPEC.md`](SPEC.md) §7
     tested on its own: restarting the tool server on each switch would have cost ~30 s;
   - **clear errors** (LM Studio unreachable, model missing), a **maximum time** per question,
     validated parameters (length, model and scenario on an allowlist).
+- **HTTP API** (`webapp.create_app`):
+
+  | Route | Returns |
+  |---|---|
+  | `GET /` | the demo page (`static/index.html`) |
+  | `GET /api/health` | JSON: version, tool server state (`starting`, `loading`, `ready`, `error`), `busy`, `waiting`, LM Studio status (reachable, available and loaded models), model ids |
+  | `GET /api/config` | JSON: models, scenarios, the six cases, `docs_url` |
+  | `GET /api/ask?question=&model=slm\|large&scenario=stopped\|running\|tool_error` | a Server-Sent Events stream: `accepted`, `queued` (position), `status`, `trace` (each graph event), `result`, `error`, `done` |
+
+  The question must be 1–500 characters (otherwise HTTP 400, as for an unknown model or
+  scenario). A keep-alive comment is sent every 15 s. Each web question is saved under `runs/`
+  like a CLI run. Environment variables: `HS_WEB_TIMEOUT_S` (per-question timeout, 240 s),
+  `HS_WEB_QUEUE_TIMEOUT_S` (maximum wait in the queue, 300 s), `HS_DOCS_URL` (documentation links
+  on the page). Since v1.11.2, the path in the result lists "post-processing" only when the
+  technician produced an answer.
 - **Trade-offs**:
   - no authentication: the demo is intended for a local network, and `127.0.0.1` is the default
     address;
   - the scenario switch goes through a shared file; this is correct thanks to the lock, but it
-    would be global state to replace with a request parameter in a multi-user version.
+    would be global state to replace with a request parameter in a multi-user version;
+  - a running demo keeps its warm MCP tool server, and therefore the retrieval models (~1 GB,
+    D-10), on the GPU: stop it before running a benchmark on an 8 GB card.
 - **Verification**: 7 tests (`tests/test_web.py`, scripted LLM and in-memory MCP server: SSE
   stream, SQL rows, path, scenario switch, LM Studio absent, missing model, queue). In Edge,
   **all 6 cases × 2 models pass** (category, path, trace, answer, sources), on desktop and

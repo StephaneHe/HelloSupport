@@ -69,7 +69,8 @@ The loading cost is paid **once per session** of the MCP server (J2), not for ev
 ## J3 — Agents + orchestration: first real runs (2026-10-02)
 
 Default model: `qwen2.5-7b-instruct` (Q4_K_M), temperature 0. One run per case:
-**this is not yet the J4 evaluation**. Full traces are in `runs/` (gitignored).
+**this is not yet the J4 evaluation**. Full traces are in `runs/` (gitignored). The figures of this
+section (0/3, 4/6) come from ad hoc runs: their raw output is not archived in the repository.
 
 ### Does the model choose to observe? (before triage, see D-17)
 
@@ -128,7 +129,7 @@ Two checks were themselves **wrong** and were fixed:
 - parsing of citations separated by a space;
 - an "asserted status" detected in a conditional sentence "if the Redis server is stopped".
 
-### Final result (run no. 2)
+### Final result (run no. 2, code v1.7.0)
 
 | Indicator | `qwen/qwen3-4b-2507` | `qwen2.5-7b-instruct` |
 |---|---|---|
@@ -170,7 +171,9 @@ Cold start of a session (RAG + model loading by LM Studio): 20–26 s.
 
 ## J5 — Serving throughput (2026-10-02)
 
-Command: `hello-support throughput --models slm large --concurrency 1 4 --requests 8`.
+Command: `hello-support throughput --models slm large --concurrency 1 4 --requests 8`. The command
+only prints its table: the raw output is not archived in `docs/bench/`, and the measurement was made
+with LM Studio's default of 4 parallel slots (see *Stabilized LM Studio settings* below).
 The same generation request (~160 tokens max, temperature 0.7) is sent 8 times, one at a
 time and then 4 in parallel, to the LM Studio server (RTX 2070 Super 8 GB).
 
@@ -204,6 +207,9 @@ Decision: D-30.
 ### Targeted gain (5 runs per case and per model)
 
 Two questions: `out_of_scope` = C5 "Mon Kafka est lent, que faire ?" ("My Kafka is slow, what should I do?"), `vague` = "ça marche pas, que faire ?" ("it doesn't work, what should I do?").
+This targeted series was run with an ad hoc script: the `vague` question is not one of the six cases
+of `hello-support bench`, and the raw output is not archived, so the table cannot be replayed with the
+shipped command.
 
 | Model | Category | Pass rate | p50 latency | LLM calls | Tokens in (avg.) | Tokens out (avg.) |
 |---|---|---|---|---|---|---|
@@ -232,12 +238,16 @@ Reading:
 
 | Case (path) | Model | Failing check | Old code | New code |
 |---|---|---|---|---|
-| C6 (`malfunction`) | 7B | "says the check failed": answer "statut indéterminé… limitation de l'outil" ("status undetermined… tool limitation") | 8/10 (+ 5/5) | 8/10 (+ 4/5) |
+| C6 (`malfunction`) | 7B | old code: "says the check failed" (answer "statut indéterminé… limitation de l'outil", "status undetermined… tool limitation"); new code: one "says the check failed" and one "no status asserted" | 8/10 (+ 5/5) | 8/10 (+ 4/5) |
 | C3 (`documentation`) | 4B | exact citations / in French | 5/8 | 7/8 |
 
 No regression attributable to the change. These two cases show **wording instability**
 in the models despite temperature 0 (LM Studio parallel batches), combined with coarse
-keyword-based checks (D-21).
+keyword-based checks (D-21). One failure is more than wording: in run 3 of the new-code control
+([`124927`](bench/bench-20261004-124927.md)), the 7B wrote "il semble que le serveur Redis soit en cours
+d'exécution" ("the Redis server seems to be running") although the status tool had failed, i.e. an
+**invented observation**. The check of that time flagged the run for another sentence (a suggested check)
+and would have missed this one; it was fixed in v1.11.2 (see below).
 
 ⚠ **Machine conditions**: LM Studio now loads models with a default context of 25,600
 tokens and 4 parallel slots. The `-c` option of `lms load` is ignored, and the LM Studio
@@ -274,3 +284,34 @@ requests would be served one after the other.
 ### v1.11.0 non-regression (web demo)
 
 Quick benchmark after adding the web demo (`hello-support bench --models slm large --runs 1`, stabilized LM Studio settings): **6/6 for both models**, p50 latency 4.9 s (4B) and 7.3 s (7B). Report: [`145500`](bench/bench-20261004-145500.md).
+
+## v1.11.2 — full benchmark on the current code
+
+Doc-to-code review fixes (`docs/REVIEW_DOC_CODE.md`). Full 6 × 3 run per model on v1.11.2, stabilized
+LM Studio settings, one model at a time: `hello-support bench --models slm --runs 3`, then `--models large`.
+
+| Metric | Qwen3-4B ([`185627`](bench/bench-20261004-185627.md)) | Qwen2.5-7B ([`190049`](bench/bench-20261004-190049.md)) |
+|---|---|---|
+| Cases passed | 16/18 | 16/18 raw → **18/18 re-scored** |
+| Checks passed | 105/108 | 106/108 raw → **108/108 re-scored** |
+| C1 · C2 · C3 · C4 · C5 · C6 | 3·3·3·3·3·1 | 3·3·3·3·3·1 raw → 3·3·3·3·3·3 |
+| p50 / max latency | 4.4 s / 7.23 s | 8.47 s / 15.8 s |
+| LLM calls (avg.) | 4.28 | 4.0 |
+| Tokens in / out (avg.) | 2658 / 351 | 2462 / 460 |
+
+**The C6 check was wrong.** Both 7B failures were "no status asserted" on the sentence "Si cela échoue,
+assurez-vous que le service est en cours d'exécution" ("if that fails, make sure the service is running"):
+a suggested check, not a claim. The answers themselves say that the status could not be verified. The
+check `asserts_status` (`cases.py`) now ignores suggested checks ("vérifiez que", "assurez-vous que",
+"make sure", "check that"…) and catches hedged claims ("soit", "semble être", "seems to be", "appears to
+be"), which it used to miss. Re-scoring **every archived run** with the fixed check changes only these two
+rows; run 3 of [`124927`](bench/bench-20261004-124927.md) stays a failure, now for the right sentence.
+Raw reports are kept as generated; the re-scored figures are the ones above.
+
+Control with the fixed check, 7B, C6 × 10 ([`190503`](bench/bench-20261004-190503.md)): **10/10**, p50 ~12.9 s.
+
+4B failures (C6): twice "says the check failed" (the wording is not in the keyword list), once "exact
+citations" (an invented source id, 1 run in 3 versus 3 in 3 on v1.7.0).
+
+The README table now shows these v1.11.2 figures; the v1.7.0 table above is kept for history.
+

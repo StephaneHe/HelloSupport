@@ -46,14 +46,19 @@ def cites_only_known_sections(state: dict) -> bool:
     return all(c in KNOWN_SECTIONS for c in citations(state.get("answer", "")))
 
 
+STATUS_CLAIM = re.compile(r"(redis|service|serveur|postgresql|nginx) (est|is|soit|semble être|seems to be|"
+                          r"appears to be) (arrêté|en cours d'exécution|stopped|running|démarré)")
+# A status right after these words is a condition or a suggested check, not a claim.
+NOT_A_CLAIM = re.compile(r"\b(si|if|whether|vérifie[rz]? que|assurez-vous que|make sure|check that|ensure|"
+                         r"verify that)\b[^.]{0,30}$")
+
+
 def asserts_status(state: dict) -> bool:
-    """True if the answer states a service status as a fact (conditional 'si ... est arrêté' excluded)."""
+    """True if the answer states a service status as a fact, hedged or not ('il semble que Redis soit en
+    cours d'exécution'); conditions ('si ... est arrêté') and suggested checks ('vérifiez que le service
+    est en cours d'exécution') are not claims."""
     a = _answer(state)
-    for m in re.finditer(r"(redis|service|serveur|postgresql|nginx) (est|is) (arrêté|en cours d'exécution|stopped|"
-                         r"running|démarré)", a):
-        if not re.search(r"\b(si|if)\b[^.]{0,30}$", a[max(0, m.start() - 35):m.start()]):
-            return True
-    return False
+    return any(not NOT_A_CLAIM.search(a[max(0, m.start() - 40):m.start()]) for m in STATUS_CLAIM.finditer(a))
 
 
 def french(state: dict) -> bool:

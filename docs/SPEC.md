@@ -1,8 +1,8 @@
 # Spec — HelloSupport: "hello world" troubleshooting assistant with agents + RAG + MCP + data
 
-- **Status**: `implemented` (v1.8.0, 2026-10-02); **100% local**: no paid cloud API, no account
-- **Result**: §6 criteria met with the default model (7B: 18/18); SLM 15/18 — see [`BENCH.md`](BENCH.md) and the decisions in [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md)
-- **Date**: 2026-10-02 (amended: `DESIGN_DECISIONS.md` deliverable)
+- **Status**: `implemented` (v1.8.0, 2026-10-02); current version **1.11.2** (2026-10-04), web demo added in v1.11.0 (D-31); **100% local**: no paid cloud API, no account
+- **Result**: §6 criteria met with the default model. On v1.11.2 (2026-10-04): 7B 18/18 (re-scored with the fixed C6 check, 16/18 raw), SLM 16/18. First measurement on v1.7.0 (2026-10-02): 7B 18/18, SLM 15/18 — see [`BENCH.md`](BENCH.md) and the decisions in [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md)
+- **Date**: 2026-10-02 (amended: `DESIGN_DECISIONS.md` deliverable; amended 2026-10-04 in v1.11.2 to match the code: §3, §4, §5, §6, §7, §8)
 - **Author**: Stéphane Hercot (with Claude). Basis: an initial minimal project proposal, extended to cover all the targeted skills
 
 ---
@@ -36,25 +36,38 @@ pass, the measurements table (§5, J5) is filled with **measured** figures, and
 
 - CLI: `hello-support ask "<question>" [--scenario stopped|running] [--model <id>]`,
   `hello-support search "<texte>"`, `hello-support bench`, `hello-support --version`.
+  *Amended in v1.11.2*: the CLI also has `smoke`, `throughput` and `web` (browser demo with a
+  live trace, added in v1.11.0, D-31), plus the `hello-support-mcp` tool server entry point.
+  Four scenarios exist: `stopped`, `running`, `redis_down`, `tool_error`. The scenario is
+  taken from the file named by `HS_SCENARIO_FILE` (used by the web demo), then from
+  `--scenario` / `HS_SCENARIO` (`--scenario` sets `HS_SCENARIO` for the spawned tool server),
+  then the default `stopped`.
 - **3 Markdown sheets** (PostgreSQL connection, nginx unavailable, Redis unreachable),
   with titled sections (Symptoms / Checks / Service status / Limits).
 - **RAG**: split by section → embeddings (`paraphrase-multilingual-MiniLM-L12-v2`)
   → embedded **Chroma** (top-5) → **cross-encoder reranking**
-  (`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`) → top-2 with scores and citations.
+  (`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`) → top-3 with scores and citations
+  (amended in v1.11.2: the plan said top-2; `search_docs` returns 3 hits, while the CLI
+  `search` command keeps a default `--top-n` of 2).
   All on **GPU** (`cuda`) when available.
-- **MCP server** (Python `mcp` SDK, FastMCP, stdio transport) exposing:
-  - `search_docs(query)` → `[{doc_id, section, text, score, rerank_score}]`
-  - `get_service_status(service_name)` (postgres | nginx | redis) → `{service, status, simulated: true}` read from `scenarios.json`
+- **MCP server** (official Python `mcp` SDK v2, class `MCPServer`, stdio transport) exposing:
+  - `search_docs(query)` → `[{doc_id, section, text, score, vector_rank, rerank_score, relevant}]`
+  - `get_service_status(service_name)` (postgres | nginx | redis) → `{service, status, simulated: true, scenario}` read from `scenarios.json`
   - `query_incidents(sql)` → JSON rows. **Read-only SQLite** (`file:incidents.db?mode=ro`), a single
     `SELECT` statement, forced `LIMIT 50`, schema described in the tool's docstring.
 - **Two agents** (a single, reused "LLM → tool call → result" loop helper):
   - *Documentalist*: `search_docs` tool (max 2 calls). Produces the evidence + "what is missing".
   - *Technician*: `get_service_status` (max 1) and `query_incidents` (max 2) tools. Produces the answer:
     observation / possible explanation / suggested check / sources. Never claims to have fixed anything.
-- **LangGraph orchestration**: `StateGraph` `documentalist → technician → END`, typed state
-  (`question, evidence, observations, counters, errors, answer, trace`). Max 3 LLM calls per
-  agent, `recursion_limit` as a safety net, per-call timeout.
-- **MCP client** on the host side via `langchain-mcp-adapters` (or a direct `mcp` client).
+- **LangGraph orchestration**: `StateGraph` with three nodes, as drawn in §4 (amended in v1.11.2;
+  the plan was `documentalist → technician → END`): `START → triage`; for `malfunction` and
+  `documentation`, `triage → documentalist → technician → END`; for `history`, `out_of_scope` and
+  `vague`, `triage → technician → END`; `documentalist → END` when it fails (no LLM call succeeded).
+  Post-processing runs inside the technician node. Typed state (`question, model, scenario,
+  route, evidence, brief, observations, counters, status, errors, answer, trace`). Max 3 LLM
+  calls per agent, `recursion_limit` as a safety net, per-call timeout.
+- **MCP client** on the host side: a direct `mcp` client (`toolbox.py`); `langchain-mcp-adapters`
+  was not used (D-05, D-20).
 - **Local model serving**: **LM Studio** in server mode (OpenAI-compatible API, `http://localhost:1234/v1`),
   two models swappable via config: an **SLM** (~3–4B, e.g. Qwen2.5-3B-Instruct / Qwen3-4B) and a
   **7B** (e.g. Qwen2.5-7B-Instruct). **No cloud API**: the OpenAI-compatible interface would allow plugging one in, but this is not done.
@@ -73,7 +86,8 @@ pass, the measurements table (§5, J5) is filled with **measured** figures, and
 
 ### Out of scope (explicitly excluded)
 
-- Web API, UI, Docker, cloud, CI, authentication, multi-user.
+- ~~Web API, UI~~ (superseded in v1.11.0: a local web demo with an HTTP/SSE API was added, D-31),
+  Docker, cloud, CI, authentication, multi-user.
 - Real corrective actions on services (everything is simulated or read-only).
 - Multi-turn dialogue: a request for clarification **ends** the request.
 - Fine-tuning or model training.
@@ -88,16 +102,21 @@ pass, the measurements table (§5, J5) is filled with **measured** figures, and
 flowchart TB
     Q(["question"]) --> CLI
 
-    subgraph HOST["hello-support — host process (Python) · linear LangGraph graph, no loop between agents"]
+    subgraph HOST["hello-support — host process (Python) · LangGraph graph with 3 nodes, no loop between agents"]
         CLI["cli.py"] --> WF["workflow.py<br/>LangGraph StateGraph, typed state, limits"]
         WF --> TRI{{"<b>ROUTER · triage</b> (agents.py)<br/>1 LLM call, JSON output<br/>1 of 5 fixed categories"}}
+        subgraph TECNODE["LangGraph node: technician (agent + post-processing, same node)"]
+            TEC["<b>AGENT · technician</b> — tools depend on the category<br/>malfunction → get_service_status required (1 retry)<br/>history → query_incidents (SQL) required (1 retry)<br/>documentation · out_of_scope · vague → no tool"]
+            PP["<b>CODE · post-processing</b><br/>postprocess.py (no LLM), inside the technician node"]
+        end
         TRI -->|"malfunction · documentation"| DOC["<b>AGENT · documentalist</b><br/>search_docs"]
         TRI -->|"history = incident history<br/>out_of_scope · vague"| TEC
         DOC -->|"↻ LLM ↔ tools loop"| DOC
-        DOC --> TEC["<b>AGENT · technician</b> — tools depend on the category<br/>malfunction → get_service_status required<br/>history → query_incidents (SQL) required<br/>documentation · out_of_scope · vague → no tool"]
+        DOC --> TEC
         TEC -->|"↻ LLM ↔ tools loop"| TEC
-        TEC --> PP["<b>CODE · post-processing</b><br/>postprocess.py (no LLM)"]
+        TEC --> PP
         PP --> FIN(["END: answer + trace.json"])
+        DOC -.->|"failure: no LLM call succeeded"| FIN
         AG["<b>CODE · agents.py</b><br/>run_agent: bounded loop<br/>≤ 3 LLM calls · ≤ 3 tools/step · retry"]
         LLM["llm.py<br/>OpenAI-compatible client"]
         MC["toolbox.py<br/>MCP client (stdio)"]
@@ -130,20 +149,20 @@ flowchart TB
 
 **Legend**: 🟦 **agent** (LLM that chooses its tools and loops LLM ↔ tools, ≤ 3 LLM calls) ·
 🟧 **router** (triage: 1 LLM call with JSON output, no tool and no loop) · ⬜ deterministic **code** ·
-🟩 **MCP tool** · 🟪 **model** served by LM Studio. The LangGraph graph is linear: no loop
-between agents. The details of an agent's loop and the "agent / router / code" choice are explained in
+🟩 **MCP tool** · 🟪 **model** served by LM Studio. The LangGraph graph has three nodes (triage,
+documentalist, technician) and two conditional edges, with no loop between agents; post-processing
+is plain code run at the end of the technician node, and the dashed edge is the documentalist
+failure exit (fixed fallback answer, status `failed`). "Required" means the code forces the tool
+call and retries **once** if the model answers without it; if the model answers in text a second
+time, that answer is accepted without observation but traced (a `limit` event and an error "a
+tool call was required but never made; answer accepted without observation"). The details of an agent's loop and the "agent / router / code" choice are explained in
 [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md) (summary and D-29).
 
-Target layout:
-
-```
-hello_support/  __init__.py (__version__), cli.py, workflow.py, agents.py, llm.py,
-                mcp_server.py, retrieval.py, sql_guard.py, metrics.py
-data/           kb/*.md (3 sheets), scenarios.json, seed_incidents.py → incidents.db
-tests/          test_tools.py, test_sql_guard.py, test_workflow_fake_llm.py
-docs/           SPEC.md, DESIGN_DECISIONS.md (+ .pdf), BENCH.md
-runs/           JSON traces (gitignored)
-```
+Layout (amended in v1.11.2: the pre-implementation target layout was replaced): the code lives in
+`src/hello_support/`; see the README section *Repository layout* for the current list of modules.
+Differences from the original plan: there is no `metrics.py` (run metrics are computed by
+`summarize` in `workflow.py` and by `benchmark.py`), and there is no `data/seed_incidents.py`
+(the incidents database is seeded by `data_store.py`).
 
 ---
 
@@ -161,6 +180,10 @@ for the choices made during the milestone. Durations are indicative for someone 
 | **J4** | Validation | 6 cases (§6) in a real demo + `test_workflow_fake_llm.py` | `pytest` green; the 6 cases are run with the 7B, the output is captured in `docs/BENCH.md` (including failures, recorded as is) | 1 d |
 | **J5** | Measurement + evaluation + docs | `hello-support bench`, `docs/BENCH.md`, consolidated `docs/DESIGN_DECISIONS.md` + `.pdf`, README | SLM vs 7B table filled (p50/max latency, tokens, correct tool calls / 6, estimated cloud cost, remarks); `DESIGN_DECISIONS` consolidated (summary, one entry per component, "default model" decision based on measurements) and exported to PDF; README: how to run, successful example, failure cases, limits; `minor` release + CHANGELOG | 0.5–1 d |
 
+*Amended in v1.11.2*: J2 was implemented with the seeding code in `data_store.py` (14 incidents,
+not a `seed_incidents.py` script). The dates are relative to the seed day, and since v1.11.2 the
+database is re-seeded automatically when the seed day (stored in `PRAGMA user_version`) is not today.
+
 **Total: ~4 to 5.5 days.** If time runs short, the sacrifice order is: 2-model benchmark
 (keep 1 model) → Chroma (NumPy cosine fallback). **Do not sacrifice** SQL, reranking or `DESIGN_DECISIONS.md`
 (required by the user): these are the differentiating elements.
@@ -177,10 +200,17 @@ for the choices made during the milestone. Durations are indicative for someone 
       **without** a call to `get_service_status`.
 - [x] **C4 Data question** ("Combien d'incidents postgres ces 30 derniers jours, et le dernier est-il résolu ?" — "How many postgres incidents in the last 30 days, and is the latest one resolved?"):
       `query_incidents` is called with a valid `SELECT`; the answer reports the returned figures.
-- [x] **C5 Unknown or vague** ("Mon Kafka est lent" — "My Kafka is slow" / "ça marche pas" — "it doesn't work"): the assistant says that no sheet
+- [x] **C5 Out of scope** ("Mon Kafka est lent, que faire ?" — "My Kafka is slow, what should I do?"): the assistant says that no sheet
       covers the request or asks for clarification; no fabricated sheet or observation.
-- [x] **C6 Error and limit**: an unknown service, a rejected SQL query or a reached call limit produce a controlled
-      output with a readable trace, without an infinite loop.
+- [x] **C6 Tool failure** (`--scenario tool_error`, "Mon serveur Redis ne répond plus, que se passe-t-il ?" — "My Redis server no longer responds, what is going on?"):
+      the status tool fails; the error is traced, the run ends in a controlled way (status `done`), the answer says
+      the check failed and asserts no status.
+
+*Amended in v1.11.2*: C5 and C6 above are the executable cases of `src/hello_support/cases.py`. The plan
+also listed the vague question "ça marche pas" under C5: it is handled by the `vague` route and tested in
+`tests/test_workflow_fake_llm.py::test_out_of_scope_and_vague_skip_the_documentalist`, but it is not a
+benchmark case. The other C6 situations of the plan (unknown service, rejected SQL query, reached call limit)
+are covered by unit tests instead: `tests/test_tools.py`, `tests/test_agents.py` and `tests/test_guardrails.py`.
 - [x] `pytest` green; `hello-support --version` OK; no secret in git; `BENCH.md` contains measured figures.
 - [x] `DESIGN_DECISIONS.md` + `.pdf`: each component listed in §3 has its entry (need, options, choice, why, trade-offs, skill demonstrated).
 
@@ -197,7 +227,7 @@ for the choices made during the milestone. Durations are indicative for someone 
 | AI agents | "I built two tool-using agents, a retriever and a troubleshooter, that decide which tool to call and must separate observations from hypotheses." |
 | Agentic / multi-step workflows | "The request flows through retrieve → diagnose → answer, and each step can call tools several times within hard limits." |
 | Orchestration & state management | "I used a LangGraph StateGraph with a typed shared state (evidence, observations, counters, trace), so every transition is explicit and replayable from a JSON trace." |
-| Tool calling | "The model only *proposes* tool calls; the host validates the arguments with Pydantic before executing, and feeds errors back to the model once." |
+| Tool calling | "The model only *proposes* tool calls; the host checks that the arguments are valid JSON, the tool server validates types and allowed values (Pydantic in the MCP SDK) before executing, and errors are fed back to the model." *(Amended in v1.11.2: the original sentence said the host validated the arguments with Pydantic.)* |
 | MCP | "The three tools live in a separate MCP server over stdio, so the agent code doesn't know whether a tool is a file, a JSON or a database. I tested them in MCP Inspector." |
 | LLMs & SLMs | "I ran the same workflow on a ~3-4B SLM and a 7B model and measured where the small one failed, mostly on tool-argument formatting and SQL." |
 | Model serving | "Models were served locally through LM Studio's OpenAI-compatible endpoint with GPU offload, so switching model or moving to a cloud endpoint is a config change." |
@@ -225,9 +255,9 @@ research.
 | Python 3.12 + `uv` | runtime, venv, dependencies | ✅ installed |
 | PyTorch CUDA + 8 GB NVIDIA GPU | embeddings / reranker on GPU | ✅ (torch 2.6 cu124) |
 | LM Studio (`lms`) | local OpenAI-compatible model server | ✅ installed; models downloaded with `lms get` (see `DESIGN_DECISIONS.md`) |
-| `langgraph`, `langchain-openai`, `langchain-mcp-adapters`, `mcp` | orchestration, LLM client, MCP | pip (uv) |
+| `langgraph`, ~~`langchain-openai`, `langchain-mcp-adapters`~~, `mcp` | orchestration, LLM client, MCP | pip (uv); amended in v1.11.2: no LangChain package is used, the `openai` client and a direct `mcp` client replace them (D-05, D-20) |
 | `sentence-transformers`, `chromadb` | embeddings, reranker, embedded vector DB | pip (uv), HF Hub models without an account |
-| `sqlite3` (stdlib), `pydantic`, `pytest` | incidents database, validation, tests | stdlib / pip |
+| `sqlite3` (stdlib), `pydantic`, `pytest` | incidents database, validation, tests | stdlib / pip; `pydantic` is only a transitive dependency (MCP SDK) |
 | Node.js (`npx`) | MCP Inspector to test the server | ✅ installed |
 
 No paid account required. Default cost: **€0**. Docker and WSL are not needed.

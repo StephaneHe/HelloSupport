@@ -184,6 +184,11 @@ async def run_agent(
                 messages.append({"role": "user", "content": "Do not answer yet. Call the tool now."})
                 retried = True
                 continue
+            if require_tool_first and not run.tool_results:
+                # Second text answer after the retry: accepted, but traced as unobserved (D-17).
+                run.errors.append(f"{name}: a tool call was required but never made; answer accepted "
+                                  "without observation")
+                emit({"agent": name, "type": "limit", "detail": run.errors[-1]})
             run.answer = (res.content or "").strip()
             return run
 

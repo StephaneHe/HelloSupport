@@ -49,7 +49,6 @@ path = "src/hello_support/__init__.py"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-    "live: needs a running LM Studio server",
     "models: loads the embedding/reranking models (slow, downloads on first run)",
 ]
-addopts = "-m 'not live and not models'"
+addopts = "-m 'not models'"

@@ -8,6 +8,27 @@ Every release bumps the version **and** adds an entry here.
 
 ## [Unreleased]
 
+## [1.11.2] - 2026-10-04
+
+Fixes from the independent documentation-to-code review (`docs/REVIEW_DOC_CODE.md`, 31 findings, each now marked resolved or accepted).
+
+### Fixed
+- **Incidents database dates no longer drift** (review F-1): the seed day is stored in `PRAGMA user_version` and the database is re-seeded when the day changes. Before, dates stayed relative to the first run and case C4 ("3 incidents in the last 30 days") would have failed for a correct answer about 12 days after the seed. SQLite connections used for seeding are now closed explicitly (on Windows an open handle blocked the re-seed).
+- **C6 check `no status asserted`** (review F-3): a suggested check ("assurez-vous que le service est en cours d'exécution", "make sure the service is running") is no longer counted as a status claim, and hedged claims ("il semble que Redis soit en cours d'exécution", "seems to be running") are now caught. Re-scoring all archived runs changes two rows only (7B, v1.11.2 run: 16/18 → 18/18).
+- Web demo (review U-6): the result path and the trace list `post-processing` only when the technician produced an answer.
+- PDF export: the HTML is tagged `lang="en"`.
+
+### Changed
+- **Required tool never called is now traced** (review I-1): when the model answers in text again after the retry, the answer is still accepted (behaviour unchanged) but the run gets a `limit` event and an error "a tool call was required but never made; answer accepted without observation".
+- Documentation aligned with the code: `docs/SPEC.md` (§3, §4, §6, §7, §8 amended), `docs/DESIGN_DECISIONS.md` (D-09, D-12, D-13, D-14, D-17, D-19, D-24, D-25, D-27, D-28, D-30, D-31, diagrams), README (results table re-measured on v1.11.2, CLI timings, usage defaults and exit codes, environment variables, HTTP API, `HS_DOCS_URL` layout, guardrail tests, layout), `docs/BENCH.md` (corrected C6 account, non-archived measurements flagged, v1.11.2 section), `.env.example` (all variables).
+- Benchmark reports in `docs/bench/`: labels aligned with what the generator prints (review I-9); figures and answers untouched.
+- pytest: unused `live` marker removed.
+
+### Added
+- `tests/test_guardrails.py`: the guardrails that had no test (per-step call cap, invalid JSON arguments, tool not offered, `max_tokens` caps, tool timeout, SQLite authorizer, SQL timeout, `;` in a string literal), plus the daily re-seed, the required-tool fall-through and the web path.
+- Full benchmark on v1.11.2 (6 × 3, both models) and a 7B C6 × 10 control: `docs/bench/bench-20261004-185627.md`, `-190049.md`, `-190503.md`.
+- UR-007 in `docs/USER_REQUIREMENTS.md`.
+
 ## [1.11.1] - 2026-10-04
 
 ### Changed

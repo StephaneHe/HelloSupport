@@ -3,6 +3,7 @@
 import json
 import os
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -68,12 +69,20 @@ def service_status(service_name: str) -> dict:
     return {"service": service_name, "status": status, "simulated": True, "scenario": scenario}
 
 
+def _seed_day(now: datetime) -> int:
+    return int(now.strftime("%Y%m%d"))
+
+
 def seed_incidents(db_path: Path = INCIDENTS_DB, now: datetime | None = None) -> Path:
-    """(Re)create the incidents database with dates relative to `now`, so "last 30 days" stays meaningful."""
+    """(Re)create the incidents database with dates relative to `now`, so "last 30 days" stays meaningful.
+
+    The seed day is stored in `PRAGMA user_version` (invisible to the model's queries).
+    """
     now = (now or datetime.now()).replace(minute=0, second=0, microsecond=0)
     db_path.unlink(missing_ok=True)
-    with sqlite3.connect(db_path) as conn:
+    with closing(sqlite3.connect(db_path)) as conn, conn:
         conn.executescript(SCHEMA)
+        conn.execute(f"PRAGMA user_version = {_seed_day(now)}")
         for i, (days, hour, service, severity, summary, ttr) in enumerate(SEED_INCIDENTS, start=1):
             started = (now - timedelta(days=days)).replace(hour=hour)
             resolved_at = (started + timedelta(hours=ttr)).isoformat() if ttr is not None else None
@@ -84,5 +93,28 @@ def seed_incidents(db_path: Path = INCIDENTS_DB, now: datetime | None = None) ->
     return db_path
 
 
-def ensure_incidents_db(db_path: Path = INCIDENTS_DB) -> Path:
-    return db_path if db_path.exists() else seed_incidents(db_path)
+def seeded_on(db_path: Path) -> int:
+    """Seed day of the database as YYYYMMDD (0 if unknown, e.g. a file created before v1.11.2)."""
+    conn = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)
+    try:
+        return conn.execute("PRAGMA user_version").fetchone()[0]
+    finally:
+        conn.close()  # `with` only commits: an open handle would block the reseed on Windows
+
+
+def ensure_incidents_db(db_path: Path = INCIDENTS_DB, now: datetime | None = None) -> Path:
+    """Return the database, reseeding it when it is missing or was seeded on another day.
+
+    Without this, the dates would stay relative to the first run and "the last 30 days" would
+    lose incidents as days pass (the C4 answer drops from 3 to 2 about 12 days after the seed).
+    """
+    now = now or datetime.now()
+    try:
+        if db_path.exists() and seeded_on(db_path) == _seed_day(now):
+            return db_path
+        return seed_incidents(db_path, now)
+    except (OSError, sqlite3.Error):
+        # Another process holds the file open (Windows): keep the existing data for this query.
+        if db_path.exists():
+            return db_path
+        raise

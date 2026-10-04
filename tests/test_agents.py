@@ -22,7 +22,7 @@ class ScriptedLLM:
     def chat(self, model, messages, tools=None, temperature=0.0, max_tokens=1024, tool_choice=None,
              response_format=None):
         self.calls.append({"tools": [t["function"]["name"] for t in tools or []], "tool_choice": tool_choice,
-                           "messages": messages})
+                           "messages": messages, "max_tokens": max_tokens})
         return self.results.pop(0)
 
 

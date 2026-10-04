@@ -94,7 +94,7 @@ def render(md_path: Path, browser: str) -> Path:
     text = mermaid_to_svg(md_path.read_text(encoding="utf-8"), tmp, browser)
     body = markdown.markdown(github_lists(text), extensions=["tables", "fenced_code", "md_in_html"])
     html = tmp / (md_path.stem + ".html")
-    html.write_text(f'<!doctype html><html lang="fr"><meta charset="utf-8"><title>{md_path.stem}</title>'
+    html.write_text(f'<!doctype html><html lang="en"><meta charset="utf-8"><title>{md_path.stem}</title>'
                     f"<style>{CSS}</style><body>{body}</body></html>", encoding="utf-8")
     pdf = md_path.resolve().with_suffix(".pdf")
     pdf.unlink(missing_ok=True)
