@@ -2,11 +2,12 @@
 
 **A local-only, multi-agent troubleshooting assistant: LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, and a measured 4B-vs-7B model comparison. Runs on a single 8 GB GPU.**
 
-[![Version](https://img.shields.io/badge/version-1.11.2-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.12.0-blue)](CHANGELOG.md)
+[![Docs](https://github.com/StephaneHe/HelloSupport/actions/workflows/docs.yml/badge.svg)](https://stephanehe.github.io/HelloSupport/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Local only](https://img.shields.io/badge/runs-100%25%20local-orange)](#requirements)
-[![Tests](https://img.shields.io/badge/tests-108%20passing-brightgreen)](#tests)
+[![Tests](https://img.shields.io/badge/tests-117%20passing-brightgreen)](#tests)
 
 HelloSupport is a deliberately small "hello world" project. It exercises the building blocks
 of modern LLM applications **end to end, for real, and with measurements**. Ask it a support
@@ -19,14 +20,34 @@ three steps cooperate:
 
 Everything runs locally: models served by LM Studio, embeddings on the GPU, no cloud API, no account, no cost.
 
+**Documentation:** [stephanehe.github.io/HelloSupport](https://stephanehe.github.io/HelloSupport/) — specification,
+31 design decisions, benchmark method and raw reports, annotated demo. One version per release.
+
 ---
 
 ## Table of contents
 
-- [Architecture](#architecture) · [Features](#features) · [Measured results](#measured-results)
+- [Quick start](#quick-start) · [Architecture](#architecture) · [Features](#features) · [Measured results](#measured-results)
 - [Requirements](#requirements) · [Installation](#installation) · [Usage](#usage) · [Demo](#demo) · [Web demo](#web-demo) · [Tests](#tests)
-- [Repository layout](#repository-layout) · [Design decisions](#design-decisions) · [Known limitations](#known-limitations) · [Roadmap](#roadmap)
-- [License](#license) · [Author](#author)
+- [Documentation](#documentation) · [Repository layout](#repository-layout) · [Design decisions](#design-decisions) · [Known limitations](#known-limitations) · [Roadmap](#roadmap)
+- [Contributing](#contributing) · [Security](#security) · [License](#license) · [Author](#author)
+
+## Quick start
+
+With an NVIDIA GPU, [LM Studio](https://lmstudio.ai/) (and its `lms` CLI) and [uv](https://docs.astral.sh/uv/) installed:
+
+```bash
+git clone https://github.com/StephaneHe/HelloSupport.git && cd HelloSupport
+uv sync                                                    # Python 3.12 environment, PyTorch CUDA included
+lms get "https://huggingface.co/lmstudio-community/Qwen2.5-7B-Instruct-GGUF@Q4_K_M" -y
+lms server start
+uv run hello-support smoke large                           # chat + tool calling on the default model
+uv run hello-support ask "My app can no longer connect to PostgreSQL. What should I check?" --scenario stopped
+uv run hello-support web                                   # browser demo on http://127.0.0.1:5179
+```
+
+The first question takes ~30 s while the retrieval models download and load. Details and the
+8 GB GPU settings are in [Installation](#installation).
 
 ## Architecture
 
@@ -117,6 +138,8 @@ flowchart TB
 - **Required tool**: for `malfunction` and `history`, a tool call is required. If the model answers without calling it, the code rejects that answer and retries once. If the model answers in text again, that second answer is accepted, but it is traced as unobserved (a `limit` event and an error in the run).
 - **Exit**: the loop ends as soon as the model answers in text without requesting a tool.
 
+**Design principles**
+
 - **Code decides the structure, the model decides the content.** The graph, the branch taken
   and the tools offered or *required* for each intent are enforced by code; the model writes
   the tool arguments (search queries, SQL) and the answer.
@@ -175,7 +198,7 @@ was not archived. The previous table (v1.7.0: 4B 15/18, 7B 18/18, p50 6.0 s and 
 
 - **GPU**: NVIDIA, 8 GB VRAM is enough (the 7B in Q4_K_M takes ~4.7 GB). CPU works for the retrieval models, slowly.
 - **[LM Studio](https://lmstudio.ai/)** with its `lms` CLI, to download and serve the LLMs.
-- **Python 3.12** and **[uv](https://docs.astral.sh/uv/)**.
+- **[uv](https://docs.astral.sh/uv/)**; it installs Python 3.12 if needed. Tested on Windows 11; the code is cross-platform.
 - Optional: **Node.js** to inspect the MCP server with MCP Inspector, and [mermaid-cli](https://github.com/mermaid-js/mermaid-cli) (`npm i -g @mermaid-js/mermaid-cli`) to rebuild the PDFs with their diagrams.
 - ~10 GB of disk (two LLMs, PyTorch CUDA, retrieval models). No account, no API key.
 
@@ -184,7 +207,8 @@ was not archived. The previous table (v1.7.0: 4B 15/18, 7B 18/18, p50 6.0 s and 
 ```bash
 git clone https://github.com/StephaneHe/HelloSupport.git
 cd HelloSupport
-uv sync                                    # creates .venv; PyTorch CUDA comes from the PyTorch index (cu124)
+uv sync                                    # creates .venv (runtime, test and docs dependencies);
+                                           # PyTorch CUDA comes from the PyTorch index (cu124)
 ```
 
 Download the two models and start the local server:
@@ -223,6 +247,8 @@ Configuration is optional (environment variables or a `.env` file, see [`.env.ex
 
 ## Usage
 
+Run the commands with `uv run` (e.g. `uv run hello-support ask "..."`) or after activating `.venv`.
+
 | Command | Purpose |
 |---|---|
 | `hello-support ask "<question>" [--scenario S] [--model slm\|large] [--quiet]` | full pipeline with a live trace; JSON trace saved to `runs/`; exit code 0 if an answer was produced, 1 if the run failed (e.g. LM Studio down) |
@@ -257,7 +283,7 @@ uv run hello-support ask "Mon Kafka est lent, que faire ?"
 uv run hello-support ask "Mon serveur Redis ne répond plus, que se passe-t-il ?" --scenario tool_error
 ```
 
-| Case | Expected behaviour |
+| Case | Expected behavior |
 |---|---|
 | C1 PostgreSQL stopped | calls `get_service_status`, reports `stopped` as **simulated**, cites the right section |
 | C2 PostgreSQL running | same question, different conclusion (network, config, credentials); no invented failure |
@@ -296,10 +322,10 @@ uv run hello-support web --host 0.0.0.0       # reachable from your local networ
   - a clear message when LM Studio is down or a model is missing;
   - a per-question timeout;
   - one warm MCP tool server shared by all questions, so the retrieval models load once (~30 s, first question only).
-- Optional: set `HS_DOCS_URL` to link the page to a documentation site (sources and architecture). The page expects an
-  MkDocs-style layout: `<HS_DOCS_URL>/#architecture` for the README and `<HS_DOCS_URL>/kb/<sheet>/#<section>` for the
-  knowledge-base sheets (e.g. `/kb/postgres_connection/#service-status`). This repository does not build such a site;
-  without the variable, sources are shown as plain text.
+- Optional: set `HS_DOCS_URL` to turn the cited sources into links to the documentation site, e.g.
+  `HS_DOCS_URL=https://stephanehe.github.io/HelloSupport/latest`. The page links to `<HS_DOCS_URL>/#architecture` and
+  `<HS_DOCS_URL>/kb/<sheet>/#<section>`, the layout of the site built from this repository (see [Documentation](#documentation)).
+  Without the variable, sources are shown as plain text.
 - HTTP API (used by the page): `GET /api/health`, `GET /api/config`, and `GET /api/ask?question=…&model=slm|large&scenario=…`,
   which streams Server-Sent Events (`accepted`, `queued`, `status`, `trace`, `result`, `error`, `done`). Questions are
   limited to 500 characters, and each one is saved under `runs/` like a CLI run (details in D-31).
@@ -311,19 +337,43 @@ Nothing in it re-implements the pipeline.
 ## Tests
 
 ```bash
-uv run pytest              # 108 offline tests, ~16 s: SQL guards, MCP contracts (real MCP client, in-memory server),
+uv run pytest              # 117 offline tests, ~16 s: SQL guards, MCP contracts (real MCP client, in-memory server),
                            # agent loop and whole graph with a scripted LLM, guardrails, post-processing,
                            # validation checks, web demo, user requirements (docs/USER_REQUIREMENTS.md)
 uv run pytest -m models    # retrieval end to end on the GPU (downloads the HF models)
 uv run hello-support bench --runs 3   # system-level evaluation with the real models (needs LM Studio, ~4 min per model)
+uv run mkdocs build --strict          # documentation site; fails on any broken link
 ```
 
 Deterministic parts (guards, contracts, orchestration) are tested deterministically. Model
-behaviour is **measured** by the benchmark, not asserted by unit tests. Every guardrail is
+behavior is **measured** by the benchmark, not asserted by unit tests. Every guardrail is
 locked by a test: per-tool budget, de-duplication, at most 3 calls per step, tool-free last call,
 required-tool retry and its fall-through, invalid JSON arguments, tool not offered, `max_tokens` caps,
 tool error and tool timeout, and the five SQL guards (static check, row limit, read-only mode,
 authorizer, timeout).
+
+## Documentation
+
+The documentation is written in Markdown next to the code and published as a website with
+[MkDocs Material](https://squidfunk.github.io/mkdocs-material/):
+**[stephanehe.github.io/HelloSupport](https://stephanehe.github.io/HelloSupport/)**.
+
+- **Docs as code**: `mkdocs.yml` and `docs/` are versioned; a small hook (`tools/docs_hooks.py`) adds the root
+  documents and the knowledge base, and rewrites repository links for the site.
+- **Checked on every push and pull request**: the [docs workflow](.github/workflows/docs.yml) builds the site in
+  strict mode, so a broken link fails the build.
+- **Versioned with the releases** ([mike](https://github.com/jimporter/mike)): each tag `vX.Y.Z` publishes version
+  `X.Y` (alias `latest`, the default); `main` publishes `dev`.
+- Local preview: `uv run mkdocs serve`, then open http://127.0.0.1:8000.
+
+| Document | Content |
+|---|---|
+| [Specification](docs/SPEC.md) | goal, scope, architecture, milestones, acceptance criteria |
+| [Design decisions](docs/DESIGN_DECISIONS.md) | 31 ADR-style decisions, from model choice to guardrails |
+| [Measurements](docs/BENCH.md) and [reports](docs/bench/) | benchmark method, results per version, every model answer |
+| [Annotated demo](docs/DEMO.md) | a real terminal session, commented |
+| [Doc-to-code review](docs/REVIEW_DOC_CODE.md) | independent consistency review and its resolution |
+| [User requirements](docs/USER_REQUIREMENTS.md) | each user request and the test that protects it |
 
 ## Repository layout
 
@@ -339,15 +389,18 @@ src/hello_support/
   retrieval.py      chunking, embeddings, Chroma, reranking
   sql_guard.py      read-only SQL execution with five guards
   data_store.py     simulated scenarios and incidents database seeding
-  postprocess.py    citation normalisation, simulation note
+  postprocess.py    citation normalization, simulation note
   cases.py          the six validation cases and their checks
   benchmark.py      benchmark, throughput, cost estimate, reports
   webapp.py         web demo: Starlette app, SSE live trace, single-question queue
   static/           web demo page (HTML, CSS, JS)
 data/               knowledge base (3 sheets), scenarios.json
 tests/              offline test suite
+docs/               specification, design decisions, benchmark and reports, demo, user requirements
+mkdocs.yml          documentation site configuration
+tools/docs_hooks.py MkDocs hook: root documents, knowledge base, link rewriting
 tools/md2pdf.py     Markdown → PDF export (headless Edge/Chrome; Mermaid → SVG via mermaid-cli)
-docs/               specification, design decisions, benchmark, demo, user requirements
+.github/            docs workflow (strict build, GitHub Pages), issue and pull request templates
 ```
 
 ## Design decisions
@@ -386,6 +439,15 @@ Some lessons that shaped the design, each from a measured failure:
 - [ ] MCP over streamable HTTP with the tool server as a separate service
 - [ ] vLLM serving and a proper load test (continuous batching, ramp-up)
 - [ ] OpenTelemetry tracing
+
+## Contributing
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development
+setup and the checks a pull request must pass, and the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Security
+
+Please report vulnerabilities privately, as described in [SECURITY.md](SECURITY.md).
 
 ## License
 

@@ -8,6 +8,19 @@ Every release bumps the version **and** adds an entry here.
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-10-04
+
+### Added
+- **Documentation site as code**, published on GitHub Pages: https://stephanehe.github.io/HelloSupport/. `mkdocs.yml` (MkDocs Material, Mermaid, search, navigation) and `docs/` are versioned; `tools/docs_hooks.py` adds the root documents (README as the home page, CHANGELOG, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, TODO list, license, configuration) and the knowledge base, rewrites repository links for the site (code links go to GitHub), and never publishes git-ignored files.
+- **CI** (`.github/workflows/docs.yml`): strict build on every push and pull request (a broken link fails), deployment with mike: tag `vX.Y.Z` → documentation version `X.Y` (alias `latest`, default), `main` → `dev`.
+- `docs` dependency group (`mkdocs`, `mkdocs-material`, `pymdown-extensions`, `mike`), installed by default with `uv sync`.
+- `CONTRIBUTING.md`, `SECURITY.md` (private reporting through GitHub), `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), issue and pull request templates.
+- UR-008 and UR-009 in `docs/USER_REQUIREMENTS.md`, with tests: strict documentation build without ignored files, no local-only name in the published site configuration, CI strict build and versioned deployment, no personal host name or path in tracked files, README sections, version badge and valid links.
+
+### Changed
+- README reviewed: quick start (tested from a fresh clone), documentation section and docs badge, contributing and security sections, `uv run` note, design principles heading, `HS_DOCS_URL` example pointing to the public site, US spelling throughout.
+- The language check (UR-006) also covers `CONTRIBUTING.md`, `SECURITY.md` and `CODE_OF_CONDUCT.md`.
+
 ## [1.11.2] - 2026-10-04
 
 Fixes from the independent documentation-to-code review (`docs/REVIEW_DOC_CODE.md`, 31 findings, each now marked resolved or accepted).

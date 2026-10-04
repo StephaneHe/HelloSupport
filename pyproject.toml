@@ -29,6 +29,16 @@ dev = [
     "markdown>=3.11",
     "pytest>=8",
 ]
+# Documentation site (MkDocs Material, versioned on GitHub Pages with mike): `uv run mkdocs serve`
+docs = [
+    "mkdocs>=1.6,<2",
+    "mkdocs-material>=9.7,<10",
+    "pymdown-extensions>=10",
+    "mike>=2.1",
+]
+
+[tool.uv]
+default-groups = ["dev", "docs"]
 
 # CUDA build of PyTorch (RTX 2070 Super): PyPI only ships the CPU build on Windows.
 [tool.uv.sources]

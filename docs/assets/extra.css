@@ -1,0 +1,11 @@
+/* Wider content for long tables; diagrams scroll horizontally on small screens */
+.md-grid { max-width: 1500px; }
+.md-typeset table:not([class]) { font-size: .72rem; }
+.md-typeset pre > code { font-size: .68rem; line-height: 1.35; }
+.md-typeset .mermaid { text-align: center; }
+.diagram-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media screen and (max-width: 900px) {
+  .diagram-scroll > .mermaid { min-width: 820px; }
+  .diagram-scroll::before { content: "\2194  scroll the diagram horizontally"; display: block;
+    font-size: .62rem; color: var(--md-default-fg-color--light); margin-bottom: .3rem; }
+}

@@ -1,0 +1,103 @@
+# Documentation site: https://stephanehe.github.io/HelloSupport/
+# Build locally: `uv run mkdocs serve` (or `uv run mkdocs build --strict`). Published by
+# .github/workflows/docs.yml with mike: one version per release (X.Y, alias "latest") and "dev" for main.
+site_name: HelloSupport
+site_description: A local-only, multi-agent troubleshooting assistant — LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, measured 4B vs 7B models.
+site_author: Stéphane Hercot
+site_url: https://stephanehe.github.io/HelloSupport/
+repo_url: https://github.com/StephaneHe/HelloSupport
+repo_name: StephaneHe/HelloSupport
+edit_uri: ""
+copyright: Copyright &copy; 2026 Stéphane Hercot — MIT License
+docs_dir: docs
+site_dir: site
+use_directory_urls: true
+hooks:
+  - tools/docs_hooks.py
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle: {icon: material/weather-night, name: Dark mode}
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle: {icon: material/weather-sunny, name: Light mode}
+
+plugins:
+  - search:
+      lang: [en, fr]  # fr for search only: the test questions and model answers are French data
+
+extra:
+  version:
+    provider: mike
+    default: latest
+
+validation:
+  omitted_files: info
+  absolute_links: info
+  unrecognized_links: warn
+  anchors: warn
+
+markdown_extensions:
+  - tables
+  - toc: {permalink: true}
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.highlight: {anchor_linenums: true}
+  - pymdownx.inlinehilite
+  - pymdownx.tilde
+  - pymdownx.tasklist: {custom_checkbox: true}
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+extra_css: [assets/extra.css]
+extra_javascript: [assets/diagram-center.js]
+
+nav:
+  - Home: index.md
+  - Documentation:
+      - Specification: SPEC.md
+      - Design decisions (31): DESIGN_DECISIONS.md
+      - Measurements: BENCH.md
+      - Benchmark reports: reports.md
+      - Annotated demo: DEMO.md
+      - Doc-to-code review: REVIEW_DOC_CODE.md
+      - User requirements: USER_REQUIREMENTS.md
+  - Knowledge base:
+      - kb/index.md
+      - PostgreSQL connection: kb/postgres_connection.md
+      - nginx unavailable: kb/nginx_unavailable.md
+      - Redis unreachable: kb/redis_unreachable.md
+  - Project:
+      - Changelog: changelog.md
+      - Configuration: configuration.md
+      - TODO list: todo.md
+      - Contributing: contributing.md
+      - Security policy: security.md
+      - Code of conduct: code-of-conduct.md
+      - License (MIT): license.md
+  - Downloads (PDF): downloads.md

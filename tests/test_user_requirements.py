@@ -4,6 +4,8 @@ These tests must not be removed or weakened without the user's explicit agreemen
 """
 
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -25,7 +27,8 @@ MAX_FRENCH_RATIO = 0.10  # share of French function words among (French + Englis
 
 
 def published_markdown() -> list[Path]:
-    files = [ROOT / "README.md", ROOT / "CHANGELOG.md", ROOT / "TODO_LIST.md"]
+    files = [ROOT / "README.md", ROOT / "CHANGELOG.md", ROOT / "TODO_LIST.md", ROOT / "CONTRIBUTING.md",
+             ROOT / "SECURITY.md", ROOT / "CODE_OF_CONDUCT.md"]
     files += sorted((ROOT / "docs").glob("*.md")) + sorted((ROOT / "docs" / "bench").glob("*.md"))
     files += sorted((ROOT / "data" / "kb").glob("*.md"))
     return [f for f in files if f.exists()]
@@ -96,3 +99,82 @@ def test_ur003_agent_loop_diagram_and_legend_exist(rel):
     blocks = mermaid_blocks(rel)
     assert len(blocks) >= 2 and "MAX_LLM_CALLS" in blocks[1], f"{rel}: agent-loop diagram missing"
     assert "Legend" in (ROOT / rel).read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------- UR-008: documentation versioned and published
+# Local-only names that must never appear in a published file (assembled so this file does not contain them).
+PRIVATE_MARKERS = ["private/", "CONSTITUTION", "CLAUDE.md", "docsite", "webdemo", "mkdocs.local"]
+PERSONAL_MARKERS = ["stephane" + ":51", "I:" + r"\Dev", "I:" + "/Dev", "C:" + r"\Users\steph", "/c/" + "Users/steph"]
+
+
+def test_ur008_docs_site_builds_in_strict_mode_without_ignored_files(tmp_path):
+    out = subprocess.run([sys.executable, "-m", "mkdocs", "build", "--strict", "-q", "-d", str(tmp_path / "site")],
+                         cwd=ROOT, capture_output=True, text=True)
+    assert out.returncode == 0, out.stdout + out.stderr
+    site = tmp_path / "site"
+    for page in ["index.html", "SPEC/index.html", "DESIGN_DECISIONS/index.html", "BENCH/index.html", "reports/index.html",
+                 "kb/postgres_connection/index.html", "changelog/index.html", "contributing/index.html",
+                 "security/index.html", "license/index.html"]:
+        assert (site / page).exists(), page
+    assert not (site / "CONSTITUTION").exists() and not (site / "private").exists()  # git-ignored: never published
+
+
+def test_ur008_published_site_config_references_nothing_private():
+    text = (ROOT / "mkdocs.yml").read_text(encoding="utf-8") + (ROOT / "tools" / "docs_hooks.py").read_text(encoding="utf-8")
+    found = [m for m in PRIVATE_MARKERS + PERSONAL_MARKERS if m in text]
+    assert not found, f"published docs configuration mentions local-only names: {found}"
+
+
+def test_ur008_ci_builds_strictly_and_publishes_versioned_docs():
+    wf = (ROOT / ".github" / "workflows" / "docs.yml").read_text(encoding="utf-8")
+    assert "pull_request" in wf and "mkdocs build --strict" in wf
+    assert "mike deploy" in wf and "latest" in wf and "tags:" in wf
+
+
+def test_ur008_no_personal_host_or_path_in_tracked_files():
+    tracked = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, text=True).stdout.split("\0")
+    hits = []
+    for rel in filter(None, tracked):
+        path = ROOT / rel
+        if path.suffix in {".pdf", ".png", ".lock"} or not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        hits += [f"{rel}: {m}" for m in PERSONAL_MARKERS if m in text]
+    assert not hits, hits
+
+
+# ---------------------------------------------------------------- UR-009: professional README in English
+README_SECTIONS = ["Quick start", "Architecture", "Measured results", "Requirements", "Installation", "Usage", "Demo",
+                   "Web demo", "Tests", "Documentation", "Known limitations", "Roadmap", "Contributing", "Security",
+                   "License", "Author"]
+
+
+def github_slug(heading: str) -> str:
+    return re.sub(r"[^\w\- ]", "", heading.strip().lower()).replace(" ", "-")
+
+
+def test_ur009_readme_has_the_expected_sections_and_docs_link():
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    headings = re.findall(r"^## (.+)$", text, re.M)
+    missing = [s for s in README_SECTIONS if s not in headings]
+    assert not missing, f"README sections missing: {missing}"
+    assert "https://stephanehe.github.io/HelloSupport/" in text and "actions/workflows/docs.yml/badge.svg" in text
+    from hello_support import __version__
+    assert f"version-{__version__}-blue" in text, "README version badge out of date"
+
+
+def test_ur009_readme_links_are_valid():
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    prose = re.sub(r"```.*?```", " ", text, flags=re.S)
+    slugs = {github_slug(h) for h in re.findall(r"^#{1,6} (.+)$", prose, re.M)}
+    broken = []
+    for target in re.findall(r"\]\(([^)\s]+)\)", prose):
+        if re.match(r"^[a-z]+:", target):
+            continue
+        path, _, anchor = target.partition("#")
+        if not path:
+            if anchor not in slugs:
+                broken.append(target)
+        elif not (ROOT / path).exists():
+            broken.append(target)
+    assert not broken, f"broken README links: {broken}"

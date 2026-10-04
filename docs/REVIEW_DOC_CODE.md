@@ -168,7 +168,7 @@ full offline suite green, full 6 × 3 benchmark on both models plus a 7B C6 × 1
 | U-1 | resolved (doc) | Triage fallback documented (D-17); exit codes of `ask` and `smoke` in the README usage table. |
 | U-2 | resolved (doc) | README table and `.env.example` list every variable. |
 | U-3 | resolved (doc) | HTTP API summarised in the README *Web demo* section and detailed in D-31. |
-| U-4 | resolved (doc) | README states the expected MkDocs-style layout and that the repository does not build such a site. |
+| U-4 | resolved (doc) | README states the expected MkDocs-style layout; since v1.12.0 the documentation site built from the repository (GitHub Pages) has exactly that layout. |
 | U-5 | resolved (doc + test) | D-13 trade-offs; test `test_semicolon_inside_a_string_literal_is_rejected` locks the known false positive. |
 | U-6 | resolved (code) | `webapp.summarize` lists `post-processing` only when the technician answered; the page logs "no post-processing" otherwise. Test `test_web_path_lists_post_processing_only_when_it_ran`. |
 | U-7 | resolved (doc) | README *Web demo* and D-31: stop the demo before a benchmark. |

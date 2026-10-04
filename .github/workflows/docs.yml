@@ -1,0 +1,56 @@
+# Documentation: strict build on every push and pull request (a broken link fails the build),
+# published to GitHub Pages with mike: `main` -> version "dev", tag vX.Y.Z -> version "X.Y" (alias "latest").
+name: docs
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (strict)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install the docs dependencies only
+        run: uv sync --only-group docs --frozen
+      - name: Build
+        run: uv run --no-sync mkdocs build --strict
+
+  deploy:
+    name: Publish to GitHub Pages
+    needs: build
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: gh-pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --only-group docs --frozen
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages --depth=1 || echo "no gh-pages branch yet"
+      - name: Deploy with mike
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            uv run --no-sync mike deploy --push --update-aliases "${version%.*}" latest --title "$version"
+            uv run --no-sync mike set-default --push latest
+          else
+            uv run --no-sync mike deploy --push dev --title "dev (main)"
+          fi
