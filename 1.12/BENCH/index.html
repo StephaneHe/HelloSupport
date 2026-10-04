@@ -1,0 +1,2522 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A local-only, multi-agent troubleshooting assistant — LangGraph agents, RAG with reranking, MCP tools, guarded text-to-SQL, measured 4B vs 7B models.">
+      
+      
+        <meta name="author" content="Stéphane Hercot">
+      
+      
+        <link rel="canonical" href="https://stephanehe.github.io/HelloSupport/1.12/BENCH/">
+      
+      
+        <link rel="prev" href="../DESIGN_DECISIONS/">
+      
+      
+        <link rel="next" href="../reports/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Measurements - HelloSupport</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#bench-measurements-and-observations" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="HelloSupport" class="md-header__button md-logo" aria-label="HelloSupport" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            HelloSupport
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Measurements
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/StephaneHe/HelloSupport" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    StephaneHe/HelloSupport
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="HelloSupport" class="md-nav__button md-logo" aria-label="HelloSupport" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    HelloSupport
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/StephaneHe/HelloSupport" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    StephaneHe/HelloSupport
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Documentation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DESIGN_DECISIONS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design decisions (31)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measurements
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#j1-rag-vector-search-then-reranking-2026-10-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        J1 — RAG: vector search then reranking (2026-10-02)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="J1 — RAG: vector search then reranking (2026-10-02)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#connexion-refusee-postgres-fr-sheets-in-english" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "connexion refusée postgres" (FR, sheets in English)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#my-website-shows-502-bad-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "My website shows 502 Bad Gateway"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#que-verifier-si-redis-repond-noauth-what-should-i-check-if-redis-answers-noauth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Que vérifier si Redis répond NOAUTH ?" (What should I check if Redis answers NOAUTH?)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kafka-consumer-lag-is-growing-not-in-the-knowledge-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Kafka consumer lag is growing" (not in the knowledge base)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latencies-j1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latencies (J1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#j3-agents-orchestration-first-real-runs-2026-10-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        J3 — Agents + orchestration: first real runs (2026-10-02)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="J3 — Agents + orchestration: first real runs (2026-10-02)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#does-the-model-choose-to-observe-before-triage-see-d-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Does the model choose to observe? (before triage, see D-17)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triage-via-structured-output-6-sample-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Triage via structured output (6 sample questions)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#end-to-end-runs-after-triage-guardrails-7b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End-to-end runs after triage + guardrails (7B)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#j4-validation-6-cases-3-runs-2-models-2026-10-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        J4 — Validation: 6 cases × 3 runs × 2 models (2026-10-02)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="J4 — Validation: 6 cases × 3 runs × 2 models (2026-10-02)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#before-after-the-j4-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Before / after the J4 fixes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#final-result-run-no-2-code-v170" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final result (run no. 2, code v1.7.0)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#j5-serving-throughput-2026-10-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        J5 — Serving throughput (2026-10-02)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v1100-out_of_scope-and-vague-skip-the-documentalist-2026-10-04" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.10.0 — out_of_scope and vague skip the documentalist (2026-10-04)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v1.10.0 — out_of_scope and vague skip the documentalist (2026-10-04)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#targeted-gain-5-runs-per-case-and-per-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Targeted gain (5 runs per case and per model)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#full-benchmark-6-cases-3-per-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full benchmark (6 cases × 3, per model)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stabilized-lm-studio-settings-2026-10-04-after-the-v1100-measurement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stabilized LM Studio settings (2026-10-04, after the v1.10.0 measurement)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v1110-non-regression-web-demo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.11.0 non-regression (web demo)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v1112-full-benchmark-on-the-current-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.11.2 — full benchmark on the current code
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v1120-answer-language-stated-by-the-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.12.0 — answer language stated by the code
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmark reports
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEMO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Annotated demo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../REVIEW_DOC_CODE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc-to-code review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_REQUIREMENTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../kb/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Knowledge base
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Knowledge base
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kb/postgres_connection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PostgreSQL connection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kb/nginx_unavailable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    nginx unavailable
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kb/redis_unreachable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis unreachable
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../todo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TODO list
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../code-of-conduct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code of conduct
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License (MIT)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../downloads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Downloads (PDF)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#j1-rag-vector-search-then-reranking-2026-10-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        J1 — RAG: vector search then reranking (2026-10-02)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="J1 — RAG: vector search then reranking (2026-10-02)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#connexion-refusee-postgres-fr-sheets-in-english" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "connexion refusée postgres" (FR, sheets in English)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#my-website-shows-502-bad-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "My website shows 502 Bad Gateway"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#que-verifier-si-redis-repond-noauth-what-should-i-check-if-redis-answers-noauth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Que vérifier si Redis répond NOAUTH ?" (What should I check if Redis answers NOAUTH?)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kafka-consumer-lag-is-growing-not-in-the-knowledge-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Kafka consumer lag is growing" (not in the knowledge base)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latencies-j1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Latencies (J1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#j3-agents-orchestration-first-real-runs-2026-10-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        J3 — Agents + orchestration: first real runs (2026-10-02)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="J3 — Agents + orchestration: first real runs (2026-10-02)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#does-the-model-choose-to-observe-before-triage-see-d-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Does the model choose to observe? (before triage, see D-17)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triage-via-structured-output-6-sample-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Triage via structured output (6 sample questions)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#end-to-end-runs-after-triage-guardrails-7b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End-to-end runs after triage + guardrails (7B)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#j4-validation-6-cases-3-runs-2-models-2026-10-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        J4 — Validation: 6 cases × 3 runs × 2 models (2026-10-02)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="J4 — Validation: 6 cases × 3 runs × 2 models (2026-10-02)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#before-after-the-j4-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Before / after the J4 fixes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#final-result-run-no-2-code-v170" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final result (run no. 2, code v1.7.0)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#j5-serving-throughput-2026-10-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        J5 — Serving throughput (2026-10-02)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v1100-out_of_scope-and-vague-skip-the-documentalist-2026-10-04" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.10.0 — out_of_scope and vague skip the documentalist (2026-10-04)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v1.10.0 — out_of_scope and vague skip the documentalist (2026-10-04)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#targeted-gain-5-runs-per-case-and-per-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Targeted gain (5 runs per case and per model)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#full-benchmark-6-cases-3-per-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full benchmark (6 cases × 3, per model)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stabilized-lm-studio-settings-2026-10-04-after-the-v1100-measurement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stabilized LM Studio settings (2026-10-04, after the v1.10.0 measurement)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v1110-non-regression-web-demo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.11.0 non-regression (web demo)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v1112-full-benchmark-on-the-current-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.11.2 — full benchmark on the current code
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v1120-answer-language-stated-by-the-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.12.0 — answer language stated by the code
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="bench-measurements-and-observations">BENCH — measurements and observations<a class="headerlink" href="#bench-measurements-and-observations" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Figures <strong>measured</strong> on the dev machine (Windows 11, RTX 2070 Super 8 GB, Python 3.12,
+torch 2.6.0+cu124), unless stated otherwise. One-off measurements: a single pass, no
+statistics. They are meant for reasoning, not for drawing general conclusions about performance.</p>
+</blockquote>
+<h2 id="j1-rag-vector-search-then-reranking-2026-10-02">J1 — RAG: vector search then reranking (2026-10-02)<a class="headerlink" href="#j1-rag-vector-search-then-reranking-2026-10-02" title="Permanent link">&para;</a></h2>
+<p>Pipeline: 12 sections (3 sheets × 4) → <code>paraphrase-multilingual-MiniLM-L12-v2</code> → Chroma
+(cosine, top-5) → <code>cross-encoder/mmarco-mMiniLMv2-L12-H384-v1</code> → top-2. Device: <code>cuda</code>.</p>
+<p>Command: <code>hello-support search "&lt;question&gt;"</code> (columns: final rank, vector rank, cosine,
+reranker score).</p>
+<h3 id="connexion-refusee-postgres-fr-sheets-in-english">"connexion refusée postgres" (FR, sheets in English)<a class="headerlink" href="#connexion-refusee-postgres-fr-sheets-in-english" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>final</th>
+<th>vector</th>
+<th>cosine</th>
+<th>rerank</th>
+<th>section</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1</strong></td>
+<td>2</td>
+<td>0.507</td>
+<td>7.41</td>
+<td>postgres_connection.md#Service status</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td>5</td>
+<td>0.465</td>
+<td>7.30</td>
+<td>postgres_connection.md#Symptoms</td>
+</tr>
+<tr>
+<td>3</td>
+<td>1</td>
+<td>0.519</td>
+<td>2.70</td>
+<td>postgres_connection.md#Checks</td>
+</tr>
+<tr>
+<td>4</td>
+<td>3</td>
+<td>0.486</td>
+<td>-2.03</td>
+<td>nginx_unavailable.md#Service status</td>
+</tr>
+<tr>
+<td>5</td>
+<td>4</td>
+<td>0.474</td>
+<td>-2.92</td>
+<td>nginx_unavailable.md#Symptoms</td>
+</tr>
+</tbody>
+</table>
+<p>→ <strong>Reranking changes the order</strong>: the <em>Symptoms</em> section (which literally contains
+"connection refused") moves from 5th to 2nd place. Two <strong>nginx</strong> sections were ahead of
+it with vector search alone. Without reranking, the top-2 would have been <em>Checks</em> and
+<em>Service status</em>: correct, but without the symptoms section.</p>
+<h3 id="my-website-shows-502-bad-gateway">"My website shows 502 Bad Gateway"<a class="headerlink" href="#my-website-shows-502-bad-gateway" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>final</th>
+<th>vector</th>
+<th>cosine</th>
+<th>rerank</th>
+<th>section</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1</strong></td>
+<td>1</td>
+<td>0.600</td>
+<td>3.88</td>
+<td>nginx_unavailable.md#Symptoms</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td>5</td>
+<td>0.451</td>
+<td>-4.30</td>
+<td>nginx_unavailable.md#Checks</td>
+</tr>
+<tr>
+<td>3</td>
+<td>2</td>
+<td>0.503</td>
+<td>-7.08</td>
+<td>nginx_unavailable.md#Service status</td>
+</tr>
+</tbody>
+</table>
+<p>→ <em>Checks</em> (which explains 502 = upstream down) moves from 5th to 2nd place.</p>
+<h3 id="que-verifier-si-redis-repond-noauth-what-should-i-check-if-redis-answers-noauth">"Que vérifier si Redis répond NOAUTH ?" (What should I check if Redis answers NOAUTH?)<a class="headerlink" href="#que-verifier-si-redis-repond-noauth-what-should-i-check-if-redis-answers-noauth" title="Permanent link">&para;</a></h3>
+<p>Top-2: <code>redis_unreachable.md#Checks</code> (6.08), then <code>#Symptoms</code> (-0.76, moved up from rank 3 to rank 2).</p>
+<h3 id="kafka-consumer-lag-is-growing-not-in-the-knowledge-base">"Kafka consumer lag is growing" (not in the knowledge base)<a class="headerlink" href="#kafka-consumer-lag-is-growing-not-in-the-knowledge-base" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>final</th>
+<th>vector</th>
+<th>cosine</th>
+<th>rerank</th>
+<th>section</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>2</td>
+<td>0.122</td>
+<td>-9.25</td>
+<td>redis_unreachable.md#Symptoms</td>
+</tr>
+<tr>
+<td>2</td>
+<td>3</td>
+<td>0.120</td>
+<td>-9.65</td>
+<td>redis_unreachable.md#Limits</td>
+</tr>
+<tr>
+<td>5</td>
+<td>1</td>
+<td>0.212</td>
+<td>-10.56</td>
+<td>postgres_connection.md#Limits</td>
+</tr>
+</tbody>
+</table>
+<p>→ Vector search <strong>always returns neighbors</strong>, even when nothing matches.
+All reranker scores are ≤ -9.2, whereas the useful passages of the other queries
+are ≥ -4.3. Hence a coarse threshold <code>RELEVANCE_THRESHOLD = -5</code> that flags passages as
+"off-topic". It lets the agent answer "not covered" (case C5).</p>
+<h3 id="latencies-j1">Latencies (J1)<a class="headerlink" href="#latencies-j1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Measurement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Import of <code>sentence_transformers</code> (cold)</td>
+<td>~15 s (fixed local cost: loading <code>transformers</code>, not network)</td>
+</tr>
+<tr>
+<td>Full load of the <code>Retriever</code> (imports + 2 models on GPU + Chroma + warm-up)</td>
+<td>~27 s</td>
+</tr>
+<tr>
+<td>First query without warm-up (CUDA kernel initialization)</td>
+<td>~2.9 s</td>
+</tr>
+<tr>
+<td>Query after warm-up (encoding + Chroma + reranking of 5 pairs)</td>
+<td>~0.4–0.6 s</td>
+</tr>
+<tr>
+<td>Index build (12 sections)</td>
+<td>included in the first load; reused afterwards (content fingerprint)</td>
+</tr>
+</tbody>
+</table>
+<p>The loading cost is paid <strong>once per session</strong> of the MCP server (J2), not for every question.</p>
+<h2 id="j3-agents-orchestration-first-real-runs-2026-10-02">J3 — Agents + orchestration: first real runs (2026-10-02)<a class="headerlink" href="#j3-agents-orchestration-first-real-runs-2026-10-02" title="Permanent link">&para;</a></h2>
+<p>Default model: <code>qwen2.5-7b-instruct</code> (Q4_K_M), temperature 0. One run per case:
+<strong>this is not yet the J4 evaluation</strong>. Full traces are in <code>runs/</code> (gitignored). The figures of this
+section (0/3, 4/6) come from ad hoc runs: their raw output is not archived in the repository.</p>
+<h3 id="does-the-model-choose-to-observe-before-triage-see-d-17">Does the model choose to observe? (before triage, see D-17)<a class="headerlink" href="#does-the-model-choose-to-observe-before-triage-see-d-17" title="Permanent link">&para;</a></h3>
+<p>Real technician input (question + brief + 3 passages), tools offered with <code>tool_choice=auto</code>,
+3 attempts:</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Full input</th>
+<th>Without brief</th>
+<th>Question last</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen2.5-7B</td>
+<td>0/3</td>
+<td>0/3</td>
+<td>0/3</td>
+</tr>
+<tr>
+<td>Qwen3-4B-2507</td>
+<td>0/3</td>
+<td>0/3</td>
+<td>0/3</td>
+</tr>
+</tbody>
+</table>
+<h3 id="triage-via-structured-output-6-sample-questions">Triage via structured output (6 sample questions)<a class="headerlink" href="#triage-via-structured-output-6-sample-questions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Correct</th>
+<th>Errors</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen2.5-7B</td>
+<td>4/6</td>
+<td>Kafka → <code>vague</code> (expected <code>out_of_scope</code>); "ça marche pas" ("it doesn't work") → <code>malfunction</code> without a service (requalified as <code>vague</code> by the code)</td>
+</tr>
+<tr>
+<td>Qwen3-4B-2507</td>
+<td>4/6</td>
+<td>"ne parvient plus à se connecter… que vérifier ?" ("can no longer connect… what should I check?") → <code>documentation</code> (prompt clarified afterwards); "ça marche pas" → <code>malfunction/postgres</code></td>
+</tr>
+</tbody>
+</table>
+<p>Triage latency: ~0.3 s warm, ~3–9 s for the first call (model loading by LM Studio).</p>
+<h3 id="end-to-end-runs-after-triage-guardrails-7b">End-to-end runs after triage + guardrails (7B)<a class="headerlink" href="#end-to-end-runs-after-triage-guardrails-7b" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Observed behavior</th>
+<th>Total duration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C1 postgres <code>stopped</code></td>
+<td><code>get_service_status(postgres)</code> → <code>stopped</code>; diagnosis "service stopped, read the logs before restarting", source <code>Service status</code></td>
+<td>~41 s</td>
+</tr>
+<tr>
+<td>C2 postgres <code>running</code></td>
+<td>→ <code>running</code> (simulated); different conclusion: network / config / credentials</td>
+<td>~40 s</td>
+</tr>
+<tr>
+<td>C3 Redis documentation</td>
+<td>no status call; list of sourced checks (an invented "Observation" in the 1st version, hence the added instruction)</td>
+<td>~44 s</td>
+</tr>
+<tr>
+<td>C4 postgres incidents 30 d</td>
+<td>valid SQL <code>COUNT(*), MAX(resolved)</code> → <code>[3, 1]</code>; "3 incidents" ✔; "the last one is not resolved" is <strong>true but not derived</strong> from the result ✘</td>
+<td>~7 s</td>
+</tr>
+<tr>
+<td>C5 "Mon Kafka est lent" ("My Kafka is slow")</td>
+<td>request for clarification, no invented sheet</td>
+<td>~6.5 s</td>
+</tr>
+<tr>
+<td>C5 "ça marche pas"</td>
+<td>"Which service?"</td>
+<td>~32 s</td>
+</tr>
+<tr>
+<td>C6 Redis <code>tool_error</code></td>
+<td>tool error traced; answer "status cannot be verified" + sourced leads; before the fix: 46 duplicate calls in 18 s</td>
+<td>~40 s</td>
+</tr>
+</tbody>
+</table>
+<p>Of the ~40 s, ~21–27 s correspond to <strong>loading the RAG</strong> in the MCP server (once per
+session). LLM calls total ~11–13 s for 4–5 calls, and ~2,300–3,000 input tokens.</p>
+<h2 id="j4-validation-6-cases-3-runs-2-models-2026-10-02">J4 — Validation: 6 cases × 3 runs × 2 models (2026-10-02)<a class="headerlink" href="#j4-validation-6-cases-3-runs-2-models-2026-10-02" title="Permanent link">&para;</a></h2>
+<p>Command: <code>hello-support bench --models slm large --runs 3</code>. Automatic checks per case
+(<code>src/hello_support/cases.py</code>), <strong>warm</strong> measurements (MCP session and model already loaded).
+Full reports with <strong>all answers</strong>: <a href="../bench/bench-20261002-172401/"><code>bench/bench-20261002-172401.md</code></a>
+(before fixes) and <a href="../bench/bench-20261002-173250/"><code>bench/bench-20261002-173250.md</code></a> (after).</p>
+<h3 id="before-after-the-j4-fixes">Before / after the J4 fixes<a class="headerlink" href="#before-after-the-j4-fixes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>SLM Qwen3-4B before</th>
+<th>SLM after</th>
+<th>7B before</th>
+<th>7B after</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cases passed</td>
+<td>7/18</td>
+<td><strong>15/18</strong></td>
+<td>10/18</td>
+<td><strong>18/18</strong></td>
+</tr>
+<tr>
+<td>Checks passed</td>
+<td>81/108</td>
+<td>105/108</td>
+<td>98/108</td>
+<td>108/108</td>
+</tr>
+</tbody>
+</table>
+<p>Fixes between the two runs, each driven by an observed failure:
+- <strong>D-22</strong>: citations normalized and simulation notice added by the code;
+- <strong>D-23</strong>: SQL queries in the same step;
+- <strong>D-24</strong>: rules and examples in the triage.</p>
+<p>Two checks were themselves <strong>wrong</strong> and were fixed:
+- parsing of citations separated by a space;
+- an "asserted status" detected in a conditional sentence "if the Redis server is stopped".</p>
+<h3 id="final-result-run-no-2-code-v170">Final result (run no. 2, code v1.7.0)<a class="headerlink" href="#final-result-run-no-2-code-v170" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th><code>qwen/qwen3-4b-2507</code></th>
+<th><code>qwen2.5-7b-instruct</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cases passed (all checks)</td>
+<td>15/18</td>
+<td>18/18</td>
+</tr>
+<tr>
+<td>Checks passed</td>
+<td>105/108</td>
+<td>108/108</td>
+</tr>
+<tr>
+<td>p50 / max latency per request</td>
+<td>5.96 s / 11.52 s</td>
+<td>9.04 s / 15.65 s</td>
+</tr>
+<tr>
+<td>LLM calls per request (avg.)</td>
+<td>4.5</td>
+<td>4.22</td>
+</tr>
+<tr>
+<td>Tokens in / out per request (avg.)</td>
+<td>2774 / 347</td>
+<td>2602 / 391</td>
+</tr>
+<tr>
+<td>Generation throughput (tokens out / LLM s)</td>
+<td>57.9</td>
+<td>45.3</td>
+</tr>
+<tr>
+<td>Requests / min (sequential)</td>
+<td>9.9</td>
+<td>6.9</td>
+</tr>
+<tr>
+<td>Local cost</td>
+<td>€0 (electricity not counted)</td>
+<td>€0</td>
+</tr>
+<tr>
+<td>Estimated cost with OpenAI gpt-4o-mini API, /1000 req.</td>
+<td>~$0.62</td>
+<td>~$0.62</td>
+</tr>
+<tr>
+<td>Estimated cost with Anthropic Claude Haiku 4.5 API, /1000 req.</td>
+<td>~$4.51</td>
+<td>~$4.56</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>SLM (passes · p50 latency)</th>
+<th>7B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C1 PostgreSQL stopped</td>
+<td>3/3 · 9.6 s</td>
+<td>3/3 · 13.7 s</td>
+</tr>
+<tr>
+<td>C2 PostgreSQL running</td>
+<td>3/3 · 9.0 s</td>
+<td>3/3 · 9.0 s</td>
+</tr>
+<tr>
+<td>C3 Documentation question</td>
+<td>3/3 · 5.7 s</td>
+<td>3/3 · 9.1 s</td>
+</tr>
+<tr>
+<td>C4 Data question (SQL)</td>
+<td>3/3 · 3.5 s</td>
+<td>3/3 · 7.7 s</td>
+</tr>
+<tr>
+<td>C5 Out-of-scope request</td>
+<td>3/3 · 1.5 s</td>
+<td>3/3 · 2.1 s</td>
+</tr>
+<tr>
+<td>C6 Tool failure</td>
+<td><strong>0/3</strong> · 6.6 s</td>
+<td>3/3 · 11.2 s</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Remaining failures (SLM, C6)</strong>: the SLM <strong>invents source identifiers</strong>
+(<code>unreachable.md#Checks</code>, <code>[service_status#Service status]</code>) when the status tool fails. The
+post-processing flags them in the trace but does not fix them, and this is intentional.</p>
+<p><strong>Reading limits</strong>:
+- keyword-based checks are coarse (D-21);
+- temperature 0, so the 3 runs are very close: the measured variance is mostly that of
+  latency;
+- on review, the 7B sometimes presents the sheet's symptoms as "observed logs"
+  (C6), which the checks do not detect.</p>
+<p><strong>Cloud costs</strong> are <strong>estimates</strong>: measured tokens × indicative public prices
+(<code>REFERENCE_PRICES_USD_PER_MTOK</code>, to be re-checked), no calls and no account.</p>
+<p>Cold start of a session (RAG + model loading by LM Studio): 20–26 s.</p>
+<h2 id="j5-serving-throughput-2026-10-02">J5 — Serving throughput (2026-10-02)<a class="headerlink" href="#j5-serving-throughput-2026-10-02" title="Permanent link">&para;</a></h2>
+<p>Command: <code>hello-support throughput --models slm large --concurrency 1 4 --requests 8</code>. The command
+only prints its table: the raw output is not archived in <code>docs/bench/</code>, and the measurement was made
+with LM Studio's default of 4 parallel slots (see <em>Stabilized LM Studio settings</em> below).
+The same generation request (~160 tokens max, temperature 0.7) is sent 8 times, one at a
+time and then 4 in parallel, to the LM Studio server (RTX 2070 Super 8 GB).</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Concurrency</th>
+<th>Requests</th>
+<th>Duration</th>
+<th>Tokens out/s (aggregate)</th>
+<th>Req/min</th>
+<th>p50 / max latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>qwen/qwen3-4b-2507</code></td>
+<td>1</td>
+<td>8</td>
+<td>8.61 s</td>
+<td>106.6</td>
+<td>55.7</td>
+<td>1.06 s / 1.18 s</td>
+</tr>
+<tr>
+<td><code>qwen/qwen3-4b-2507</code></td>
+<td>4</td>
+<td>8</td>
+<td>5.34 s</td>
+<td>172.6</td>
+<td>90.0</td>
+<td>1.78 s / 4.17 s</td>
+</tr>
+<tr>
+<td><code>qwen2.5-7b-instruct</code></td>
+<td>1</td>
+<td>8</td>
+<td>14.13 s</td>
+<td>71.1</td>
+<td>34.0</td>
+<td>1.62 s / 2.24 s</td>
+</tr>
+<tr>
+<td><code>qwen2.5-7b-instruct</code></td>
+<td>4</td>
+<td>8</td>
+<td>8.26 s</td>
+<td>127.6</td>
+<td>58.1</td>
+<td>3.69 s / 6.29 s</td>
+</tr>
+</tbody>
+</table>
+<p>Reading:
+- <strong>Model size</strong>: at concurrency 1, the 4B generates ~1.5× faster than the 7B (107 vs.
+  71 tokens/s).
+- <strong>Concurrency</strong>: with 4 simultaneous requests, aggregate throughput is multiplied by <strong>1.6 (4B) to
+  1.8 (7B)</strong>, but individual latency <strong>doubles</strong>. This is the throughput / latency trade-off of a
+  server that handles several requests in parallel.
+- <strong>Gap with the benchmark</strong>: generation throughput is lower there (58 and 45 tokens/s) because
+  LLM time includes processing prompts of ~600–900 tokens (RAG context, tool
+  results) and several short calls.</p>
+<p>This is not a load test: a single machine, LM Studio (a desktop tool), 8 requests. A real
+throughput test would use vLLM (continuous batching) and a gradual ramp-up
+("going further").</p>
+<h2 id="v1100-out_of_scope-and-vague-skip-the-documentalist-2026-10-04">v1.10.0 — <code>out_of_scope</code> and <code>vague</code> skip the documentalist (2026-10-04)<a class="headerlink" href="#v1100-out_of_scope-and-vague-skip-the-documentalist-2026-10-04" title="Permanent link">&para;</a></h2>
+<p>Change measured <strong>before</strong> (tag <code>pre-1.10.0</code>, v1.9.3) and <strong>after</strong> (v1.10.0), under the same
+conditions: a single model loaded at a time in LM Studio (unloaded between series), warm measurements.
+Decision: D-30.</p>
+<h3 id="targeted-gain-5-runs-per-case-and-per-model">Targeted gain (5 runs per case and per model)<a class="headerlink" href="#targeted-gain-5-runs-per-case-and-per-model" title="Permanent link">&para;</a></h3>
+<p>Two questions: <code>out_of_scope</code> = C5 "Mon Kafka est lent, que faire ?" ("My Kafka is slow, what should I do?"), <code>vague</code> = "ça marche pas, que faire ?" ("it doesn't work, what should I do?").
+This targeted series was run with an ad hoc script: the <code>vague</code> question is not one of the six cases
+of <code>hello-support bench</code>, and the raw output is not archived, so the table cannot be replayed with the
+shipped command.</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Category</th>
+<th>Pass rate</th>
+<th>p50 latency</th>
+<th>LLM calls</th>
+<th>Tokens in (avg.)</th>
+<th>Tokens out (avg.)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen3-4B</td>
+<td>out_of_scope</td>
+<td>5/5 → 5/5</td>
+<td>1.26 → <strong>0.82 s (−35%)</strong></td>
+<td>3 → 2</td>
+<td>1,139 → 724</td>
+<td>79 → 63</td>
+</tr>
+<tr>
+<td>Qwen3-4B</td>
+<td>vague</td>
+<td>5/5 → 5/5</td>
+<td>3.07 → <strong>0.44 s (−86%)</strong></td>
+<td>4 → 2</td>
+<td>2,150 → 710</td>
+<td>122 → 25</td>
+</tr>
+<tr>
+<td>Qwen2.5-7B</td>
+<td>out_of_scope</td>
+<td>5/5 → 5/5</td>
+<td>1.96 → 2.02 s (+3%)</td>
+<td>3 → 2</td>
+<td>1,136 → 724</td>
+<td>110 → 104</td>
+</tr>
+<tr>
+<td>Qwen2.5-7B</td>
+<td>vague</td>
+<td>5/5 → 5/5</td>
+<td>3.87 → <strong>1.74 s (−55%)</strong></td>
+<td>4 → 2</td>
+<td>1,968 → 710</td>
+<td>147 → 83</td>
+</tr>
+</tbody>
+</table>
+<p>Reading:
+- <strong><code>vague</code></strong>: the old documentalist <strong>searched</strong> ("it is not working" → 3 off-topic passages) and then
+  wrote a brief, i.e. 2 LLM calls and one tool call. They are removed, hence −55 to −86%.
+- <strong><code>out_of_scope</code></strong>: the old documentalist already answered <strong>without searching</strong> (1 short call). The gain
+  is real with the 4B (−35%), nil with the 7B, whose technician answer (~100 tokens) dominates the
+  duration. In all cases, input tokens drop by 36 to 67%.</p>
+<h3 id="full-benchmark-6-cases-3-per-model">Full benchmark (6 cases × 3, per model)<a class="headerlink" href="#full-benchmark-6-cases-3-per-model" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>4B before</th>
+<th>4B after</th>
+<th>7B before</th>
+<th>7B after</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cases passed</td>
+<td>15/18</td>
+<td>15/18</td>
+<td>18/18</td>
+<td>17/18</td>
+</tr>
+<tr>
+<td>C1 · C2 · C3 · C4 · C5 · C6</td>
+<td>3·3·3·3·3·0</td>
+<td>3·3·2·3·3·1</td>
+<td>3·3·3·3·3·3</td>
+<td>3·3·3·3·3·2</td>
+</tr>
+<tr>
+<td>C5 p50 latency</td>
+<td>1.43 s</td>
+<td>0.92 s</td>
+<td>2.06 s</td>
+<td>1.72 s</td>
+</tr>
+<tr>
+<td>p50 latency (all requests)</td>
+<td>9.5 s ⚠</td>
+<td>4.4 s</td>
+<td>8.2 s</td>
+<td>7.8 s</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Deviations on unchanged paths, verified as pre-existing</strong> (re-measured on the old and the new code):</p>
+<table>
+<thead>
+<tr>
+<th>Case (path)</th>
+<th>Model</th>
+<th>Failing check</th>
+<th>Old code</th>
+<th>New code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C6 (<code>malfunction</code>)</td>
+<td>7B</td>
+<td>old code: "says the check failed" (answer "statut indéterminé… limitation de l'outil", "status undetermined… tool limitation"); new code: one "says the check failed" and one "no status asserted"</td>
+<td>8/10 (+ 5/5)</td>
+<td>8/10 (+ 4/5)</td>
+</tr>
+<tr>
+<td>C3 (<code>documentation</code>)</td>
+<td>4B</td>
+<td>exact citations / in French</td>
+<td>5/8</td>
+<td>7/8</td>
+</tr>
+</tbody>
+</table>
+<p>No regression attributable to the change. These two cases show <strong>wording instability</strong>
+in the models despite temperature 0 (LM Studio parallel batches), combined with coarse
+keyword-based checks (D-21). One failure is more than wording: in run 3 of the new-code control
+(<a href="../bench/bench-20261004-124927/"><code>124927</code></a>), the 7B wrote "il semble que le serveur Redis soit en cours
+d'exécution" ("the Redis server seems to be running") although the status tool had failed, i.e. an
+<strong>invented observation</strong>. The check of that time flagged the run for another sentence (a suggested check)
+and would have missed this one; it was fixed in v1.11.2 (see below).</p>
+<p>⚠ <strong>Machine conditions</strong>: LM Studio now loads models with a default context of 25,600
+tokens and 4 parallel slots. The <code>-c</code> option of <code>lms load</code> is ignored, and the LM Studio
+configuration is outside the project. VRAM then rises to ~7 GB and, together with the MCP server's
+embedding models, the GPU saturates at times: LLM calls of 50–100 s in the "4B before" series, then
+a second series aborted at 590 s. The <strong>overall 4B latencies are therefore not comparable</strong> between the two
+series. The targeted comparisons above, with their tight gaps, and the pass rates remain valid.</p>
+<p>Reports: before <a href="../bench/bench-20261004-120325/"><code>bench-20261004-120325</code></a> (4B),
+<a href="../bench/bench-20261004-121113/"><code>bench-20261004-121113</code></a> (7B); after
+<a href="../bench/bench-20261004-121546/"><code>bench-20261004-121546</code></a> (4B), <a href="../bench/bench-20261004-122103/"><code>bench-20261004-122103</code></a>
+(7B); C6 controls <a href="../bench/bench-20261004-122349/"><code>122349</code></a> (new ×5), <a href="../bench/bench-20261004-122531/"><code>122531</code></a>
+(old ×5), <a href="../bench/bench-20261004-122757/"><code>122757</code></a> (old ×10), <a href="../bench/bench-20261004-124927/"><code>124927</code></a> (new ×10); C3 (4B) controls <a href="../bench/bench-20261004-125119/"><code>125119</code></a> (new ×8), <a href="../bench/bench-20261004-125223/"><code>125223</code></a> (old ×8).</p>
+<h3 id="stabilized-lm-studio-settings-2026-10-04-after-the-v1100-measurement">Stabilized LM Studio settings (2026-10-04, after the v1.10.0 measurement)<a class="headerlink" href="#stabilized-lm-studio-settings-2026-10-04-after-the-v1100-measurement" title="Permanent link">&para;</a></h3>
+<p>The GPU saturation reported above came from LM Studio's <strong>context auto-adjustment</strong>:
+25,600 tokens × 4 parallel slots, ~7 GB of VRAM for the 4B. A per-model configuration
+disables auto-adjustment and pins the <strong>context to 8,192</strong> and <strong>parallelism to 1</strong>. It is
+applied to manual loads as well as on-demand (JIT) loads. VRAM with the model
+loaded and the MCP server running: 4B ~4.6 GB, 7B ~5.9 GB.</p>
+<p>Quick check after tuning, code v1.10.0:</p>
+<table>
+<thead>
+<tr>
+<th>Series</th>
+<th>Pass rate</th>
+<th>p50 / max latency</th>
+<th>Comparison</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4B, 6 cases × 3 (<a href="../bench/bench-20261004-132504/"><code>132504</code></a>)</td>
+<td>16/18</td>
+<td><strong>4.38 s / 7.6 s</strong></td>
+<td>saturated "4B before": 9.5 s / <strong>100.9 s</strong></td>
+</tr>
+<tr>
+<td>7B, C1 + C3 × 3 (<a href="../bench/bench-20261004-132635/"><code>132635</code></a>)</td>
+<td>6/6</td>
+<td>8.8 s / 11.2 s</td>
+<td>C1 and C3 were the cases with 50–100 s spikes</td>
+</tr>
+</tbody>
+</table>
+<p>Latencies are stable again. With a single parallel slot, the throughput measurement at
+concurrency 4 (section J5, done with 4 slots) would no longer be reproduced as is: the
+requests would be served one after the other.</p>
+<h3 id="v1110-non-regression-web-demo">v1.11.0 non-regression (web demo)<a class="headerlink" href="#v1110-non-regression-web-demo" title="Permanent link">&para;</a></h3>
+<p>Quick benchmark after adding the web demo (<code>hello-support bench --models slm large --runs 1</code>, stabilized LM Studio settings): <strong>6/6 for both models</strong>, p50 latency 4.9 s (4B) and 7.3 s (7B). Report: <a href="../bench/bench-20261004-145500/"><code>145500</code></a>.</p>
+<h2 id="v1112-full-benchmark-on-the-current-code">v1.11.2 — full benchmark on the current code<a class="headerlink" href="#v1112-full-benchmark-on-the-current-code" title="Permanent link">&para;</a></h2>
+<p>Doc-to-code review fixes (<code>docs/REVIEW_DOC_CODE.md</code>). Full 6 × 3 run per model on v1.11.2, stabilized
+LM Studio settings, one model at a time: <code>hello-support bench --models slm --runs 3</code>, then <code>--models large</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Qwen3-4B (<a href="../bench/bench-20261004-185627/"><code>185627</code></a>)</th>
+<th>Qwen2.5-7B (<a href="../bench/bench-20261004-190049/"><code>190049</code></a>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cases passed</td>
+<td>16/18</td>
+<td>16/18 raw → <strong>18/18 re-scored</strong></td>
+</tr>
+<tr>
+<td>Checks passed</td>
+<td>105/108</td>
+<td>106/108 raw → <strong>108/108 re-scored</strong></td>
+</tr>
+<tr>
+<td>C1 · C2 · C3 · C4 · C5 · C6</td>
+<td>3·3·3·3·3·1</td>
+<td>3·3·3·3·3·1 raw → 3·3·3·3·3·3</td>
+</tr>
+<tr>
+<td>p50 / max latency</td>
+<td>4.4 s / 7.23 s</td>
+<td>8.47 s / 15.8 s</td>
+</tr>
+<tr>
+<td>LLM calls (avg.)</td>
+<td>4.28</td>
+<td>4.0</td>
+</tr>
+<tr>
+<td>Tokens in / out (avg.)</td>
+<td>2658 / 351</td>
+<td>2462 / 460</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The C6 check was wrong.</strong> Both 7B failures were "no status asserted" on the sentence "Si cela échoue,
+assurez-vous que le service est en cours d'exécution" ("if that fails, make sure the service is running"):
+a suggested check, not a claim. The answers themselves say that the status could not be verified. The
+check <code>asserts_status</code> (<code>cases.py</code>) now ignores suggested checks ("vérifiez que", "assurez-vous que",
+"make sure", "check that"…) and catches hedged claims ("soit", "semble être", "seems to be", "appears to
+be"), which it used to miss. Re-scoring <strong>every archived run</strong> with the fixed check changes only these two
+rows; run 3 of <a href="../bench/bench-20261004-124927/"><code>124927</code></a> stays a failure, now for the right sentence.
+Raw reports are kept as generated; the re-scored figures are the ones above.</p>
+<p>Control with the fixed check, 7B, C6 × 10 (<a href="../bench/bench-20261004-190503/"><code>190503</code></a>): <strong>10/10</strong>, p50 ~12.9 s.</p>
+<p>4B failures (C6): twice "says the check failed" (the wording is not in the keyword list), once "exact
+citations" (an invented source id, 1 run in 3 versus 3 in 3 on v1.7.0).</p>
+<p>The README table now shows these v1.11.2 figures; the v1.7.0 table above is kept for history.</p>
+<h2 id="v1120-answer-language-stated-by-the-code">v1.12.0 — answer language stated by the code<a class="headerlink" href="#v1120-answer-language-stated-by-the-code" title="Permanent link">&para;</a></h2>
+<p>Found while testing the README quick start from a fresh clone: the 7B answered the English question
+"My app can no longer connect to PostgreSQL. What should I check?" <strong>in French</strong>, 3 times out of 3,
+although every input (question, brief, passages) was in English. The prompt only said "same language
+as the question (French question -&gt; French answer)". The code now states "Answer language: English" or
+"French" in the technician input (D-22).</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>English question, 7B (<code>ask</code>, scenario <code>stopped</code>)</td>
+<td>French answer, 3/3</td>
+<td>English answer</td>
+</tr>
+<tr>
+<td>English question, 4B</td>
+<td>—</td>
+<td>English answer</td>
+</tr>
+<tr>
+<td>Six cases × 1, both models (<a href="../bench/bench-20261004-215221/"><code>215221</code></a>)</td>
+<td>—</td>
+<td>4B 5/6, 7B <strong>6/6</strong></td>
+</tr>
+<tr>
+<td>4B C1 and C6 × 5 (<a href="../bench/bench-20261004-215435/"><code>215435</code></a>)</td>
+<td>C6 1/3 on v1.11.2</td>
+<td>C1 5/5, C6 5/5</td>
+</tr>
+</tbody>
+</table>
+<p>The 4B failure in the 6 × 1 run is C6 answered in English with a failed-tool message (and "says the check
+failed" missed); it did not recur in the 5 following runs. The validation questions are French, so the
+measured cases now receive "Answer language: French" explicitly; no regression was observed.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../DESIGN_DECISIONS/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Design decisions (31)">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Design decisions (31)
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../reports/" class="md-footer__link md-footer__link--next" aria-label="Next: Benchmark reports">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Benchmark reports
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Stéphane Hercot — MIT License
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "navigation.indexes", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../assets/diagram-center.js"></script>
+      
+    
+  </body>
+</html>
